@@ -59,6 +59,7 @@ void BallGameEntity::TransformCallback(const NewtonBody* body, const dFloat* mat
 
 void BallEntity::AddForceVector(dVector *force)
 {
+	std::cout << "Add Force {" << (*force)[0] << ", " << (*force)[1] << ", " << (*force)[2] << "} On ball" << std::endl;
 	Forces.Append(force);
 }
 
@@ -72,6 +73,21 @@ dVector *BallEntity::GetForceVector()
 		Forces.Remove(node);
 	}
 	return ret;
+}
+
+CaseEntity::CaseEntity(const dMatrix& matrix, enum CaseType _type):BallGameEntity(matrix)
+{
+	type = _type;
+	force_to_apply = NAN;
+	force_direction = NULL;
+}
+
+void CaseEntity::SetForceToApply(float force, dVector *direction)
+{
+	force_to_apply = force;
+	if(force_direction != NULL)
+		delete force_direction;
+	force_direction = direction;
 }
 
 void CaseEntity::AddBallColliding(NewtonBody *ball)
@@ -101,6 +117,33 @@ bool CaseEntity::CheckIfAlreadyColliding(NewtonBody *ball)
 	return ret;
 }
 
+void CaseEntity::ApplyForceOnBall(NewtonBody *ball)
+{
+	BallEntity *BEntity = (BallEntity*)NewtonBodyGetUserData(ball);
+	if(!isnanf(force_to_apply))
+	{
+		if(force_direction != NULL)
+		{
+			dVector *force = new dVector();
+			*force = force_direction->Scale(force_to_apply);
+			BEntity->AddForceVector(force);
+		}
+		else
+		{
+			dFloat velocity[3], sum;
+			NewtonBodyGetVelocity(ball, velocity);
+			sum = velocity[0] + velocity[1] + velocity[2];
+			velocity[0] /= sum;
+			velocity[1] /= sum;
+			velocity[2] /= sum;//Like that we have normalization of velocity into percents, we can use it to scale force.
+			dVector *force = new dVector(velocity[0], velocity[1], velocity[2]);
+			*force = force->Scale(force_to_apply);
+			BEntity->AddForceVector(force);
+		}
+	}
+	AddBallColliding(ball);
+}
+
 NewtonWorld* BallGame::GetNewton(void)
 {
 	return m_world;
@@ -111,13 +154,15 @@ void BallGame::SetCam(int x, int y, int z)
     camx = x;
     camy = y;
     camz = z;
+    //camNode->translate(camx, camx, camz, Ogre::Node::TransformSpace::TS_LOCAL);
     camNode->setPosition(camx, camy, camz);
     GetCamParams();
 }
 
 void BallGame::MoveCam(int x, int y, int z)
 {
-    SetCam(camx + x, camy + y, camz + z);
+    camNode->translate(x, y, z, Ogre::Node::TransformSpace::TS_LOCAL);
+    //SetCam(camx + x, camy + y, camz + z);
 }
 
 
@@ -323,7 +368,23 @@ void BallGame::setup()
 					collision_tree = ParseEntity(m_world, ptr, ident_ogre_matrix);
 				}
 				tableBody = WorldAddCase(m_world, tsize, 0, casematrix, type, collision_tree);
-				BallGameEntity *Entity = (BallGameEntity*)NewtonBodyGetUserData(tableBody);
+				CaseEntity *Entity = (CaseEntity*)NewtonBodyGetUserData(tableBody);
+				if(cmpt == 0 && cmpt2 == 0)
+				{
+					dVector *direction = new dVector(1.0, 0.0, 0.0);
+					Entity->SetForceToApply(100.0, direction);
+						//					dVector *force = new dVector(0.0, 0.0, 1000.0);
+				}
+				if(cmpt == 4 && cmpt2 == 0)
+				{
+					Entity->SetForceToApply(100.0, NULL);
+				}
+				if(cmpt >= 10 && cmpt2 == 0)
+				{
+					dVector *direction = new dVector(0.0, 0.0, 1.0);
+					Entity->SetForceToApply(1000.0, direction);
+						//					dVector *force = new dVector(0.0, 0.0, 1000.0);
+				}
 				Entity->OgreEntity = ogreNode;
 				AddCase(tableBody);
 		}
@@ -384,18 +445,18 @@ void BallGame::CheckforCollides(void)
 			NewtonBody *Case = Cases[cmpt2];
 			if(Case == NULL)
 				continue;
+			if(CheckIfBodiesCollide(ball, Case) != NULL)
+			{
+				std::cout << ball << " id " << cmpt << " and " << Case << " id " << cmpt2 << " Collides by joints" << std::endl;
+			}
 			if(DoBodiesCollide(m_world, ball, Case))
 			{
 				CaseEntity *CEntity = (CaseEntity*)NewtonBodyGetUserData(Case);
 				//if(!CEntity->CheckIfAlreadyColliding(ball))
 				{
-					BallEntity *BEntity = (BallEntity*)NewtonBodyGetUserData(ball);
-					dVector *force = new dVector(25.0, 0.0, 0.0);
-//					dVector *force = new dVector(0.0, 0.0, 1000.0);
-					BEntity->AddForceVector(force);
-					CEntity->AddBallColliding(ball);
+					CEntity->ApplyForceOnBall(ball);
 
-//					std::cout << ball << " id " << cmpt << " and " << Case << " id " << cmpt2 << " Collides, force added" << std::endl;
+					std::cout << ball << " id " << cmpt << " and " << Case << " id " << cmpt2 << " Collides" << std::endl;
 				}
 //				else
 //					std::cout << ball << " id " << cmpt << " and " << Case << " id " << cmpt2 << " Already Colliding" << std::endl;
@@ -443,53 +504,83 @@ bool BallGame::frameEnded(const Ogre::FrameEvent& fe)
 //    std::cout << "Render a frame" << std::endl;
 	dFloat timestep = dGetElapsedSeconds();
 	UpdatePhysics(timestep);
+	for(int cmpt = 0; cmpt < Balls.GetSize(); cmpt++)
+	{
+		NewtonBody *ball = Balls[cmpt];
+		if(ball == NULL)
+			continue;
+		Vector3 worldPos = ((BallGameEntity*)NewtonBodyGetUserData(ball))->OgreEntity->getPosition();
+		Camera *cam = (Camera*)camNode->getAttachedObject("myCam");
+		Vector3 hcsPosition = cam->getProjectionMatrix() * cam->getViewMatrix() * worldPos;
+#define ECART 0.25
+//#define ECART 0.8
+		while(hcsPosition.x >= ECART)
+		{
+			MoveCam(1, 0, 0);
+			hcsPosition = cam->getProjectionMatrix() * cam->getViewMatrix() * worldPos;
+		}
+		while(hcsPosition.x <= -1 * ECART)
+		{
+			MoveCam(-1, 0, 0);
+			hcsPosition = cam->getProjectionMatrix() * cam->getViewMatrix() * worldPos;
+		}
+		while(hcsPosition.y >= ECART)
+		{
+			MoveCam(0, 1, 0);
+			hcsPosition = cam->getProjectionMatrix() * cam->getViewMatrix() * worldPos;
+		}
+		while(hcsPosition.y <= - 1 * ECART)
+		{
+			MoveCam(0, -1, 0);
+			hcsPosition = cam->getProjectionMatrix() * cam->getViewMatrix() * worldPos;
+		}
+	}
     return true;
+}
+
+bool BallGame::mouseWheelRolled(const MouseWheelEvent& evt)
+{
+	MoveCam(0, 0, -10 * evt.y);
+	return true;
 }
 
 bool BallGame::keyPressed(const KeyboardEvent& evt)
 {
-
     switch (evt.keysym.sym)
     {
 	case SDLK_ESCAPE :
 	    getRoot()->queueEndRendering();
 	    break;
 	case SDLK_UP:
-	    MoveCam(10, 0, 0);
-	    break;
-	case SDLK_DOWN:
-	    MoveCam(-10, 0, 0);
-	    break;
-	case SDLK_LEFT:
-	    MoveCam(0, 10, 0);
-	    break;
-	case SDLK_RIGHT:
-	    MoveCam(0, -10, 0);
-	    break;
-	case SDLK_PAGEUP:
 	    MoveCam(0, 0, 10);
 	    break;
-	case SDLK_PAGEDOWN:
+	case SDLK_DOWN:
 	    MoveCam(0, 0, -10);
 	    break;
-	case SDLK_KP_8:
-	    CamPitch(10);
+	case SDLK_LEFT:
+	    MoveCam(-10, 0, 0);
 	    break;
-	case SDLK_KP_5:
-	    CamPitch(-10);
+	case SDLK_RIGHT:
+	    MoveCam(10, 0, 0);
 	    break;
-	case SDLK_KP_4:
-	    CamYaw(10);
-	    break;
-	case SDLK_KP_6:
-	    CamYaw(-10);
-	    break;
-	case SDLK_KP_7:
-	    CamRoll(10);
-	    break;
-	case SDLK_KP_9:
-	    CamRoll(-10);
-	    break;
+//	case SDLK_KP_8:
+//	    CamPitch(10);
+//	    break;
+//	case SDLK_KP_5:
+//	    CamPitch(-10);
+//	    break;
+//	case SDLK_KP_4:
+//	    CamYaw(10);
+//	    break;
+//	case SDLK_KP_6:
+//	    CamYaw(-10);
+//	    break;
+//	case SDLK_KP_7:
+//	    CamRoll(10);
+//	    break;
+//	case SDLK_KP_9:
+//	    CamRoll(-10);
+//	    break;
     }
     return true;
 }

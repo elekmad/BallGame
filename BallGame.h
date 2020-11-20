@@ -78,11 +78,16 @@ class CaseEntity : public BallGameEntity
 		typeRamp
 	};
 	enum CaseType type;
-	CaseEntity(const dMatrix& matrix, enum CaseType _type = typeBox):BallGameEntity(matrix){type = _type;}
+	CaseEntity(const dMatrix& matrix, enum CaseType _type = typeBox);
 	void AddBallColliding(NewtonBody *ball);
 	bool CheckIfAlreadyColliding(NewtonBody *ball);
+	void SetForceToApply(float force, dVector *direction);
+	void ApplyForceOnBall(NewtonBody *ball);
 	protected:
 	dArray<NewtonBody*> BallsUnderCollide;
+
+	float force_to_apply;
+	dVector *force_direction;
 
 };
 
@@ -94,7 +99,8 @@ class BallGame : public ApplicationContext, public InputListener
 
     void SetupNewton(void);
     void setup();//Setup callback for Ogre Applications
-    bool keyPressed(const KeyboardEvent& evt);
+    bool keyPressed(const KeyboardEvent& evt);//Key press event callback for Ogre Applications
+    bool mouseWheelRolled(const MouseWheelEvent& evt);//Mouse whell roll event callback for Ogre Applications
 
 
     NewtonWorld* GetNewton(void);
@@ -137,7 +143,7 @@ class BallGame : public ApplicationContext, public InputListener
 		Degree dangle(angle);
 		CamAnglePitch += dangle;
 		std::cout << "Pitch " << CamAnglePitch << std::endl;
-		camNode->pitch(CamAnglePitch);
+		camNode->pitch(CamAnglePitch, Ogre::Node::TransformSpace::TS_LOCAL);
 		GetCamParams();
     }
     void CamYaw(float angle)
@@ -145,7 +151,7 @@ class BallGame : public ApplicationContext, public InputListener
 		Degree dangle(angle);
 		CamAngleYaw += dangle;
 		std::cout << "Yaw " << CamAngleYaw << std::endl;
-		camNode->yaw(CamAngleYaw);
+		camNode->yaw(CamAngleYaw, Ogre::Node::TransformSpace::TS_LOCAL);
 		GetCamParams();
     }
     void CamRoll(float angle)
@@ -153,7 +159,7 @@ class BallGame : public ApplicationContext, public InputListener
 		Degree dangle(angle);
 		CamAngleRoll += dangle;
 		std::cout << "Roll " << CamAngleRoll << std::endl;
-		camNode->roll(CamAngleRoll);
+		camNode->roll(CamAngleRoll, Ogre::Node::TransformSpace::TS_LOCAL);
 		GetCamParams();
     }
     void GetCamParams(void)
