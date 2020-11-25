@@ -101,12 +101,18 @@ class BallGame : public ApplicationContext, public InputListener
     void setup();//Setup callback for Ogre Applications
     bool keyPressed(const KeyboardEvent& evt);//Key press event callback for Ogre Applications
     bool mouseWheelRolled(const MouseWheelEvent& evt);//Mouse whell roll event callback for Ogre Applications
+    bool mouseMoved(const MouseMotionEvent &evt);
 
 
     NewtonWorld* GetNewton(void);
     void Append(BallGameEntity *entity);
 
     private :
+    enum RunningMode
+    {
+	Running,
+	Editing
+    }mode;
     /////////////////////  NEWTON ///////////////////
     NewtonWorld* m_world;
     static void PostUpdateCallback(const NewtonWorld* const world, dFloat timestep);
@@ -129,7 +135,11 @@ class BallGame : public ApplicationContext, public InputListener
     /////////////////////////////////////////////////
     virtual bool frameEnded(const Ogre::FrameEvent& fe);
 
+    //Mouse picking
+    SceneNode *LastHighligted;
+    SceneManager* scnMgr;
     SceneNode* camNode;
+    RenderWindow* mWindow;
     int camx;
     int camy;
     int camz;

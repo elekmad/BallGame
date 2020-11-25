@@ -178,7 +178,11 @@ BallGame::BallGame() : ApplicationContext("BallGame")
 
 	// create the newton world
 	m_world = NULL;
+	mWindow = NULL;
 	camNode = NULL;
+	scnMgr = NULL;
+	LastHighligted = NULL;
+	mode = Running;
 	SetupNewton();
 }
 
@@ -285,7 +289,7 @@ void BallGame::setup()
 
     // get a pointer to the already created root
     Root* root = getRoot();
-    SceneManager* scnMgr = root->createSceneManager();
+    scnMgr = root->createSceneManager();
 
     // register our scene with the RTSS
     RTShader::ShaderGenerator* shadergen = RTShader::ShaderGenerator::getSingletonPtr();
@@ -317,7 +321,8 @@ void BallGame::setup()
     SetCam(0, 0, 140);
 
     // and tell it to render into the main window
-    getRenderWindow()->addViewport(cam);
+    mWindow = getRenderWindow();
+    mWindow->addViewport(cam);
     //! [camera]
 
 
@@ -445,6 +450,7 @@ void BallGame::CheckforCollides(void)
 			NewtonBody *Case = Cases[cmpt2];
 			if(Case == NULL)
 				continue;
+//          if(NewtonBodyFindContact(ball, Case) != NULL)
 			if(CheckIfBodiesCollide(ball, Case) != NULL)
 			{
 				std::cout << ball << " id " << cmpt << " and " << Case << " id " << cmpt2 << " Collides by joints" << std::endl;
@@ -544,6 +550,40 @@ bool BallGame::mouseWheelRolled(const MouseWheelEvent& evt)
 	return true;
 }
 
+bool BallGame::mouseMoved(const MouseMotionEvent& evt)
+{
+       if(mode == Editing)
+       {
+               if(LastHighligted != NULL)
+               {
+                       LastHighligted->showBoundingBox(false);
+                       LastHighligted = NULL;
+               }
+               RaySceneQuery *mRayScanQuery = scnMgr->createRayQuery(Ogre::Ray());
+
+               Ray mouseRay =
+                               ((Camera*)camNode->getAttachedObject("myCam"))->getCameraToViewportRay(
+                                       (float)evt.x / float(mWindow->getWidth()),
+                                       (float)evt.y / float(mWindow->getHeight()));
+               mRayScanQuery->setRay(mouseRay);
+               mRayScanQuery->setSortByDistance(true, 1);
+               RaySceneQueryResult &result = mRayScanQuery->execute();
+               RaySceneQueryResult::iterator itr = result.begin();
+               std::cout << "Picking Mouse : " << result.size() << std::endl;
+               while(itr != result.end())
+               {
+                       if(itr->movable != NULL)
+                       {
+                               LastHighligted = itr->movable->getParentSceneNode();
+                               LastHighligted->showBoundingBox(true);
+                       }
+                       itr++;
+               }
+               delete mRayScanQuery;
+       }
+       return true;
+}
+
 bool BallGame::keyPressed(const KeyboardEvent& evt)
 {
     switch (evt.keysym.sym)
@@ -581,6 +621,15 @@ bool BallGame::keyPressed(const KeyboardEvent& evt)
 //	case SDLK_KP_9:
 //	    CamRoll(-10);
 //	    break;
+        case SDLK_PAUSE:
+            m_suspendPhysicsUpdate = m_suspendPhysicsUpdate ? false : true;
+            break;
+        case SDLK_F1:
+            if(mode == Running)
+		mode = Editing;
+	    else
+		mode = Running;
+            break;
     }
     return true;
 }
