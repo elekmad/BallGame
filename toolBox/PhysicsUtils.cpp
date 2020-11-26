@@ -1071,8 +1071,7 @@ NewtonCollision *ParseEntity (NewtonWorld *world, const MeshPtr mesh, const Matr
 			for (int i = 0; i < points.GetElementsCount(); i ++) {
 				float* data;
 				vertexElem->baseVertexPointerToElement(ptr + i * size, &data);
-				Affine3 m3(matrix);
-				points[i] = m3 * Vector3 (data[offset + 0], data[offset + 1], data[offset + 2]);
+				points[i] = matrix.transformAffine (Vector3 (data[offset + 0], data[offset + 1], data[offset + 2]));
 			}
 			vertexPtr->unlock();
 		}

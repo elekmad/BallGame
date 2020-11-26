@@ -1,10 +1,10 @@
+//#include "BaseApplication.h"
 #include "BallGame.h"
 
 int main(void)
 {
+//    BaseApplication app;
     BallGame app;
-    app.initApp();
-    app.getRoot()->startRendering();
-    app.closeApp();
+    app.go();
     return 0;
 }

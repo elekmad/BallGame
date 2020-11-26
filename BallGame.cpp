@@ -12,6 +12,7 @@
 #include <iostream>
 #include <dNewtonScopeBuffer.h>
 #include <Newton.h>
+#include <OgreRay.h>
 
 
 BallGameEntity::BallGameEntity(const dMatrix& matrix) : m_matrix(matrix)
@@ -155,34 +156,45 @@ void BallGame::SetCam(int x, int y, int z)
     camy = y;
     camz = z;
     //camNode->translate(camx, camx, camz, Ogre::Node::TransformSpace::TS_LOCAL);
-    camNode->setPosition(camx, camy, camz);
+    mCamera->setPosition(camx, camy, camz);
     GetCamParams();
 }
 
 void BallGame::MoveCam(int x, int y, int z)
 {
-    camNode->translate(x, y, z, Ogre::Node::TransformSpace::TS_LOCAL);
+	mCamera->moveRelative(Ogre::Vector3(x, y, z));
     //SetCam(camx + x, camy + y, camz + z);
 }
 
 
-BallGame::BallGame() : ApplicationContext("BallGame")
-		,m_asynchronousPhysicsUpdate(false)
+BallGame::BallGame() :
+		m_asynchronousPhysicsUpdate(false)
 		,m_suspendPhysicsUpdate(false)
 		,m_physicsFramesCount(0)
 		,m_microsecunds(0)
+		,mResourcesCfg(Ogre::StringUtil::BLANK)
+		,mPluginsCfg(Ogre::StringUtil::BLANK)
 		,m_mainThreadPhysicsTime(0.0f)
 		,m_mainThreadPhysicsTimeAcc(0.0f)
 {
     camx = camy = camz = 0;
 
-	// create the newton world
 	m_world = NULL;
 	mWindow = NULL;
-	camNode = NULL;
 	scnMgr = NULL;
+	mOverlaySystem = NULL;
+	mRoot = NULL;
 	LastHighligted = NULL;
 	mode = Running;
+	mInputManager = NULL;
+	mKeyboard = NULL;
+	mMouse = NULL;
+	mTrayMgr = NULL;
+	mCameraMan = NULL;
+	mDetailsPanel = NULL;
+	mCursorWasVisible = false;
+	mShutDown = false;
+	// create the newton world
 	SetupNewton();
 }
 
@@ -206,6 +218,18 @@ BallGame::~BallGame()
 {
 	if(m_world != NULL)
 		NewtonDestroy(m_world);
+
+	if (mTrayMgr)
+		delete mTrayMgr;
+	if (mCameraMan)
+		delete mCameraMan;
+	if (mOverlaySystem)
+		delete mOverlaySystem;
+
+	//Remove ourself as a Window listener
+	Ogre::WindowEventUtilities::removeWindowEventListener(mWindow, this);
+	windowClosed(mWindow);
+	delete mRoot;
 }
 
 void BallGame::PostUpdateCallback(const NewtonWorld* const world, dFloat timestep)
@@ -278,22 +302,149 @@ void BallGame::UpdatePhysics(dFloat timestep)
 	}
 }
 
-
-
-//setup callback for Ogre applications
-void BallGame::setup()
+bool BallGame::configure(void)
 {
-    // do not forget to call the base first
-    ApplicationContext::setup();
-    addInputListener(this);
+	// Show the configuration dialog and initialise the system
+	// You can skip this and use root.restoreConfig() to load configuration
+	// settings if you were sure there are valid ones saved in ogre.cfg
+	if(mRoot->showConfigDialog())
+	{
+		// If returned true, user clicked OK so initialise
+		// Here we choose to let the system create a default rendering window by passing 'true'
+		mWindow = mRoot->initialise(true, "BallGame");
 
-    // get a pointer to the already created root
-    Root* root = getRoot();
-    scnMgr = root->createSceneManager();
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
 
-    // register our scene with the RTSS
-    RTShader::ShaderGenerator* shadergen = RTShader::ShaderGenerator::getSingletonPtr();
-    shadergen->addSceneManager(scnMgr);
+void BallGame::chooseSceneManager(void)
+{
+	// Get the SceneManager, in this case a generic one
+	scnMgr = mRoot->createSceneManager(Ogre::ST_GENERIC);
+
+	// initialize the OverlaySystem (changed for 1.9)
+	mOverlaySystem = new Ogre::OverlaySystem();
+	scnMgr->addRenderQueueListener(mOverlaySystem);
+}
+
+void BallGame::createCamera(void)
+{
+	// Create the camera
+	mCamera = scnMgr->createCamera("PlayerCam");
+
+	// Position it at 500 in Z direction
+	mCamera->setPosition(Ogre::Vector3(0,0,80));
+	// Look back along -Z
+	mCamera->lookAt(Ogre::Vector3(0,0,-300));
+	mCamera->setNearClipDistance(5);
+
+	mCameraMan = new OgreBites::SdkCameraMan(mCamera);   // create a default camera controller
+}
+
+void BallGame::createViewports(void)
+{
+	// Create one viewport, entire window
+	Ogre::Viewport* vp = mWindow->addViewport(mCamera);
+	vp->setBackgroundColour(Ogre::ColourValue(0,0,0));
+
+	// Alter the camera aspect ratio to match the viewport
+	mCamera->setAspectRatio(
+		Ogre::Real(vp->getActualWidth()) / Ogre::Real(vp->getActualHeight()));
+}
+
+void BallGame::setupResources(void)
+{
+	// Load resource paths from config file
+	Ogre::ConfigFile cf;
+	cf.load(mResourcesCfg);
+
+	// Go through all sections & settings in the file
+	Ogre::ConfigFile::SectionIterator seci = cf.getSectionIterator();
+
+	Ogre::String secName, typeName, archName;
+	while (seci.hasMoreElements())
+	{
+		secName = seci.peekNextKey();
+		Ogre::ConfigFile::SettingsMultiMap *settings = seci.getNext();
+		Ogre::ConfigFile::SettingsMultiMap::iterator i;
+		for (i = settings->begin(); i != settings->end(); ++i)
+		{
+			typeName = i->first;
+			archName = i->second;
+			Ogre::ResourceGroupManager::getSingleton().addResourceLocation(
+				archName, typeName, secName);
+		}
+	}
+}
+
+void BallGame::loadResources(void)
+{
+	Ogre::ResourceGroupManager::getSingleton().initialiseAllResourceGroups();
+}
+
+void BallGame::createFrameListener(void)
+{
+	Ogre::LogManager::getSingletonPtr()->logMessage("*** Initializing OIS ***");
+	OIS::ParamList pl;
+	size_t windowHnd = 0;
+	std::ostringstream windowHndStr;
+
+	mWindow->getCustomAttribute("WINDOW", &windowHnd);
+	windowHndStr << windowHnd;
+	pl.insert(std::make_pair(std::string("WINDOW"), windowHndStr.str()));
+
+	mInputManager = OIS::InputManager::createInputSystem( pl );
+
+	mKeyboard = static_cast<OIS::Keyboard*>(mInputManager->createInputObject( OIS::OISKeyboard, true ));
+	mMouse = static_cast<OIS::Mouse*>(mInputManager->createInputObject( OIS::OISMouse, true ));
+
+	mMouse->setEventCallback(this);
+	mKeyboard->setEventCallback(this);
+
+	//Set initial mouse clipping size
+	windowResized(mWindow);
+
+	//Register as a Window listener
+	Ogre::WindowEventUtilities::addWindowEventListener(mWindow, this);
+
+	mInputContext.mKeyboard = mKeyboard;
+    mInputContext.mMouse = mMouse;
+//    mTrayMgr = new OgreBites::SdkTrayManager("InterfaceName", mWindow, mInputContext, this);
+//	mTrayMgr->showFrameStats(OgreBites::TL_BOTTOMLEFT);
+//	mTrayMgr->showLogo(OgreBites::TL_BOTTOMRIGHT);
+//	mTrayMgr->hideCursor();
+//
+//	// create a params panel for displaying sample details
+//	Ogre::StringVector items;
+//	items.push_back("cam.pX");
+//	items.push_back("cam.pY");
+//	items.push_back("cam.pZ");
+//	items.push_back("");
+//	items.push_back("cam.oW");
+//	items.push_back("cam.oX");
+//	items.push_back("cam.oY");
+//	items.push_back("cam.oZ");
+//	items.push_back("");
+//	items.push_back("Filtering");
+//	items.push_back("Poly Mode");
+//
+//	mDetailsPanel = mTrayMgr->createParamsPanel(OgreBites::TL_NONE, "DetailsPanel", 200, items);
+//	mDetailsPanel->setParamValue(9, "Bilinear");
+//	mDetailsPanel->setParamValue(10, "Solid");
+//	mDetailsPanel->hide();
+
+	mRoot->addFrameListener(this);
+}
+
+void BallGame::SetupGame(void)
+{
+//    // register our scene with the RTSS
+//    RTShader::ShaderGenerator* shadergen = RTShader::ShaderGenerator::getSingletonPtr();
+//    shadergen->addSceneManager(scnMgr);
 
     // -- tutorial section start --
     //! [turnlights]
@@ -309,21 +460,6 @@ void BallGame::setup()
     //! [lightpos]
     lightNode->setPosition(20, 80, 50);
     //! [lightpos]
-
-    //! [camera]
-    camNode = scnMgr->getRootSceneNode()->createChildSceneNode();
-
-    // create the camera
-    Camera* cam = scnMgr->createCamera("myCam");
-    cam->setNearClipDistance(5); // specific to this sample
-    cam->setAutoAspectRatio(true);
-    camNode->attachObject(cam);
-    SetCam(0, 0, 140);
-
-    // and tell it to render into the main window
-    mWindow = getRenderWindow();
-    mWindow->addViewport(cam);
-    //! [camera]
 
 
     //////////////   ADD CASES ///////////////////
@@ -427,15 +563,45 @@ void BallGame::setup()
 		}
     }
 
-
-
     //! [cameramove]
     SetCam(-184, -253, 352);
-    camNode->setOrientation(0.835422, 0.393051, -0.238709, -0.300998);
-    //! [cameramove]
-    m_suspendPhysicsUpdate = false;
-//    m_suspendPhysicsUpdate = true;
+    mCamera->setOrientation(Ogre::Quaternion(0.835422, 0.393051, -0.238709, -0.300998));
 
+    m_suspendPhysicsUpdate = false;
+    m_suspendPhysicsUpdate = true;
+}
+
+//setup callback for Ogre applications
+bool BallGame::setup()
+{
+	mResourcesCfg = "resources.cfg";
+	mPluginsCfg = "plugins.cfg";
+	mRoot = new Ogre::Root(mPluginsCfg);
+
+	setupResources();
+
+	bool carryOn = configure();
+	if (!carryOn) return false;
+
+	chooseSceneManager();
+	createCamera();
+	createViewports();
+
+	// Set default mipmap level (NB some APIs ignore this)
+	Ogre::TextureManager::getSingleton().setDefaultNumMipmaps(5);
+
+	// Create any resource listeners (for loading screens)
+//	createResourceListener();
+	// Load resources
+	loadResources();
+
+	// Create the scene
+//	createScene();
+
+	createFrameListener();
+
+
+	return true;
 }
 
 void BallGame::CheckforCollides(void)
@@ -497,134 +663,154 @@ void BallGame::AddCase(NewtonBody *Wcase)
 		Cases[size++] = NULL;
 }
 
+bool BallGame::frameRenderingQueued(const Ogre::FrameEvent& evt)
+{
+        if(mWindow->isClosed())
+                return false;
+
+        if(mShutDown)
+                return false;
+
+        //Need to capture/update each device
+        mKeyboard->capture();
+        mMouse->capture();
+        return true;
+}
+
 
 bool BallGame::frameEnded(const Ogre::FrameEvent& fe)
 {
-/*  if (mWindow->isClosed()) return false;
-
-  mKeyboard->capture();
-  mMouse->capture();
-
-  if (mKeyboard->isKeyDown(OIS::KC_ESCAPE)) return false;
-*/
 //    std::cout << "Render a frame" << std::endl;
 	dFloat timestep = dGetElapsedSeconds();
 	UpdatePhysics(timestep);
+
 	for(int cmpt = 0; cmpt < Balls.GetSize(); cmpt++)
 	{
 		NewtonBody *ball = Balls[cmpt];
 		if(ball == NULL)
 			continue;
 		Vector3 worldPos = ((BallGameEntity*)NewtonBodyGetUserData(ball))->OgreEntity->getPosition();
-		Camera *cam = (Camera*)camNode->getAttachedObject("myCam");
-		Vector3 hcsPosition = cam->getProjectionMatrix() * cam->getViewMatrix() * worldPos;
+		Vector3 hcsPosition = mCamera->getProjectionMatrix() * mCamera->getViewMatrix() * worldPos;
 #define ECART 0.25
 //#define ECART 0.8
 		while(hcsPosition.x >= ECART)
 		{
 			MoveCam(1, 0, 0);
-			hcsPosition = cam->getProjectionMatrix() * cam->getViewMatrix() * worldPos;
+			hcsPosition = mCamera->getProjectionMatrix() * mCamera->getViewMatrix() * worldPos;
 		}
 		while(hcsPosition.x <= -1 * ECART)
 		{
 			MoveCam(-1, 0, 0);
-			hcsPosition = cam->getProjectionMatrix() * cam->getViewMatrix() * worldPos;
+			hcsPosition = mCamera->getProjectionMatrix() * mCamera->getViewMatrix() * worldPos;
 		}
 		while(hcsPosition.y >= ECART)
 		{
 			MoveCam(0, 1, 0);
-			hcsPosition = cam->getProjectionMatrix() * cam->getViewMatrix() * worldPos;
+			hcsPosition = mCamera->getProjectionMatrix() * mCamera->getViewMatrix() * worldPos;
 		}
 		while(hcsPosition.y <= - 1 * ECART)
 		{
 			MoveCam(0, -1, 0);
-			hcsPosition = cam->getProjectionMatrix() * cam->getViewMatrix() * worldPos;
+			hcsPosition = mCamera->getProjectionMatrix() * mCamera->getViewMatrix() * worldPos;
 		}
 	}
+
     return true;
 }
 
-bool BallGame::mouseWheelRolled(const MouseWheelEvent& evt)
+bool BallGame::mousePressed( const OIS::MouseEvent &arg, OIS::MouseButtonID id )
 {
-	MoveCam(0, 0, -10 * evt.y);
 	return true;
 }
 
-bool BallGame::mouseMoved(const MouseMotionEvent& evt)
+bool BallGame::mouseReleased( const OIS::MouseEvent &arg, OIS::MouseButtonID id )
 {
-       if(mode == Editing)
-       {
-               if(LastHighligted != NULL)
-               {
-                       LastHighligted->showBoundingBox(false);
-                       LastHighligted = NULL;
-               }
-               RaySceneQuery *mRayScanQuery = scnMgr->createRayQuery(Ogre::Ray());
-
-               Ray mouseRay =
-                               ((Camera*)camNode->getAttachedObject("myCam"))->getCameraToViewportRay(
-                                       (float)evt.x / float(mWindow->getWidth()),
-                                       (float)evt.y / float(mWindow->getHeight()));
-               mRayScanQuery->setRay(mouseRay);
-               mRayScanQuery->setSortByDistance(true, 1);
-               RaySceneQueryResult &result = mRayScanQuery->execute();
-               RaySceneQueryResult::iterator itr = result.begin();
-               std::cout << "Picking Mouse : " << result.size() << std::endl;
-               while(itr != result.end())
-               {
-                       if(itr->movable != NULL)
-                       {
-                               LastHighligted = itr->movable->getParentSceneNode();
-                               LastHighligted->showBoundingBox(true);
-                       }
-                       itr++;
-               }
-               delete mRayScanQuery;
-       }
-       return true;
+	return true;
 }
 
-bool BallGame::keyPressed(const KeyboardEvent& evt)
+bool BallGame::mouseMoved(const OIS::MouseEvent &arg)
 {
-    switch (evt.keysym.sym)
+	if(arg.state.Z.rel != 0)
+		MoveCam(0,  0,  -10 * arg.state.Z.rel);
+	if(mode == Editing)
+	{
+		if(LastHighligted != NULL)
+		{
+			LastHighligted->showBoundingBox(false);
+			LastHighligted = NULL;
+		}
+		RaySceneQuery *mRayScanQuery = scnMgr->createRayQuery(Ogre::Ray());
+
+		Real x, y;
+		x = (float)arg.state.X.abs / (float)mWindow->getWidth();
+		y = (float)arg.state.Y.abs / (float)mWindow->getWidth();
+		Ray mouseRay = mCamera->getCameraToViewportRay(x, y);
+		mRayScanQuery->setRay(mouseRay);
+		mRayScanQuery->setSortByDistance(true, 1);
+		RaySceneQueryResult &result = mRayScanQuery->execute();
+		RaySceneQueryResult::iterator itr = result.begin();
+		std::cout << "Picking Mouse : " << result.size() << std::endl;
+		while(itr != result.end())
+		{
+			if(itr->movable != NULL)
+			{
+				LastHighligted = itr->movable->getParentSceneNode();
+				LastHighligted->showBoundingBox(true);
+			}
+			itr++;
+		}
+		delete mRayScanQuery;
+	}
+	return true;
+}
+
+bool BallGame::keyReleased(const OIS::KeyEvent &arg)
+{
+	return true;
+}
+
+bool BallGame::keyPressed(const OIS::KeyEvent &arg)
+{
+	std::cout << "Key pressed " << arg.key << std::endl;
+    switch (arg.key)
     {
-	case SDLK_ESCAPE :
-	    getRoot()->queueEndRendering();
+	case OIS::KeyCode::KC_ESCAPE :
+	    mRoot->queueEndRendering();
 	    break;
-	case SDLK_UP:
+	case OIS::KeyCode::KC_UP:
 	    MoveCam(0, 0, 10);
 	    break;
-	case SDLK_DOWN:
+	case OIS::KeyCode::KC_DOWN:
 	    MoveCam(0, 0, -10);
 	    break;
-	case SDLK_LEFT:
+	case OIS::KeyCode::KC_LEFT:
 	    MoveCam(-10, 0, 0);
 	    break;
-	case SDLK_RIGHT:
+	case OIS::KeyCode::KC_RIGHT:
 	    MoveCam(10, 0, 0);
 	    break;
-//	case SDLK_KP_8:
+//	case OIS::KeyCode::KC_KP_8:
 //	    CamPitch(10);
 //	    break;
-//	case SDLK_KP_5:
+//	case OIS::KeyCode::KC_KP_5:
 //	    CamPitch(-10);
 //	    break;
-//	case SDLK_KP_4:
+//	case OIS::KeyCode::KC_KP_4:
 //	    CamYaw(10);
 //	    break;
-//	case SDLK_KP_6:
+//	case OIS::KeyCode::KC_KP_6:
 //	    CamYaw(-10);
 //	    break;
-//	case SDLK_KP_7:
+//	case OIS::KeyCode::KC_KP_7:
 //	    CamRoll(10);
 //	    break;
-//	case SDLK_KP_9:
+//	case OIS::KeyCode::KC_KP_9:
 //	    CamRoll(-10);
 //	    break;
-        case SDLK_PAUSE:
+        case OIS::KeyCode::KC_PAUSE:
             m_suspendPhysicsUpdate = m_suspendPhysicsUpdate ? false : true;
             break;
-        case SDLK_F1:
+        case OIS::KeyCode::KC_F1:
             if(mode == Running)
 		mode = Editing;
 	    else
@@ -632,4 +818,21 @@ bool BallGame::keyPressed(const KeyboardEvent& evt)
             break;
     }
     return true;
+}
+
+void BallGame::destroyScene(void)
+{
+}
+
+void BallGame::go(void)
+{
+	if (!setup())
+		return;
+
+	SetupGame();
+
+	mRoot->startRendering();
+
+	// clean up
+	destroyScene();
 }

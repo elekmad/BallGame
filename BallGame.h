@@ -9,11 +9,15 @@
 #define BALLGAME_H_
 
 #include <Ogre.h>
-#include <OgreApplicationContext.h>
-#include <OgreInput.h>
 #include <OgreRTShaderSystem.h>
 #include <OgreMath.h>
 #include <iostream>
+#include <SdkTrays.h>
+#include <SdkCameraMan.h>
+#include <OISEvents.h>
+#include <OISInputManager.h>
+#include <OISKeyboard.h>
+#include <OISMouse.h>
 
 #include <Newton.h>
 #include <toolbox_stdafx.h>
@@ -34,6 +38,27 @@ using namespace OgreBites;
 #define MAX_PHYSICS_FPS				60.0f
 #define MAX_PHYSICS_SUB_STEPS		50
 //#define PROJECTILE_INITIAL_SPEED	20.0f
+
+#ifdef OGRE_STATIC_LIB
+#  define OGRE_STATIC_GL
+#  if OGRE_PLATFORM == OGRE_PLATFORM_WIN32
+#    define OGRE_STATIC_Direct3D9
+// dx10 will only work on vista, so be careful about statically linking
+#    if OGRE_USE_D3D10
+#      define OGRE_STATIC_Direct3D10
+#    endif
+#  endif
+#  define OGRE_STATIC_BSPSceneManager
+#  define OGRE_STATIC_ParticleFX
+#  define OGRE_STATIC_CgProgramManager
+#  ifdef OGRE_USE_PCZ
+#    define OGRE_STATIC_PCZSceneManager
+#    define OGRE_STATIC_OctreeZone
+#  else
+#    define OGRE_STATIC_OctreeSceneManager
+#  endif
+#  include "OgreStaticPluginLoader.h"
+#endif
 
 class BallGame;
 
@@ -91,17 +116,14 @@ class CaseEntity : public BallGameEntity
 
 };
 
-class BallGame : public ApplicationContext, public InputListener
+class BallGame : public Ogre::FrameListener, public Ogre::WindowEventListener, public OIS::KeyListener, public OIS::MouseListener, OgreBites::SdkTrayListener
 {
     public :
     BallGame();
     virtual ~BallGame();
 
     void SetupNewton(void);
-    void setup();//Setup callback for Ogre Applications
-    bool keyPressed(const KeyboardEvent& evt);//Key press event callback for Ogre Applications
-    bool mouseWheelRolled(const MouseWheelEvent& evt);//Mouse whell roll event callback for Ogre Applications
-    bool mouseMoved(const MouseMotionEvent &evt);
+    void SetupGame(void);
 
 
     NewtonWorld* GetNewton(void);
@@ -110,13 +132,18 @@ class BallGame : public ApplicationContext, public InputListener
     private :
     enum RunningMode
     {
-	Running,
-	Editing
+		Running,
+		Editing
     }mode;
     /////////////////////  NEWTON ///////////////////
+    public :
+
     NewtonWorld* m_world;
     static void PostUpdateCallback(const NewtonWorld* const world, dFloat timestep);
     void UpdatePhysics(dFloat timestep);
+
+    private :
+
     bool m_suspendPhysicsUpdate;
     unsigned64 m_microsecunds;
     int m_physicsFramesCount;
@@ -133,13 +160,71 @@ class BallGame : public ApplicationContext, public InputListener
     void AddBall(NewtonBody *Entity);
 
     /////////////////////////////////////////////////
-    virtual bool frameEnded(const Ogre::FrameEvent& fe);
 
+
+    ////////////////  Ogre ////////////////////////////
+    public :
+
+    bool configure(void);
+    void chooseSceneManager(void);
+    void createCamera(void);
+    void createViewports(void);
+    void loadResources(void);
+    void setupResources(void);
+    void createFrameListener(void);
+    void destroyScene(void);
+    bool setup();//Setup callback for Ogre Applications
+    void go(void);
+	bool keyPressed( const OIS::KeyEvent &arg );
+	bool keyReleased( const OIS::KeyEvent &arg );
+	bool mouseMoved( const OIS::MouseEvent &arg );
+	bool mousePressed( const OIS::MouseEvent &arg, OIS::MouseButtonID id );
+	bool mouseReleased( const OIS::MouseEvent &arg, OIS::MouseButtonID id );
+
+    private :
+
+    Ogre::Root *mRoot;
+	Ogre::OverlaySystem *mOverlaySystem;
     //Mouse picking
-    SceneNode *LastHighligted;
-    SceneManager* scnMgr;
-    SceneNode* camNode;
-    RenderWindow* mWindow;
+	Ogre::SceneNode *LastHighligted;
+	Ogre::SceneManager* scnMgr;
+//	Ogre::SceneNode* camNode;
+	Ogre::RenderWindow* mWindow;
+	Ogre::Camera* mCamera;
+	Ogre::String mResourcesCfg;
+	Ogre::String mPluginsCfg;
+    //////////////////////////////////////////////////
+
+    //////////////////////// Ogre Bites //////////////
+    public :
+
+    private :
+
+	OgreBites::InputContext mInputContext;
+	OgreBites::SdkTrayManager*	mTrayMgr;
+	OgreBites::SdkCameraMan* mCameraMan;     	// basic camera controller
+	OgreBites::ParamsPanel* mDetailsPanel;   	// sample details panel
+	bool mCursorWasVisible;						// was cursor visible before dialog appeared
+	bool mShutDown;
+
+
+    /////////////////////////////////////////////////
+
+
+    //////////////////////// OIS /////////////////////
+    public :
+
+    private :
+
+	OIS::InputManager* mInputManager;
+	OIS::Mouse*    mMouse;
+	OIS::Keyboard* mKeyboard;
+
+    //////////////////////////////////////////////////
+
+
+    virtual bool frameEnded(const Ogre::FrameEvent& fe);
+    bool frameRenderingQueued(const Ogre::FrameEvent& evt);
     int camx;
     int camy;
     int camz;
@@ -153,7 +238,7 @@ class BallGame : public ApplicationContext, public InputListener
 		Degree dangle(angle);
 		CamAnglePitch += dangle;
 		std::cout << "Pitch " << CamAnglePitch << std::endl;
-		camNode->pitch(CamAnglePitch, Ogre::Node::TransformSpace::TS_LOCAL);
+		mCamera->pitch(CamAnglePitch);//, Ogre::Node::TransformSpace::TS_LOCAL);
 		GetCamParams();
     }
     void CamYaw(float angle)
@@ -161,7 +246,7 @@ class BallGame : public ApplicationContext, public InputListener
 		Degree dangle(angle);
 		CamAngleYaw += dangle;
 		std::cout << "Yaw " << CamAngleYaw << std::endl;
-		camNode->yaw(CamAngleYaw, Ogre::Node::TransformSpace::TS_LOCAL);
+		mCamera->yaw(CamAngleYaw);//, Ogre::Node::TransformSpace::TS_LOCAL);
 		GetCamParams();
     }
     void CamRoll(float angle)
@@ -169,13 +254,13 @@ class BallGame : public ApplicationContext, public InputListener
 		Degree dangle(angle);
 		CamAngleRoll += dangle;
 		std::cout << "Roll " << CamAngleRoll << std::endl;
-		camNode->roll(CamAngleRoll, Ogre::Node::TransformSpace::TS_LOCAL);
+		mCamera->roll(CamAngleRoll);//, Ogre::Node::TransformSpace::TS_LOCAL);
 		GetCamParams();
     }
     void GetCamParams(void)
     {
 		std::cout << "Cam pos {" << camx << ", " << camy << ", " << camz << "}" << std::endl;
-		std::cout << "Orientation = " << camNode->getOrientation() << std::endl;
+		std::cout << "Orientation = " << mCamera->getOrientation() << std::endl;
     }
 };
 

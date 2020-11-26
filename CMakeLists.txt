@@ -24,10 +24,14 @@ file(GLOB CPP_SOURCE
 source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/" FILES ${CPP_SOURCE})
 add_executable(Demo ${CPP_SOURCE})
 
+#OIS
+include_directories("/usr/include/ois")
+target_link_libraries(Demo -lOIS)
+
 #find_package(OGRE 1.9 REQUIRED)
 #if(OGRE_FOUND)
-    include_directories(Demo "/usr/local/include/OGRE" "/usr/local/include/OGRE/Bites" "/usr/local/include/OGRE/RTShaderSystem")
-    target_link_libraries(Demo -L/usr/local/lib -lOgreBites -lOgreRTShaderSystem -lOgreMain)
+    include_directories("/usr/local/include/OGRE" "/usr/local/include/OGRE/Bites" "/usr/local/include/OGRE/RTShaderSystem" "/usr/local/include/OGRE/Overlay")
+    target_link_libraries(Demo -L/usr/local/lib -lOgreOverlay -lOgreRTShaderSystem -lOgreMain -L/usr/local/lib/OGRE -lzzip -lfreetyped -lboost_system)
 #endif()
 
 
