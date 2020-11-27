@@ -12,12 +12,7 @@
 #include <OgreRTShaderSystem.h>
 #include <OgreMath.h>
 #include <iostream>
-#include <SdkTrays.h>
-#include <SdkCameraMan.h>
-#include <OISEvents.h>
-#include <OISInputManager.h>
-#include <OISKeyboard.h>
-#include <OISMouse.h>
+#include "BaseApplication.h"
 
 #include <Newton.h>
 #include <toolbox_stdafx.h>
@@ -116,13 +111,14 @@ class CaseEntity : public BallGameEntity
 
 };
 
-class BallGame : public Ogre::FrameListener, public Ogre::WindowEventListener, public OIS::KeyListener, public OIS::MouseListener, OgreBites::SdkTrayListener
+class BallGame : public BaseApplication
 {
     public :
     BallGame();
     virtual ~BallGame();
 
     void SetupNewton(void);
+	void createScene(void) { SetupGame(); };
     void SetupGame(void);
 
 
@@ -165,66 +161,16 @@ class BallGame : public Ogre::FrameListener, public Ogre::WindowEventListener, p
     ////////////////  Ogre ////////////////////////////
     public :
 
-    bool configure(void);
-    void chooseSceneManager(void);
-    void createCamera(void);
-    void createViewports(void);
-    void loadResources(void);
-    void setupResources(void);
-    void createFrameListener(void);
-    void destroyScene(void);
-    bool setup();//Setup callback for Ogre Applications
-    void go(void);
-	bool keyPressed( const OIS::KeyEvent &arg );
-	bool keyReleased( const OIS::KeyEvent &arg );
+    bool keyPressed( const OIS::KeyEvent &arg );
 	bool mouseMoved( const OIS::MouseEvent &arg );
-	bool mousePressed( const OIS::MouseEvent &arg, OIS::MouseButtonID id );
-	bool mouseReleased( const OIS::MouseEvent &arg, OIS::MouseButtonID id );
 
     private :
 
-    Ogre::Root *mRoot;
-	Ogre::OverlaySystem *mOverlaySystem;
     //Mouse picking
 	Ogre::SceneNode *LastHighligted;
-	Ogre::SceneManager* scnMgr;
-//	Ogre::SceneNode* camNode;
-	Ogre::RenderWindow* mWindow;
-	Ogre::Camera* mCamera;
-	Ogre::String mResourcesCfg;
-	Ogre::String mPluginsCfg;
     //////////////////////////////////////////////////
-
-    //////////////////////// Ogre Bites //////////////
-    public :
-
-    private :
-
-	OgreBites::InputContext mInputContext;
-	OgreBites::SdkTrayManager*	mTrayMgr;
-	OgreBites::SdkCameraMan* mCameraMan;     	// basic camera controller
-	OgreBites::ParamsPanel* mDetailsPanel;   	// sample details panel
-	bool mCursorWasVisible;						// was cursor visible before dialog appeared
-	bool mShutDown;
-
-
-    /////////////////////////////////////////////////
-
-
-    //////////////////////// OIS /////////////////////
-    public :
-
-    private :
-
-	OIS::InputManager* mInputManager;
-	OIS::Mouse*    mMouse;
-	OIS::Keyboard* mKeyboard;
-
-    //////////////////////////////////////////////////
-
 
     virtual bool frameEnded(const Ogre::FrameEvent& fe);
-    bool frameRenderingQueued(const Ogre::FrameEvent& evt);
     int camx;
     int camy;
     int camz;

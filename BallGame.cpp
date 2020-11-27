@@ -172,8 +172,6 @@ BallGame::BallGame() :
 		,m_suspendPhysicsUpdate(false)
 		,m_physicsFramesCount(0)
 		,m_microsecunds(0)
-		,mResourcesCfg(Ogre::StringUtil::BLANK)
-		,mPluginsCfg(Ogre::StringUtil::BLANK)
 		,m_mainThreadPhysicsTime(0.0f)
 		,m_mainThreadPhysicsTimeAcc(0.0f)
 {
@@ -181,19 +179,8 @@ BallGame::BallGame() :
 
 	m_world = NULL;
 	mWindow = NULL;
-	scnMgr = NULL;
-	mOverlaySystem = NULL;
-	mRoot = NULL;
 	LastHighligted = NULL;
 	mode = Running;
-	mInputManager = NULL;
-	mKeyboard = NULL;
-	mMouse = NULL;
-	mTrayMgr = NULL;
-	mCameraMan = NULL;
-	mDetailsPanel = NULL;
-	mCursorWasVisible = false;
-	mShutDown = false;
 	// create the newton world
 	SetupNewton();
 }
@@ -218,18 +205,6 @@ BallGame::~BallGame()
 {
 	if(m_world != NULL)
 		NewtonDestroy(m_world);
-
-	if (mTrayMgr)
-		delete mTrayMgr;
-	if (mCameraMan)
-		delete mCameraMan;
-	if (mOverlaySystem)
-		delete mOverlaySystem;
-
-	//Remove ourself as a Window listener
-	Ogre::WindowEventUtilities::removeWindowEventListener(mWindow, this);
-	windowClosed(mWindow);
-	delete mRoot;
 }
 
 void BallGame::PostUpdateCallback(const NewtonWorld* const world, dFloat timestep)
@@ -302,144 +277,6 @@ void BallGame::UpdatePhysics(dFloat timestep)
 	}
 }
 
-bool BallGame::configure(void)
-{
-	// Show the configuration dialog and initialise the system
-	// You can skip this and use root.restoreConfig() to load configuration
-	// settings if you were sure there are valid ones saved in ogre.cfg
-	if(mRoot->showConfigDialog())
-	{
-		// If returned true, user clicked OK so initialise
-		// Here we choose to let the system create a default rendering window by passing 'true'
-		mWindow = mRoot->initialise(true, "BallGame");
-
-		return true;
-	}
-	else
-	{
-		return false;
-	}
-}
-
-void BallGame::chooseSceneManager(void)
-{
-	// Get the SceneManager, in this case a generic one
-	scnMgr = mRoot->createSceneManager(Ogre::ST_GENERIC);
-
-	// initialize the OverlaySystem (changed for 1.9)
-	mOverlaySystem = new Ogre::OverlaySystem();
-	scnMgr->addRenderQueueListener(mOverlaySystem);
-}
-
-void BallGame::createCamera(void)
-{
-	// Create the camera
-	mCamera = scnMgr->createCamera("PlayerCam");
-
-	// Position it at 500 in Z direction
-	mCamera->setPosition(Ogre::Vector3(0,0,80));
-	// Look back along -Z
-	mCamera->lookAt(Ogre::Vector3(0,0,-300));
-	mCamera->setNearClipDistance(5);
-
-	mCameraMan = new OgreBites::SdkCameraMan(mCamera);   // create a default camera controller
-}
-
-void BallGame::createViewports(void)
-{
-	// Create one viewport, entire window
-	Ogre::Viewport* vp = mWindow->addViewport(mCamera);
-	vp->setBackgroundColour(Ogre::ColourValue(0,0,0));
-
-	// Alter the camera aspect ratio to match the viewport
-	mCamera->setAspectRatio(
-		Ogre::Real(vp->getActualWidth()) / Ogre::Real(vp->getActualHeight()));
-}
-
-void BallGame::setupResources(void)
-{
-	// Load resource paths from config file
-	Ogre::ConfigFile cf;
-	cf.load(mResourcesCfg);
-
-	// Go through all sections & settings in the file
-	Ogre::ConfigFile::SectionIterator seci = cf.getSectionIterator();
-
-	Ogre::String secName, typeName, archName;
-	while (seci.hasMoreElements())
-	{
-		secName = seci.peekNextKey();
-		Ogre::ConfigFile::SettingsMultiMap *settings = seci.getNext();
-		Ogre::ConfigFile::SettingsMultiMap::iterator i;
-		for (i = settings->begin(); i != settings->end(); ++i)
-		{
-			typeName = i->first;
-			archName = i->second;
-			Ogre::ResourceGroupManager::getSingleton().addResourceLocation(
-				archName, typeName, secName);
-		}
-	}
-}
-
-void BallGame::loadResources(void)
-{
-	Ogre::ResourceGroupManager::getSingleton().initialiseAllResourceGroups();
-}
-
-void BallGame::createFrameListener(void)
-{
-	Ogre::LogManager::getSingletonPtr()->logMessage("*** Initializing OIS ***");
-	OIS::ParamList pl;
-	size_t windowHnd = 0;
-	std::ostringstream windowHndStr;
-
-	mWindow->getCustomAttribute("WINDOW", &windowHnd);
-	windowHndStr << windowHnd;
-	pl.insert(std::make_pair(std::string("WINDOW"), windowHndStr.str()));
-
-	mInputManager = OIS::InputManager::createInputSystem( pl );
-
-	mKeyboard = static_cast<OIS::Keyboard*>(mInputManager->createInputObject( OIS::OISKeyboard, true ));
-	mMouse = static_cast<OIS::Mouse*>(mInputManager->createInputObject( OIS::OISMouse, true ));
-
-	mMouse->setEventCallback(this);
-	mKeyboard->setEventCallback(this);
-
-	//Set initial mouse clipping size
-	windowResized(mWindow);
-
-	//Register as a Window listener
-	Ogre::WindowEventUtilities::addWindowEventListener(mWindow, this);
-
-	mInputContext.mKeyboard = mKeyboard;
-    mInputContext.mMouse = mMouse;
-//    mTrayMgr = new OgreBites::SdkTrayManager("InterfaceName", mWindow, mInputContext, this);
-//	mTrayMgr->showFrameStats(OgreBites::TL_BOTTOMLEFT);
-//	mTrayMgr->showLogo(OgreBites::TL_BOTTOMRIGHT);
-//	mTrayMgr->hideCursor();
-//
-//	// create a params panel for displaying sample details
-//	Ogre::StringVector items;
-//	items.push_back("cam.pX");
-//	items.push_back("cam.pY");
-//	items.push_back("cam.pZ");
-//	items.push_back("");
-//	items.push_back("cam.oW");
-//	items.push_back("cam.oX");
-//	items.push_back("cam.oY");
-//	items.push_back("cam.oZ");
-//	items.push_back("");
-//	items.push_back("Filtering");
-//	items.push_back("Poly Mode");
-//
-//	mDetailsPanel = mTrayMgr->createParamsPanel(OgreBites::TL_NONE, "DetailsPanel", 200, items);
-//	mDetailsPanel->setParamValue(9, "Bilinear");
-//	mDetailsPanel->setParamValue(10, "Solid");
-//	mDetailsPanel->hide();
-
-	mRoot->addFrameListener(this);
-}
-
 void BallGame::SetupGame(void)
 {
 //    // register our scene with the RTSS
@@ -448,12 +285,12 @@ void BallGame::SetupGame(void)
 
     // -- tutorial section start --
     //! [turnlights]
-    scnMgr->setAmbientLight(ColourValue(0.5, 0.5, 0.5));
+	mSceneMgr->setAmbientLight(ColourValue(0.5, 0.5, 0.5));
     //! [turnlights]
 
     //! [newlight]
-    Light* light = scnMgr->createLight("MainLight");
-    SceneNode* lightNode = scnMgr->getRootSceneNode()->createChildSceneNode();
+    Light* light = mSceneMgr->createLight("MainLight");
+    SceneNode* lightNode = mSceneMgr->getRootSceneNode()->createChildSceneNode();
     lightNode->attachObject(light);
     //! [newlight]
 
@@ -475,12 +312,12 @@ void BallGame::SetupGame(void)
 				enum CaseEntity::CaseType type = CaseEntity::CaseType::typeBox;
 				if(cmpt2 == 0 && cmpt == 5)
 				{
-					ogreEntity = scnMgr->createEntity("Rampe.mesh");
+					ogreEntity = mSceneMgr->createEntity("Rampe.mesh");
 					type = CaseEntity::CaseType::typeRamp;
 				}
 				else
-					ogreEntity = scnMgr->createEntity("Cube.mesh");
-				SceneNode* ogreNode = scnMgr->getRootSceneNode()->createChildSceneNode(Vector3(cmpt * 50, cmpt2 * 50, 0));
+					ogreEntity = mSceneMgr->createEntity("Cube.mesh");
+				SceneNode* ogreNode = mSceneMgr->getRootSceneNode()->createChildSceneNode(Vector3(cmpt * 50, cmpt2 * 50, 0));
 				ogreNode->setScale(25, 25, 25);
 				if(cmpt2 == 0 && cmpt == 5)
 				{
@@ -540,8 +377,8 @@ void BallGame::SetupGame(void)
 			dVector location;
 			dVector tsize;
 			NewtonBody *BallBody;
-			Entity* ogreEntity = scnMgr->createEntity("Sphere.mesh");
-			SceneNode* ogreNode = scnMgr->getRootSceneNode()->createChildSceneNode(Vector3(cmpt * 50, cmpt2 * 50, 55));
+			Entity* ogreEntity = mSceneMgr->createEntity("Sphere.mesh");
+			SceneNode* ogreNode = mSceneMgr->getRootSceneNode()->createChildSceneNode(Vector3(cmpt * 50, cmpt2 * 50, 55));
 			ogreNode->setScale(25, 25, 25);
 			ogreNode->attachObject(ogreEntity);
 			Vector3 pos(ogreNode->getPosition());
@@ -568,40 +405,7 @@ void BallGame::SetupGame(void)
     mCamera->setOrientation(Ogre::Quaternion(0.835422, 0.393051, -0.238709, -0.300998));
 
     m_suspendPhysicsUpdate = false;
-    m_suspendPhysicsUpdate = true;
-}
-
-//setup callback for Ogre applications
-bool BallGame::setup()
-{
-	mResourcesCfg = "resources.cfg";
-	mPluginsCfg = "plugins.cfg";
-	mRoot = new Ogre::Root(mPluginsCfg);
-
-	setupResources();
-
-	bool carryOn = configure();
-	if (!carryOn) return false;
-
-	chooseSceneManager();
-	createCamera();
-	createViewports();
-
-	// Set default mipmap level (NB some APIs ignore this)
-	Ogre::TextureManager::getSingleton().setDefaultNumMipmaps(5);
-
-	// Create any resource listeners (for loading screens)
-//	createResourceListener();
-	// Load resources
-	loadResources();
-
-	// Create the scene
-//	createScene();
-
-	createFrameListener();
-
-
-	return true;
+//    m_suspendPhysicsUpdate = true;
 }
 
 void BallGame::CheckforCollides(void)
@@ -663,20 +467,6 @@ void BallGame::AddCase(NewtonBody *Wcase)
 		Cases[size++] = NULL;
 }
 
-bool BallGame::frameRenderingQueued(const Ogre::FrameEvent& evt)
-{
-        if(mWindow->isClosed())
-                return false;
-
-        if(mShutDown)
-                return false;
-
-        //Need to capture/update each device
-        mKeyboard->capture();
-        mMouse->capture();
-        return true;
-}
-
 
 bool BallGame::frameEnded(const Ogre::FrameEvent& fe)
 {
@@ -718,16 +508,6 @@ bool BallGame::frameEnded(const Ogre::FrameEvent& fe)
     return true;
 }
 
-bool BallGame::mousePressed( const OIS::MouseEvent &arg, OIS::MouseButtonID id )
-{
-	return true;
-}
-
-bool BallGame::mouseReleased( const OIS::MouseEvent &arg, OIS::MouseButtonID id )
-{
-	return true;
-}
-
 bool BallGame::mouseMoved(const OIS::MouseEvent &arg)
 {
 	if(arg.state.Z.rel != 0)
@@ -739,7 +519,7 @@ bool BallGame::mouseMoved(const OIS::MouseEvent &arg)
 			LastHighligted->showBoundingBox(false);
 			LastHighligted = NULL;
 		}
-		RaySceneQuery *mRayScanQuery = scnMgr->createRayQuery(Ogre::Ray());
+		RaySceneQuery *mRayScanQuery = mSceneMgr->createRayQuery(Ogre::Ray());
 
 		Real x, y;
 		x = (float)arg.state.X.abs / (float)mWindow->getWidth();
@@ -764,14 +544,10 @@ bool BallGame::mouseMoved(const OIS::MouseEvent &arg)
 	return true;
 }
 
-bool BallGame::keyReleased(const OIS::KeyEvent &arg)
-{
-	return true;
-}
-
 bool BallGame::keyPressed(const OIS::KeyEvent &arg)
 {
 	std::cout << "Key pressed " << arg.key << std::endl;
+	BaseApplication::keyPressed(arg);
     switch (arg.key)
     {
 	case OIS::KeyCode::KC_ESCAPE :
@@ -812,27 +588,10 @@ bool BallGame::keyPressed(const OIS::KeyEvent &arg)
             break;
         case OIS::KeyCode::KC_F1:
             if(mode == Running)
-		mode = Editing;
-	    else
-		mode = Running;
+            	mode = Editing;
+			else
+				mode = Running;
             break;
     }
     return true;
-}
-
-void BallGame::destroyScene(void)
-{
-}
-
-void BallGame::go(void)
-{
-	if (!setup())
-		return;
-
-	SetupGame();
-
-	mRoot->startRendering();
-
-	// clean up
-	destroyScene();
 }
