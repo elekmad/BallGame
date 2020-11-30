@@ -24,14 +24,17 @@ file(GLOB CPP_SOURCE
 source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/" FILES ${CPP_SOURCE})
 add_executable(Demo ${CPP_SOURCE})
 
+find_package(PkgConfig REQUIRED)
 
 #CEGUI
-include_directories("/usr/include/cegui-0.8.7")
-target_link_libraries(Demo -L/usr/local/lib -lCEGUIOgreRenderer-0 -lOgreMain_d -lpthread -lCEGUIBase-0)
+pkg_check_modules(CEGUI REQUIRED IMPORTED_TARGET CEGUI-0-OGRE)
+target_link_libraries(Demo ${CEGUI_LIBRARIES})
+include_directories(${CEGUI_INCLUDE_DIRS})
 
 #OIS
-include_directories("/usr/include/ois")
-target_link_libraries(Demo -lOIS)
+pkg_check_modules(OIS REQUIRED IMPORTED_TARGET OIS)
+target_link_libraries(Demo ${OIS_LIBRARIES})
+include_directories(${OIS_INCLUDE_DIRS})
 
 #find_package(OGRE 1.9 REQUIRED)
 #if(OGRE_FOUND)
