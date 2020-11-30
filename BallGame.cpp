@@ -184,6 +184,7 @@ BallGame::BallGame() :
 	mWindow = NULL;
 	LastHighligted = NULL;
 	UnderEditCase = NULL;
+	UnderEditBall = NULL;
 	mode = Running;
 	// create the newton world
 	SetupNewton();
@@ -381,7 +382,7 @@ bool BallGame::EditModePushBCallback(const CEGUI::EventArgs &e)
     return true;
 }
 
-void SetWindowsPosNearToOther(CEGUI::Window *self, CEGUI::Window *other, int H_factor, int V_factor)
+inline void SetWindowsPosNearToOther(CEGUI::Window *self, CEGUI::Window *other, int H_factor, int V_factor)
 {
 	CEGUI::UVector2 pos(other->getPosition());
 
@@ -457,6 +458,8 @@ void BallGame::SetupGUI(void)
     EditingModeTitleBanner->setVisible(false);
 
     MainLayout->addChild(EditingModeTitleBanner);
+
+    // Edit Case GUI
 
     CaseHasForceToggleB = (CEGUI::ToggleButton*)wmgr.createWindow("OgreTray/Checkbox");
     CaseHasForceToggleB->setText("Has Force");
@@ -548,6 +551,28 @@ void BallGame::SetupGUI(void)
     SetWindowsPosNearToOther(CaseForceDirectionZValueEditB, CaseForceDirectionYValueEditB, 1, 0);
     SetWindowsPosNearToOther(NormalizeCaseForceDirectionPushB, CaseForceDirectionZValueEditB, 1, 0);
 
+    // Edit Ball GUI
+
+    BallMassValueEditB = (CEGUI::Editbox*)wmgr.createWindow("OgreTray/Editbox");
+    BallMassValueEditB->setSize(CEGUI::USize(CEGUI::UDim(0, 50), CEGUI::UDim(0, 30)));
+    BallMassValueEditB->setVerticalAlignment(CEGUI::VA_BOTTOM);
+    BallMassValueEditB->setHorizontalAlignment(CEGUI::HA_CENTRE);
+    BallMassValueEditB->setVisible(false);
+
+    MainLayout->addChild(BallMassValueEditB);
+
+    ApplyMassChangesToBallPushB = (CEGUI::PushButton*)wmgr.createWindow("OgreTray/Button");
+    ApplyMassChangesToBallPushB->setText("Apply");
+    ApplyMassChangesToBallPushB->setSize(CEGUI::USize(CEGUI::UDim(0, 100), CEGUI::UDim(0, 30)));
+    ApplyMassChangesToBallPushB->setVerticalAlignment(CEGUI::VA_BOTTOM);
+    ApplyMassChangesToBallPushB->setHorizontalAlignment(CEGUI::HA_CENTRE);
+    ApplyMassChangesToBallPushB->setVisible(false);
+    ApplyMassChangesToBallPushB->subscribeEvent(CEGUI::PushButton::EventClicked,
+    		CEGUI::Event::Subscriber(&BallGame::ApplyMassChangesToBallPushBCallback, this));
+
+    MainLayout->addChild(ApplyMassChangesToBallPushB);
+
+    SetWindowsPosNearToOther(BallMassValueEditB, ApplyMassChangesToBallPushB, 0, -1);
 }
 
 void BallGame::SetupGame(void)
@@ -668,7 +693,7 @@ void BallGame::SetupGame(void)
 			Quaternion orientation = ogreNode->getOrientation();
 			dMatrix ballmatrix(orientation.getPitch(false).valueRadians(), orientation.getYaw(false).valueRadians(), orientation.getRoll(false).valueRadians(), location);
 			BallBody = WorldAddBall(m_world, 10, tsize, 0, ballmatrix);
-			BallGameEntity *Entity = (BallGameEntity*)NewtonBodyGetUserData(BallBody);
+			BallEntity *Entity = (BallEntity*)NewtonBodyGetUserData(BallBody);
 			Entity->OgreEntity = ogreNode;
 			ogreEntity->getUserObjectBindings().setUserAny(Ogre::Any(Entity));
 			AddBall(BallBody);
@@ -721,6 +746,8 @@ void BallGame::AddBall(NewtonBody *ball)
 	if(ball == NULL)
 		return;
 	int id = NewtonBodyGetID(ball), size = Balls.GetSize();
+	BallEntity *Entity = (BallEntity*)NewtonBodyGetUserData(ball);
+	Entity->NewtonID = id;
 	while(size < id)
 		Balls[size++] = NULL;
 	Balls[id] = ball;
@@ -734,6 +761,8 @@ void BallGame::AddCase(NewtonBody *Wcase)
 	if(Wcase == NULL)
 		return;
 	int id = NewtonBodyGetID(Wcase), size = Cases.GetSize();
+	CaseEntity *Entity = (CaseEntity*)NewtonBodyGetUserData(Wcase);
+	Entity->NewtonID = id;
 	while(size < id)
 		Cases[size++] = NULL;
 	Cases[id] = Wcase;
@@ -796,7 +825,8 @@ bool BallGame::mouseMoved(const OIS::MouseEvent &arg)
 	{
 		if(LastHighligted != NULL)
 		{
-			if(UnderEditCase == NULL || UnderEditCase->OgreEntity != LastHighligted)
+			if((UnderEditCase == NULL || UnderEditCase->OgreEntity != LastHighligted)
+					&& (UnderEditBall == NULL || UnderEditBall->OgreEntity != LastHighligted))
 				LastHighligted->showBoundingBox(false);
 			LastHighligted = NULL;
 		}
@@ -994,10 +1024,12 @@ void BallGame::EditCase(CaseEntity *Entity)
 	if(UnderEditCase != NULL)
 		UnderEditCase->OgreEntity->showBoundingBox(false);
 	UnderEditCase = Entity;
-	CaseHasForceToggleB->setMutedState(true);
-	CaseHasForceDirectionToggleB->setMutedState(true);
+
 	if(UnderEditCase != NULL)
 	{
+		CaseHasForceToggleB->setMutedState(true);
+		CaseHasForceDirectionToggleB->setMutedState(true);
+
 		UnderEditCase->OgreEntity->showBoundingBox(true);
 		UnderEditCaseForce = UnderEditCase->force_to_apply;
 		if(isnan(UnderEditCaseForce))
@@ -1023,12 +1055,68 @@ void BallGame::EditCase(CaseEntity *Entity)
 			force_direction.m_y = UnderEditCase->force_direction->m_y;
 			force_direction.m_z = UnderEditCase->force_direction->m_z;
 		}
+		std::cout << "Update buttons by Mouse Pressed" << std::endl;
+		UpdateEditButtons();
+
+		CaseHasForceDirectionToggleB->setMutedState(false);
+		CaseHasForceToggleB->setMutedState(false);
+	}
+	else
+	{
+		CaseHasForceToggleB->setVisible(false);
+		CaseHasForceDirectionToggleB->setVisible(false);
+		CaseForceValueEditB->setVisible(false);
+		CaseForceDirectionXValueEditB->setVisible(false);
+		CaseForceDirectionYValueEditB->setVisible(false);
+		CaseForceDirectionZValueEditB->setVisible(false);
+		NormalizeCaseForceDirectionPushB->setVisible(false);
+		ApplyForceChangesToCasePushB->setVisible(false);
 	}
 
-	std::cout << "Update buttons by Mouse Pressed" << std::endl;
-	UpdateEditButtons();
-	CaseHasForceDirectionToggleB->setMutedState(false);
-	CaseHasForceToggleB->setMutedState(false);
+
+}
+
+bool BallGame::ApplyMassChangesToBallPushBCallback(const CEGUI::EventArgs &event)
+{
+	if(UnderEditBall == NULL)
+		return true;
+	UnderEditBallMass = strtof(BallMassValueEditB->getText().c_str(), NULL);
+	std::cout << "Ball new mass : " << UnderEditBallMass << std::endl;
+	NewtonBody *Nball = Balls[UnderEditBall->NewtonID];
+	NewtonCollision *collision = NewtonBodyGetCollision(Nball);
+	NewtonBodySetMassProperties(Nball, UnderEditBallMass, collision);
+	return true;
+}
+
+void BallGame::EditBall(BallEntity *Entity)
+{
+	if(mode != Editing)
+		return;
+	if(LastHighligted == NULL)
+		return;
+	if(UnderEditBall != NULL)
+		UnderEditBall->OgreEntity->showBoundingBox(false);
+	UnderEditBall = Entity;
+
+	if(UnderEditBall != NULL)
+	{
+		UnderEditBall->OgreEntity->showBoundingBox(true);
+		NewtonBody *Nball = Balls[UnderEditBall->NewtonID];
+		dFloat inertx, inerty, inertz;
+		NewtonBodyGetMass(Nball, &UnderEditBallMass, &inertx, &inerty, &inertz);
+		BallMassValueEditB->setVisible(true);
+		BallMassValueEditB->setDisabled(false);
+		char mass_c[20];
+		snprintf(mass_c, 19, "%f", UnderEditBallMass);
+		BallMassValueEditB->setText(mass_c);
+		ApplyMassChangesToBallPushB->setVisible(true);
+		ApplyMassChangesToBallPushB->setDisabled(false);
+	}
+	else
+	{
+		BallMassValueEditB->setVisible(false);
+		ApplyMassChangesToBallPushB->setVisible(false);
+	}
 }
 
 bool BallGame::mousePressed( const OIS::MouseEvent &arg, OIS::MouseButtonID id )
@@ -1048,6 +1136,7 @@ bool BallGame::mousePressed( const OIS::MouseEvent &arg, OIS::MouseButtonID id )
 				if(Entity != NULL)
 				{
 					std::cout << "Edit Case by Mouse Pressed" << std::endl;
+					EditBall(NULL);//Hide Ball Editing buttons;
 					EditCase(Entity);
 				}
 			}
@@ -1057,9 +1146,16 @@ bool BallGame::mousePressed( const OIS::MouseEvent &arg, OIS::MouseButtonID id )
 				try
 				{
 					BallEntity *Entity = Ogre::any_cast<BallEntity*>(((Ogre::Entity*)LastHighligted->getAttachedObject(0))->getUserObjectBindings().getUserAny());
+					if(Entity != NULL)
+					{
+						std::cout << "Edit Ball by Mouse Pressed" << std::endl;
+						EditCase(NULL);//Hide Case Editing buttons;
+						EditBall(Entity);
+					}
 				}
 				catch(Ogre::Exception &e)
 				{
+
 				}
 			}
     	}

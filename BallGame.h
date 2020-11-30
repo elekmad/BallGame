@@ -79,6 +79,7 @@ class BallGameEntity
 	dQuaternion m_curRotation;          // rotation one physics simulation step in the future
 	dQuaternion m_nextRotation;         // rotation at the current physics simulation step
 	SceneNode *OgreEntity;
+	int NewtonID;
 
     void SetMatrixUsafe(const dQuaternion& rotation, const dVector& position);
 
@@ -134,6 +135,13 @@ class BallGame : public BaseApplication
     void _StartPhysic(void);
     void _StopPhysic(void);
     void SwitchEditMode(void);
+
+    //Edit Ball
+    void EditBall(BallEntity *Entity);
+    BallEntity *UnderEditBall;
+    dFloat UnderEditBallMass;
+
+    //Edit Case
     void EditCase(CaseEntity *Entity);
 	CaseEntity *UnderEditCase;
 	bool CaseHasForce;
@@ -214,6 +222,14 @@ class BallGame : public BaseApplication
     bool StopPhysicPushBCallback(const CEGUI::EventArgs &e);
 
     CEGUI::Titlebar *EditingModeTitleBanner;
+
+
+    //Edit Ball Buttons & Callbacks
+    CEGUI::Editbox *BallMassValueEditB;
+    CEGUI::PushButton *ApplyMassChangesToBallPushB;
+    bool ApplyMassChangesToBallPushBCallback(const CEGUI::EventArgs &event);
+
+    //Edit Case Buttons & Callbacks
     CEGUI::ToggleButton *CaseHasForceToggleB;
     CEGUI::Editbox *CaseForceValueEditB;
     CEGUI::ToggleButton *CaseHasForceDirectionToggleB;
