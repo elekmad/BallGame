@@ -198,35 +198,34 @@ class BallGame : public BaseApplication
 
 	/////////////////// CE GUI ////////////////////////
 
-    protected :
-
-    bool quit(const CEGUI::EventArgs &e);
-    bool StopPhysic(const CEGUI::EventArgs &e);
-    bool EditCallback(const CEGUI::EventArgs &e);
-
     private :
 
     void SetupGUI(void);
 
     CEGUI::OgreRenderer* mRenderer;
 
-    CEGUI::LayoutContainer* main_layout;
+    CEGUI::LayoutContainer* MainLayout;
+
+    bool QuitPushBCallback(const CEGUI::EventArgs &e);
+    bool EditModePushBCallback(const CEGUI::EventArgs &e);
 
     //Edit buttons
-    CEGUI::Titlebar *Editing_banner;
-    CEGUI::PushButton *StopPhysicB;
-    CEGUI::ToggleButton *has_force_button;
-    CEGUI::Editbox *force_edit;
-    CEGUI::ToggleButton *has_direction_button;
+    CEGUI::PushButton *StopPhysicPushB;
+    bool StopPhysicPushBCallback(const CEGUI::EventArgs &e);
+
+    CEGUI::Titlebar *EditingModeTitleBanner;
+    CEGUI::ToggleButton *CaseHasForceToggleB;
+    CEGUI::Editbox *CaseForceValueEditB;
+    CEGUI::ToggleButton *CaseHasForceDirectionToggleB;
     bool ToggleForceCallback(const CEGUI::EventArgs &e);
     bool ToggleForceDirectedCallback(const CEGUI::EventArgs &event);
-    CEGUI::Editbox *direction_x_edit;
-    CEGUI::Editbox *direction_y_edit;
-    CEGUI::Editbox *direction_z_edit;
-    CEGUI::PushButton *Normalize_direction;
-    bool NormalizeForceDirection(const CEGUI::EventArgs &e);
-    CEGUI::PushButton *ApplyToCase;
-    bool ApplyChangesToCaseCallback(const CEGUI::EventArgs &event);
+    CEGUI::Editbox *CaseForceDirectionXValueEditB;
+    CEGUI::Editbox *CaseForceDirectionYValueEditB;
+    CEGUI::Editbox *CaseForceDirectionZValueEditB;
+    CEGUI::PushButton *NormalizeCaseForceDirectionPushB;
+    bool NormalizeCaseForceDirectionPushBCallback(const CEGUI::EventArgs &e);
+    CEGUI::PushButton *ApplyForceChangesToCasePushB;
+    bool ApplyForceChangesToCasePushBCallback(const CEGUI::EventArgs &event);
 
 
 	//////////////////////////////////////////////////

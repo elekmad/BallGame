@@ -290,30 +290,30 @@ void BallGame::createScene(void)
 	SetupGame();
 }
 
-bool BallGame::NormalizeForceDirection(const CEGUI::EventArgs &e)
+bool BallGame::NormalizeCaseForceDirectionPushBCallback(const CEGUI::EventArgs &e)
 {
 	char force_c[20];
 	double direction_x, direction_y, direction_z, direction;
-	direction_x = strtod(direction_x_edit->getText().c_str(), NULL);
-	direction_y = strtod(direction_y_edit->getText().c_str(), NULL);
-	direction_z = strtod(direction_z_edit->getText().c_str(), NULL);
+	direction_x = strtod(CaseForceDirectionXValueEditB->getText().c_str(), NULL);
+	direction_y = strtod(CaseForceDirectionYValueEditB->getText().c_str(), NULL);
+	direction_z = strtod(CaseForceDirectionZValueEditB->getText().c_str(), NULL);
 	direction = sqrt(direction_x * direction_x + direction_y * direction_y + direction_z * direction_z);
 
 	direction_x /= direction;
 	snprintf(force_c, 19, "%f", direction_x);
-	direction_x_edit->setText(force_c);
+	CaseForceDirectionXValueEditB->setText(force_c);
 
 	direction_y /= direction;
 	snprintf(force_c, 19, "%f", direction_y);
-	direction_y_edit->setText(force_c);
+	CaseForceDirectionYValueEditB->setText(force_c);
 
 	direction_z /= direction;
 	snprintf(force_c, 19, "%f", direction_z);
-	direction_z_edit->setText(force_c);
+	CaseForceDirectionZValueEditB->setText(force_c);
     return true;
 }
 
-bool BallGame::quit(const CEGUI::EventArgs &e)
+bool BallGame::QuitPushBCallback(const CEGUI::EventArgs &e)
 {
 	mRoot->queueEndRendering();
     return true;
@@ -321,17 +321,17 @@ bool BallGame::quit(const CEGUI::EventArgs &e)
 
 void BallGame::_StartPhysic(void)
 {
-	StopPhysicB->setText("Stop Physic");
+	StopPhysicPushB->setText("Stop Physic");
 	m_suspendPhysicsUpdate = false;
 }
 
 void BallGame::_StopPhysic(void)
 {
-	StopPhysicB->setText("Start Physic");
+	StopPhysicPushB->setText("Start Physic");
 	m_suspendPhysicsUpdate = true;
 }
 
-bool BallGame::StopPhysic(const CEGUI::EventArgs &e)
+bool BallGame::StopPhysicPushBCallback(const CEGUI::EventArgs &e)
 {
 	if(m_suspendPhysicsUpdate)
 		_StartPhysic();
@@ -347,21 +347,21 @@ void BallGame::SwitchEditMode(void)
 		std::cout << "Edit Mode" << std::endl;
 		mode = Editing;
 		_StopPhysic();
-		Editing_banner->setVisible(true);
+		EditingModeTitleBanner->setVisible(true);
 	}
 	else
 	{
 		std::cout << "Running Mode" << std::endl;
 		mode = Running;
-		Editing_banner->setVisible(false);
-		ApplyToCase->setVisible(false);
-		has_force_button->setVisible(false);
-		force_edit->setVisible(false);
-		has_direction_button->setVisible(false);
-		direction_x_edit->setVisible(false);
-		direction_y_edit->setVisible(false);
-		direction_z_edit->setVisible(false);
-		Normalize_direction->setVisible(false);
+		EditingModeTitleBanner->setVisible(false);
+		ApplyForceChangesToCasePushB->setVisible(false);
+		CaseHasForceToggleB->setVisible(false);
+		CaseForceValueEditB->setVisible(false);
+		CaseHasForceDirectionToggleB->setVisible(false);
+		CaseForceDirectionXValueEditB->setVisible(false);
+		CaseForceDirectionYValueEditB->setVisible(false);
+		CaseForceDirectionZValueEditB->setVisible(false);
+		NormalizeCaseForceDirectionPushB->setVisible(false);
 		if(LastHighligted != NULL)
 		{
 			LastHighligted->showBoundingBox(false);
@@ -375,7 +375,7 @@ void BallGame::SwitchEditMode(void)
 	}
 }
 
-bool BallGame::EditCallback(const CEGUI::EventArgs &e)
+bool BallGame::EditModePushBCallback(const CEGUI::EventArgs &e)
 {
 	SwitchEditMode();
     return true;
@@ -411,142 +411,142 @@ void BallGame::SetupGUI(void)
     CEGUI::System::getSingleton().getDefaultGUIContext().setRootWindow(sheet);
 
     //Main GUI
-    main_layout = static_cast<CEGUI::LayoutContainer*>(wmgr.createWindow("VerticalLayoutContainer"));
-    sheet->addChild(main_layout);
-    main_layout->setVisible(false);
+    MainLayout = static_cast<CEGUI::LayoutContainer*>(wmgr.createWindow("VerticalLayoutContainer"));
+    sheet->addChild(MainLayout);
+    MainLayout->setVisible(false);
 
-    StopPhysicB = (CEGUI::PushButton*)wmgr.createWindow("OgreTray/Button");
-    StopPhysicB->setText("Start/Stop Physic");
-    StopPhysicB->setSize(CEGUI::USize(CEGUI::UDim(0, 150), CEGUI::UDim(0, 30)));
+    StopPhysicPushB = (CEGUI::PushButton*)wmgr.createWindow("OgreTray/Button");
+    StopPhysicPushB->setText("Start/Stop Physic");
+    StopPhysicPushB->setSize(CEGUI::USize(CEGUI::UDim(0, 150), CEGUI::UDim(0, 30)));
 
-    main_layout->addChild(StopPhysicB);
+    MainLayout->addChild(StopPhysicPushB);
 
-    StopPhysicB->subscribeEvent(CEGUI::PushButton::EventClicked,
-    		CEGUI::Event::Subscriber(&BallGame::StopPhysic, this));
+    StopPhysicPushB->subscribeEvent(CEGUI::PushButton::EventClicked,
+    		CEGUI::Event::Subscriber(&BallGame::StopPhysicPushBCallback, this));
 
-    CEGUI::PushButton *Editing = (CEGUI::PushButton*)wmgr.createWindow("OgreTray/Button");
-    Editing->setText("Edit");
-    Editing->setSize(CEGUI::USize(CEGUI::UDim(0, 150), CEGUI::UDim(0, 30)));
+    CEGUI::PushButton *EditModePushB = (CEGUI::PushButton*)wmgr.createWindow("OgreTray/Button");
+    EditModePushB->setText("Edit");
+    EditModePushB->setSize(CEGUI::USize(CEGUI::UDim(0, 150), CEGUI::UDim(0, 30)));
 
-    main_layout->addChild(Editing);
+    MainLayout->addChild(EditModePushB);
 
-    Editing->subscribeEvent(CEGUI::PushButton::EventClicked,
-    		CEGUI::Event::Subscriber(&BallGame::EditCallback, this));
+    EditModePushB->subscribeEvent(CEGUI::PushButton::EventClicked,
+    		CEGUI::Event::Subscriber(&BallGame::EditModePushBCallback, this));
 
-    SetWindowsPosNearToOther(Editing, StopPhysicB, 0, 1);
+    SetWindowsPosNearToOther(EditModePushB, StopPhysicPushB, 0, 1);
 
-    CEGUI::PushButton *Quit = (CEGUI::PushButton*)wmgr.createWindow("OgreTray/Button");
-    Quit->setText("Quit");
-    Quit->setSize(CEGUI::USize(CEGUI::UDim(0, 150), CEGUI::UDim(0, 30)));
+    CEGUI::PushButton *QuitPushB = (CEGUI::PushButton*)wmgr.createWindow("OgreTray/Button");
+    QuitPushB->setText("Quit");
+    QuitPushB->setSize(CEGUI::USize(CEGUI::UDim(0, 150), CEGUI::UDim(0, 30)));
 
-    main_layout->addChild(Quit);
+    MainLayout->addChild(QuitPushB);
 
-    Quit->subscribeEvent(CEGUI::PushButton::EventClicked,
-    		CEGUI::Event::Subscriber(&BallGame::quit, this));
+    QuitPushB->subscribeEvent(CEGUI::PushButton::EventClicked,
+    		CEGUI::Event::Subscriber(&BallGame::QuitPushBCallback, this));
 
-    SetWindowsPosNearToOther(Quit, Editing, 0, 1);
+    SetWindowsPosNearToOther(QuitPushB, EditModePushB, 0, 1);
 
 
     //Edit GUI
 
-    Editing_banner = (CEGUI::Titlebar*)wmgr.createWindow("OgreTray/Title");
-    Editing_banner->setText("Edit Mode");
-    Editing_banner->setSize(CEGUI::USize(CEGUI::UDim(0, 150), CEGUI::UDim(0, 30)));
-    Editing_banner->setVerticalAlignment(CEGUI::VA_TOP);
-    Editing_banner->setHorizontalAlignment(CEGUI::HA_CENTRE);
-    Editing_banner->setVisible(false);
+    EditingModeTitleBanner = (CEGUI::Titlebar*)wmgr.createWindow("OgreTray/Title");
+    EditingModeTitleBanner->setText("Edit Mode");
+    EditingModeTitleBanner->setSize(CEGUI::USize(CEGUI::UDim(0, 150), CEGUI::UDim(0, 30)));
+    EditingModeTitleBanner->setVerticalAlignment(CEGUI::VA_TOP);
+    EditingModeTitleBanner->setHorizontalAlignment(CEGUI::HA_CENTRE);
+    EditingModeTitleBanner->setVisible(false);
 
-    main_layout->addChild(Editing_banner);
+    MainLayout->addChild(EditingModeTitleBanner);
 
-    has_force_button = (CEGUI::ToggleButton*)wmgr.createWindow("OgreTray/Checkbox");
-    has_force_button->setText("Has Force");
-    has_force_button->setSelected(false);
-    has_force_button->setSize(CEGUI::USize(CEGUI::UDim(0, 200), CEGUI::UDim(0, 30)));
-    has_force_button->setVerticalAlignment(CEGUI::VA_BOTTOM);
-    has_force_button->setHorizontalAlignment(CEGUI::HA_CENTRE);
-    has_force_button->setVisible(false);
+    CaseHasForceToggleB = (CEGUI::ToggleButton*)wmgr.createWindow("OgreTray/Checkbox");
+    CaseHasForceToggleB->setText("Has Force");
+    CaseHasForceToggleB->setSelected(false);
+    CaseHasForceToggleB->setSize(CEGUI::USize(CEGUI::UDim(0, 200), CEGUI::UDim(0, 30)));
+    CaseHasForceToggleB->setVerticalAlignment(CEGUI::VA_BOTTOM);
+    CaseHasForceToggleB->setHorizontalAlignment(CEGUI::HA_CENTRE);
+    CaseHasForceToggleB->setVisible(false);
 
-    has_force_button->subscribeEvent(CEGUI::ToggleButton::EventSelectStateChanged,
+    CaseHasForceToggleB->subscribeEvent(CEGUI::ToggleButton::EventSelectStateChanged,
 			CEGUI::Event::Subscriber(&BallGame::ToggleForceCallback, this));
 
-    main_layout->addChild(has_force_button);
+    MainLayout->addChild(CaseHasForceToggleB);
 
-    force_edit = (CEGUI::Editbox*)wmgr.createWindow("OgreTray/Editbox");
-    force_edit->setSize(CEGUI::USize(CEGUI::UDim(0, 50), CEGUI::UDim(0, 30)));
-    force_edit->setVerticalAlignment(CEGUI::VA_BOTTOM);
-    force_edit->setHorizontalAlignment(CEGUI::HA_CENTRE);
-    force_edit->setVisible(false);
+    CaseForceValueEditB = (CEGUI::Editbox*)wmgr.createWindow("OgreTray/Editbox");
+    CaseForceValueEditB->setSize(CEGUI::USize(CEGUI::UDim(0, 50), CEGUI::UDim(0, 30)));
+    CaseForceValueEditB->setVerticalAlignment(CEGUI::VA_BOTTOM);
+    CaseForceValueEditB->setHorizontalAlignment(CEGUI::HA_CENTRE);
+    CaseForceValueEditB->setVisible(false);
 
-    main_layout->addChild(force_edit);
+    MainLayout->addChild(CaseForceValueEditB);
 
-    has_direction_button = (CEGUI::ToggleButton*)wmgr.createWindow("OgreTray/Checkbox");
-    has_direction_button->setText("Has Force Directed");
-    has_direction_button->setSelected(false);
-    has_direction_button->setSize(CEGUI::USize(CEGUI::UDim(0, 200), CEGUI::UDim(0, 30)));
-    has_direction_button->setVerticalAlignment(CEGUI::VA_BOTTOM);
-    has_direction_button->setHorizontalAlignment(CEGUI::HA_CENTRE);
-    has_direction_button->setVisible(false);
+    CaseHasForceDirectionToggleB = (CEGUI::ToggleButton*)wmgr.createWindow("OgreTray/Checkbox");
+    CaseHasForceDirectionToggleB->setText("Has Force Directed");
+    CaseHasForceDirectionToggleB->setSelected(false);
+    CaseHasForceDirectionToggleB->setSize(CEGUI::USize(CEGUI::UDim(0, 200), CEGUI::UDim(0, 30)));
+    CaseHasForceDirectionToggleB->setVerticalAlignment(CEGUI::VA_BOTTOM);
+    CaseHasForceDirectionToggleB->setHorizontalAlignment(CEGUI::HA_CENTRE);
+    CaseHasForceDirectionToggleB->setVisible(false);
 
-	has_direction_button->subscribeEvent(CEGUI::ToggleButton::EventSelectStateChanged,
+	CaseHasForceDirectionToggleB->subscribeEvent(CEGUI::ToggleButton::EventSelectStateChanged,
 			CEGUI::Event::Subscriber(&BallGame::ToggleForceDirectedCallback, this));
 
-    main_layout->addChild(has_direction_button);
+    MainLayout->addChild(CaseHasForceDirectionToggleB);
 
-    direction_x_edit = (CEGUI::Editbox*)wmgr.createWindow("OgreTray/Editbox");
-    direction_x_edit->setSize(CEGUI::USize(CEGUI::UDim(0, 50), CEGUI::UDim(0, 30)));
-    direction_x_edit->setVerticalAlignment(CEGUI::VA_BOTTOM);
-    direction_x_edit->setHorizontalAlignment(CEGUI::HA_CENTRE);
-    direction_x_edit->setVisible(false);
+    CaseForceDirectionXValueEditB = (CEGUI::Editbox*)wmgr.createWindow("OgreTray/Editbox");
+    CaseForceDirectionXValueEditB->setSize(CEGUI::USize(CEGUI::UDim(0, 50), CEGUI::UDim(0, 30)));
+    CaseForceDirectionXValueEditB->setVerticalAlignment(CEGUI::VA_BOTTOM);
+    CaseForceDirectionXValueEditB->setHorizontalAlignment(CEGUI::HA_CENTRE);
+    CaseForceDirectionXValueEditB->setVisible(false);
 
-    main_layout->addChild(direction_x_edit);
+    MainLayout->addChild(CaseForceDirectionXValueEditB);
 
-    direction_y_edit = (CEGUI::Editbox*)wmgr.createWindow("OgreTray/Editbox");
-    direction_y_edit->setSize(CEGUI::USize(CEGUI::UDim(0, 50), CEGUI::UDim(0, 30)));
-    direction_y_edit->setVerticalAlignment(CEGUI::VA_BOTTOM);
-    direction_y_edit->setHorizontalAlignment(CEGUI::HA_CENTRE);
-    direction_y_edit->setVisible(false);
+    CaseForceDirectionYValueEditB = (CEGUI::Editbox*)wmgr.createWindow("OgreTray/Editbox");
+    CaseForceDirectionYValueEditB->setSize(CEGUI::USize(CEGUI::UDim(0, 50), CEGUI::UDim(0, 30)));
+    CaseForceDirectionYValueEditB->setVerticalAlignment(CEGUI::VA_BOTTOM);
+    CaseForceDirectionYValueEditB->setHorizontalAlignment(CEGUI::HA_CENTRE);
+    CaseForceDirectionYValueEditB->setVisible(false);
 
-    main_layout->addChild(direction_y_edit);
+    MainLayout->addChild(CaseForceDirectionYValueEditB);
 
-    direction_z_edit = (CEGUI::Editbox*)wmgr.createWindow("OgreTray/Editbox");
-    direction_z_edit->setSize(CEGUI::USize(CEGUI::UDim(0, 50), CEGUI::UDim(0, 30)));
-    direction_z_edit->setVerticalAlignment(CEGUI::VA_BOTTOM);
-    direction_z_edit->setHorizontalAlignment(CEGUI::HA_CENTRE);
-    direction_z_edit->setVisible(false);
+    CaseForceDirectionZValueEditB = (CEGUI::Editbox*)wmgr.createWindow("OgreTray/Editbox");
+    CaseForceDirectionZValueEditB->setSize(CEGUI::USize(CEGUI::UDim(0, 50), CEGUI::UDim(0, 30)));
+    CaseForceDirectionZValueEditB->setVerticalAlignment(CEGUI::VA_BOTTOM);
+    CaseForceDirectionZValueEditB->setHorizontalAlignment(CEGUI::HA_CENTRE);
+    CaseForceDirectionZValueEditB->setVisible(false);
 
-    main_layout->addChild(direction_z_edit);
+    MainLayout->addChild(CaseForceDirectionZValueEditB);
 
-    Normalize_direction = (CEGUI::PushButton*)wmgr.createWindow("OgreTray/Button");
-    Normalize_direction->setText("Norm");
-    Normalize_direction->setSize(CEGUI::USize(CEGUI::UDim(0, 50), CEGUI::UDim(0, 30)));
-    Normalize_direction->setVerticalAlignment(CEGUI::VA_BOTTOM);
-    Normalize_direction->setHorizontalAlignment(CEGUI::HA_CENTRE);
-    Normalize_direction->setVisible(false);
-    Normalize_direction->subscribeEvent(CEGUI::PushButton::EventClicked,
-    		CEGUI::Event::Subscriber(&BallGame::NormalizeForceDirection, this));
+    NormalizeCaseForceDirectionPushB = (CEGUI::PushButton*)wmgr.createWindow("OgreTray/Button");
+    NormalizeCaseForceDirectionPushB->setText("Norm");
+    NormalizeCaseForceDirectionPushB->setSize(CEGUI::USize(CEGUI::UDim(0, 50), CEGUI::UDim(0, 30)));
+    NormalizeCaseForceDirectionPushB->setVerticalAlignment(CEGUI::VA_BOTTOM);
+    NormalizeCaseForceDirectionPushB->setHorizontalAlignment(CEGUI::HA_CENTRE);
+    NormalizeCaseForceDirectionPushB->setVisible(false);
+    NormalizeCaseForceDirectionPushB->subscribeEvent(CEGUI::PushButton::EventClicked,
+    		CEGUI::Event::Subscriber(&BallGame::NormalizeCaseForceDirectionPushBCallback, this));
 
-    SetWindowsPosNearToOther(Quit, Editing, 0, 1);
+    SetWindowsPosNearToOther(QuitPushB, EditModePushB, 0, 1);
 
-    main_layout->addChild(Normalize_direction);
+    MainLayout->addChild(NormalizeCaseForceDirectionPushB);
 
-    ApplyToCase = (CEGUI::PushButton*)wmgr.createWindow("OgreTray/Button");
-    ApplyToCase->setText("Apply");
-    ApplyToCase->setSize(CEGUI::USize(CEGUI::UDim(0, 100), CEGUI::UDim(0, 30)));
-    ApplyToCase->setVerticalAlignment(CEGUI::VA_BOTTOM);
-    ApplyToCase->setHorizontalAlignment(CEGUI::HA_CENTRE);
-    ApplyToCase->setVisible(false);
-    ApplyToCase->subscribeEvent(CEGUI::PushButton::EventClicked,
-    		CEGUI::Event::Subscriber(&BallGame::ApplyChangesToCaseCallback, this));
+    ApplyForceChangesToCasePushB = (CEGUI::PushButton*)wmgr.createWindow("OgreTray/Button");
+    ApplyForceChangesToCasePushB->setText("Apply");
+    ApplyForceChangesToCasePushB->setSize(CEGUI::USize(CEGUI::UDim(0, 100), CEGUI::UDim(0, 30)));
+    ApplyForceChangesToCasePushB->setVerticalAlignment(CEGUI::VA_BOTTOM);
+    ApplyForceChangesToCasePushB->setHorizontalAlignment(CEGUI::HA_CENTRE);
+    ApplyForceChangesToCasePushB->setVisible(false);
+    ApplyForceChangesToCasePushB->subscribeEvent(CEGUI::PushButton::EventClicked,
+    		CEGUI::Event::Subscriber(&BallGame::ApplyForceChangesToCasePushBCallback, this));
 
-    main_layout->addChild(ApplyToCase);
+    MainLayout->addChild(ApplyForceChangesToCasePushB);
 
-    SetWindowsPosNearToOther(has_direction_button, ApplyToCase, 0, -1);
-    SetWindowsPosNearToOther(has_force_button, has_direction_button, 0, -1);
-    SetWindowsPosNearToOther(force_edit, has_force_button, 1, 0);
-    SetWindowsPosNearToOther(direction_x_edit, has_direction_button, 1, 0);
-    SetWindowsPosNearToOther(direction_y_edit, direction_x_edit, 1, 0);
-    SetWindowsPosNearToOther(direction_z_edit, direction_y_edit, 1, 0);
-    SetWindowsPosNearToOther(Normalize_direction, direction_z_edit, 1, 0);
+    SetWindowsPosNearToOther(CaseHasForceDirectionToggleB, ApplyForceChangesToCasePushB, 0, -1);
+    SetWindowsPosNearToOther(CaseHasForceToggleB, CaseHasForceDirectionToggleB, 0, -1);
+    SetWindowsPosNearToOther(CaseForceValueEditB, CaseHasForceToggleB, 1, 0);
+    SetWindowsPosNearToOther(CaseForceDirectionXValueEditB, CaseHasForceDirectionToggleB, 1, 0);
+    SetWindowsPosNearToOther(CaseForceDirectionYValueEditB, CaseForceDirectionXValueEditB, 1, 0);
+    SetWindowsPosNearToOther(CaseForceDirectionZValueEditB, CaseForceDirectionYValueEditB, 1, 0);
+    SetWindowsPosNearToOther(NormalizeCaseForceDirectionPushB, CaseForceDirectionZValueEditB, 1, 0);
 
 }
 
@@ -852,7 +852,7 @@ CEGUI::MouseButton convertButton(OIS::MouseButtonID buttonID)
     }
 }
 
-bool BallGame::ApplyChangesToCaseCallback(const CEGUI::EventArgs &event)
+bool BallGame::ApplyForceChangesToCasePushBCallback(const CEGUI::EventArgs &event)
 {
 	dVector *force_dir = NULL;
 	if(UnderEditCase == NULL)
@@ -860,14 +860,14 @@ bool BallGame::ApplyChangesToCaseCallback(const CEGUI::EventArgs &event)
 
 	if(CaseHasForce == true)
 	{
-		UnderEditCaseForce = strtof(force_edit->getText().c_str(), NULL);
+		UnderEditCaseForce = strtof(CaseForceValueEditB->getText().c_str(), NULL);
 		if(force_directed == true)
 		{
-			float dir = strtof(direction_x_edit->getText().c_str(), NULL);
+			float dir = strtof(CaseForceDirectionXValueEditB->getText().c_str(), NULL);
 			force_direction.m_x = dir;
-			dir = strtof(direction_y_edit->getText().c_str(), NULL);
+			dir = strtof(CaseForceDirectionYValueEditB->getText().c_str(), NULL);
 			force_direction.m_y = dir;
-			dir = strtof(direction_z_edit->getText().c_str(), NULL);
+			dir = strtof(CaseForceDirectionZValueEditB->getText().c_str(), NULL);
 			force_direction.m_z = dir;
 			force_dir = new dVector(force_direction.m_x, force_direction.m_y, force_direction.m_z);
 		}
@@ -881,15 +881,15 @@ bool BallGame::ToggleForceCallback(const CEGUI::EventArgs &event)
 {
 	const CEGUI::WindowEventArgs &e = (const CEGUI::WindowEventArgs &)event;
 	std::cout << "Update buttons by CE Callback of " << e.window->getName() << std::endl;
-	has_force_button->setMutedState(true);
-	has_direction_button->setMutedState(true);
-	if(has_force_button->isSelected())
+	CaseHasForceToggleB->setMutedState(true);
+	CaseHasForceDirectionToggleB->setMutedState(true);
+	if(CaseHasForceToggleB->isSelected())
 		CaseHasForce = true;
 	else
 		CaseHasForce = false;
 	UpdateEditButtons();
-	has_direction_button->setMutedState(false);
-	has_force_button->setMutedState(false);
+	CaseHasForceDirectionToggleB->setMutedState(false);
+	CaseHasForceToggleB->setMutedState(false);
     return true;
 }
 
@@ -897,90 +897,90 @@ bool BallGame::ToggleForceDirectedCallback(const CEGUI::EventArgs &event)
 {
 	const CEGUI::WindowEventArgs &e = (const CEGUI::WindowEventArgs &)event;
 	std::cout << "Update buttons by CE Callback of " << e.window->getName() << std::endl;
-	has_force_button->setMutedState(true);
-	has_direction_button->setMutedState(true);
-	if(has_direction_button->isSelected())
+	CaseHasForceToggleB->setMutedState(true);
+	CaseHasForceDirectionToggleB->setMutedState(true);
+	if(CaseHasForceDirectionToggleB->isSelected())
 		force_directed = true;
 	else
 		force_directed = false;
 	UpdateEditButtons();
-	has_direction_button->setMutedState(false);
-	has_force_button->setMutedState(false);
+	CaseHasForceDirectionToggleB->setMutedState(false);
+	CaseHasForceToggleB->setMutedState(false);
     return true;
 }
 
 void BallGame::UpdateEditButtons(void)
 {
 	std::cout << "Update Edit buttons"<< std::endl;
-	has_force_button->setVisible(true);
-	has_force_button->setDisabled(false);
-	has_direction_button->setVisible(true);
-	force_edit->setVisible(true);
-	direction_x_edit->setVisible(true);
-	direction_y_edit->setVisible(true);
-	direction_z_edit->setVisible(true);
-	Normalize_direction->setVisible(true);
-	ApplyToCase->setVisible(true);
-	ApplyToCase->setDisabled(false);
+	CaseHasForceToggleB->setVisible(true);
+	CaseHasForceToggleB->setDisabled(false);
+	CaseHasForceDirectionToggleB->setVisible(true);
+	CaseForceValueEditB->setVisible(true);
+	CaseForceDirectionXValueEditB->setVisible(true);
+	CaseForceDirectionYValueEditB->setVisible(true);
+	CaseForceDirectionZValueEditB->setVisible(true);
+	NormalizeCaseForceDirectionPushB->setVisible(true);
+	ApplyForceChangesToCasePushB->setVisible(true);
+	ApplyForceChangesToCasePushB->setDisabled(false);
 
 	if(CaseHasForce == false)
 	{
 		std::cout << "No Base Force"<< std::endl;
-		has_force_button->setSelected(false);
-		has_direction_button->setDisabled(true);
-		has_direction_button->setSelected(false);
-		force_edit->setDisabled(true);
-		force_edit->setText("");
-		direction_x_edit->setDisabled(true);
-		direction_x_edit->setText("");
-		direction_y_edit->setDisabled(true);
-		direction_y_edit->setText("");
-		direction_z_edit->setDisabled(true);
-		direction_z_edit->setText("");
+		CaseHasForceToggleB->setSelected(false);
+		CaseHasForceDirectionToggleB->setDisabled(true);
+		CaseHasForceDirectionToggleB->setSelected(false);
+		CaseForceValueEditB->setDisabled(true);
+		CaseForceValueEditB->setText("");
+		CaseForceDirectionXValueEditB->setDisabled(true);
+		CaseForceDirectionXValueEditB->setText("");
+		CaseForceDirectionYValueEditB->setDisabled(true);
+		CaseForceDirectionYValueEditB->setText("");
+		CaseForceDirectionZValueEditB->setDisabled(true);
+		CaseForceDirectionZValueEditB->setText("");
 	}
 	else
 	{
 		std::cout << "Base Force is present"<< std::endl;
-		has_force_button->setSelected(true);
-		has_direction_button->setDisabled(false);
+		CaseHasForceToggleB->setSelected(true);
+		CaseHasForceDirectionToggleB->setDisabled(false);
 		String ForceStr;
 		char force_c[50];
 		snprintf(force_c, 49, "%f", UnderEditCaseForce);
 		ForceStr = force_c;
 		std::cout << "Force " <<  UnderEditCaseForce << ", " << force_c << ", " << ForceStr << std::endl;
-		force_edit->setDisabled(false);
-		force_edit->setText(ForceStr);
+		CaseForceValueEditB->setDisabled(false);
+		CaseForceValueEditB->setText(ForceStr);
 
 		if(force_directed == false)
 		{
 			std::cout << "Not Directed Force"<< std::endl;
-			has_direction_button->setSelected(false);
-			direction_x_edit->setDisabled(true);
-			direction_y_edit->setText("");
-			direction_y_edit->setDisabled(true);
-			direction_x_edit->setText("");
-			direction_z_edit->setDisabled(true);
-			direction_z_edit->setText("");
-			Normalize_direction->setDisabled(true);
+			CaseHasForceDirectionToggleB->setSelected(false);
+			CaseForceDirectionXValueEditB->setDisabled(true);
+			CaseForceDirectionYValueEditB->setText("");
+			CaseForceDirectionYValueEditB->setDisabled(true);
+			CaseForceDirectionXValueEditB->setText("");
+			CaseForceDirectionZValueEditB->setDisabled(true);
+			CaseForceDirectionZValueEditB->setText("");
+			NormalizeCaseForceDirectionPushB->setDisabled(true);
 
 		}
 		else
 		{
 			std::cout << "Directed Force"<< std::endl;
-			has_direction_button->setSelected(true);
-			direction_x_edit->setDisabled(false);
-			direction_y_edit->setDisabled(false);
-			direction_z_edit->setDisabled(false);
+			CaseHasForceDirectionToggleB->setSelected(true);
+			CaseForceDirectionXValueEditB->setDisabled(false);
+			CaseForceDirectionYValueEditB->setDisabled(false);
+			CaseForceDirectionZValueEditB->setDisabled(false);
 			snprintf(force_c, 49, "%f", force_direction.m_x);
 			ForceStr = force_c;
-			direction_x_edit->setText(ForceStr);
+			CaseForceDirectionXValueEditB->setText(ForceStr);
 			snprintf(force_c, 49, "%f", force_direction.m_y);
 			ForceStr = force_c;
-			direction_y_edit->setText(ForceStr);
+			CaseForceDirectionYValueEditB->setText(ForceStr);
 			snprintf(force_c, 49, "%f", force_direction.m_z);
 			ForceStr = force_c;
-			direction_z_edit->setText(ForceStr);
-			Normalize_direction->setDisabled(false);
+			CaseForceDirectionZValueEditB->setText(ForceStr);
+			NormalizeCaseForceDirectionPushB->setDisabled(false);
 		}
 	}
 }
@@ -994,8 +994,8 @@ void BallGame::EditCase(CaseEntity *Entity)
 	if(UnderEditCase != NULL)
 		UnderEditCase->OgreEntity->showBoundingBox(false);
 	UnderEditCase = Entity;
-	has_force_button->setMutedState(true);
-	has_direction_button->setMutedState(true);
+	CaseHasForceToggleB->setMutedState(true);
+	CaseHasForceDirectionToggleB->setMutedState(true);
 	if(UnderEditCase != NULL)
 	{
 		UnderEditCase->OgreEntity->showBoundingBox(true);
@@ -1027,8 +1027,8 @@ void BallGame::EditCase(CaseEntity *Entity)
 
 	std::cout << "Update buttons by Mouse Pressed" << std::endl;
 	UpdateEditButtons();
-	has_direction_button->setMutedState(false);
-	has_force_button->setMutedState(false);
+	CaseHasForceDirectionToggleB->setMutedState(false);
+	CaseHasForceToggleB->setMutedState(false);
 }
 
 bool BallGame::mousePressed( const OIS::MouseEvent &arg, OIS::MouseButtonID id )
@@ -1087,10 +1087,10 @@ bool BallGame::keyPressed(const OIS::KeyEvent &arg)
     switch (arg.key)
     {
     case OIS::KeyCode::KC_ESCAPE :
-		if(main_layout->isVisible())
+		if(MainLayout->isVisible())
 			mRoot->queueEndRendering();
 		else
-			main_layout->setVisible(true);
+			MainLayout->setVisible(true);
 	    break;
 	case OIS::KeyCode::KC_UP:
 	    MoveCam(0, 0, 10);
