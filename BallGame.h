@@ -14,6 +14,7 @@
 #include <iostream>
 #include "BaseApplication.h"
 
+
 #include <Newton.h>
 #include <toolbox_stdafx.h>
 #include <dHighResolutionTimer.h>
@@ -21,6 +22,14 @@
 
 #include <dList.h>
 #include <dMatrix.h>
+
+//because of Xlib defines (True False Bool None) which must be undef
+#undef True
+#undef False
+#undef None
+#undef Bool
+#include <CEGUI/CEGUI.h>
+#include <CEGUI/RendererModules/Ogre/Renderer.h>
 
 #define WORLD_LENGTH 20
 //#define WORLD_LENGTH 1
@@ -109,23 +118,30 @@ class CaseEntity : public BallGameEntity
 	float force_to_apply;
 	dVector *force_direction;
 
+	friend class BallGame;
 };
 
 class BallGame : public BaseApplication
 {
     public :
+
     BallGame();
-    virtual ~BallGame();
-
-    void SetupNewton(void);
-	void createScene(void) { SetupGame(); };
-    void SetupGame(void);
-
-
-    NewtonWorld* GetNewton(void);
-    void Append(BallGameEntity *entity);
+    ~BallGame();
 
     private :
+
+    void Append(BallGameEntity *entity);
+    void _StartPhysic(void);
+    void _StopPhysic(void);
+    void SwitchEditMode(void);
+    void EditCase(CaseEntity *Entity);
+	CaseEntity *UnderEditCase;
+	bool CaseHasForce;
+	float UnderEditCaseForce;
+	bool force_directed;
+	dVector force_direction;
+    void UpdateEditButtons(void);
+
     enum RunningMode
     {
 		Running,
@@ -139,6 +155,9 @@ class BallGame : public BaseApplication
     void UpdatePhysics(dFloat timestep);
 
     private :
+
+    void SetupNewton(void);
+    NewtonWorld* GetNewton(void);
 
     bool m_suspendPhysicsUpdate;
     unsigned64 m_microsecunds;
@@ -162,13 +181,54 @@ class BallGame : public BaseApplication
     public :
 
     bool keyPressed( const OIS::KeyEvent &arg );
+    bool keyReleased( const OIS::KeyEvent &arg );
 	bool mouseMoved( const OIS::MouseEvent &arg );
+    bool mousePressed( const OIS::MouseEvent &arg, OIS::MouseButtonID id );
+    bool mouseReleased( const OIS::MouseEvent &arg, OIS::MouseButtonID id );
 
     private :
+
+	void createScene(void);
+    void SetupGame(void);
 
     //Mouse picking
 	Ogre::SceneNode *LastHighligted;
     //////////////////////////////////////////////////
+
+
+	/////////////////// CE GUI ////////////////////////
+
+    protected :
+
+    bool quit(const CEGUI::EventArgs &e);
+    bool StopPhysic(const CEGUI::EventArgs &e);
+    bool EditCallback(const CEGUI::EventArgs &e);
+
+    private :
+
+    void SetupGUI(void);
+
+    CEGUI::OgreRenderer* mRenderer;
+
+    CEGUI::LayoutContainer* main_layout;
+
+    //Edit buttons
+    CEGUI::Titlebar *Editing_banner;
+    CEGUI::PushButton *StopPhysicB;
+    CEGUI::ToggleButton *has_force_button;
+    CEGUI::Editbox *force_edit;
+    CEGUI::ToggleButton *has_direction_button;
+    bool UpdateEditButtonsCallback(const CEGUI::EventArgs &e);
+    CEGUI::Editbox *direction_x_edit;
+    CEGUI::Editbox *direction_y_edit;
+    CEGUI::Editbox *direction_z_edit;
+    CEGUI::PushButton *Normalize_direction;
+    bool NormalizeForceDirection(const CEGUI::EventArgs &e);
+    CEGUI::PushButton *ApplyToCase;
+    bool ApplyChangesToCaseCallback(const CEGUI::EventArgs &event);
+
+
+	//////////////////////////////////////////////////
 
     virtual bool frameEnded(const Ogre::FrameEvent& fe);
     int camx;

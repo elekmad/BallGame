@@ -24,6 +24,11 @@ file(GLOB CPP_SOURCE
 source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/" FILES ${CPP_SOURCE})
 add_executable(Demo ${CPP_SOURCE})
 
+
+#CEGUI
+include_directories("/usr/include/cegui-0.8.7")
+target_link_libraries(Demo -L/usr/local/lib -lCEGUIOgreRenderer-0 -lOgreMain_d -lpthread -lCEGUIBase-0)
+
 #OIS
 include_directories("/usr/include/ois")
 target_link_libraries(Demo -lOIS)
@@ -37,6 +42,10 @@ target_link_libraries(Demo -lOIS)
 
 
 include_directories(./)
+
+
+#Newton
+
 include_directories(./toolBox)
 include_directories(./glatter)
 include_directories(/usr/include/dNewton/dMath/)
@@ -66,7 +75,4 @@ if (NEWTON_BUILD_PROFILER)
     target_link_libraries (Demo dProfiler)
 endif ()
 
-#if( WITH_COREDEBUG )
-  add_definitions(-ggdb3)
-  message(STATUS "GCC: Debug-flags set (-ggdb3)")
-#endif()
+#to add ggdb3 : -DCMAKE_RELEASE_MODE=Debug
