@@ -458,8 +458,7 @@ void BallGame::SetupGUI(void)
 
     main_layout->addChild(Editing_banner);
 
-#define TOGGLE_FORCE_NAME "HasForceToggle"
-    has_force_button = (CEGUI::ToggleButton*)wmgr.createWindow("OgreTray/Checkbox", TOGGLE_FORCE_NAME);
+    has_force_button = (CEGUI::ToggleButton*)wmgr.createWindow("OgreTray/Checkbox");
     has_force_button->setText("Has Force");
     has_force_button->setSelected(false);
     has_force_button->setSize(CEGUI::USize(CEGUI::UDim(0, 200), CEGUI::UDim(0, 30)));
@@ -468,7 +467,7 @@ void BallGame::SetupGUI(void)
     has_force_button->setVisible(false);
 
     has_force_button->subscribeEvent(CEGUI::ToggleButton::EventSelectStateChanged,
-			CEGUI::Event::Subscriber(&BallGame::UpdateEditButtonsCallback, this));
+			CEGUI::Event::Subscriber(&BallGame::ToggleForceCallback, this));
 
     main_layout->addChild(has_force_button);
 
@@ -480,8 +479,7 @@ void BallGame::SetupGUI(void)
 
     main_layout->addChild(force_edit);
 
-#define TOGGLE_FORCE_DIRECTION_NAME "HasForceDirectedToggle"
-    has_direction_button = (CEGUI::ToggleButton*)wmgr.createWindow("OgreTray/Checkbox", TOGGLE_FORCE_DIRECTION_NAME);
+    has_direction_button = (CEGUI::ToggleButton*)wmgr.createWindow("OgreTray/Checkbox");
     has_direction_button->setText("Has Force Directed");
     has_direction_button->setSelected(false);
     has_direction_button->setSize(CEGUI::USize(CEGUI::UDim(0, 200), CEGUI::UDim(0, 30)));
@@ -490,7 +488,7 @@ void BallGame::SetupGUI(void)
     has_direction_button->setVisible(false);
 
 	has_direction_button->subscribeEvent(CEGUI::ToggleButton::EventSelectStateChanged,
-			CEGUI::Event::Subscriber(&BallGame::UpdateEditButtonsCallback, this));
+			CEGUI::Event::Subscriber(&BallGame::ToggleForceDirectedCallback, this));
 
     main_layout->addChild(has_direction_button);
 
@@ -879,26 +877,32 @@ bool BallGame::ApplyChangesToCaseCallback(const CEGUI::EventArgs &event)
 	return true;
 }
 
-bool BallGame::UpdateEditButtonsCallback(const CEGUI::EventArgs &event)
+bool BallGame::ToggleForceCallback(const CEGUI::EventArgs &event)
 {
 	const CEGUI::WindowEventArgs &e = (const CEGUI::WindowEventArgs &)event;
 	std::cout << "Update buttons by CE Callback of " << e.window->getName() << std::endl;
 	has_force_button->setMutedState(true);
 	has_direction_button->setMutedState(true);
-	if(e.window->getName() == TOGGLE_FORCE_NAME)
-	{
-		if(has_force_button->isSelected())
-			CaseHasForce = true;
-		else
-			CaseHasForce = false;
-	}
-	if(e.window->getName() == TOGGLE_FORCE_DIRECTION_NAME)
-	{
-		if(has_direction_button->isSelected())
-			force_directed = true;
-		else
-			force_directed = false;
-	}
+	if(has_force_button->isSelected())
+		CaseHasForce = true;
+	else
+		CaseHasForce = false;
+	UpdateEditButtons();
+	has_direction_button->setMutedState(false);
+	has_force_button->setMutedState(false);
+    return true;
+}
+
+bool BallGame::ToggleForceDirectedCallback(const CEGUI::EventArgs &event)
+{
+	const CEGUI::WindowEventArgs &e = (const CEGUI::WindowEventArgs &)event;
+	std::cout << "Update buttons by CE Callback of " << e.window->getName() << std::endl;
+	has_force_button->setMutedState(true);
+	has_direction_button->setMutedState(true);
+	if(has_direction_button->isSelected())
+		force_directed = true;
+	else
+		force_directed = false;
 	UpdateEditButtons();
 	has_direction_button->setMutedState(false);
 	has_force_button->setMutedState(false);

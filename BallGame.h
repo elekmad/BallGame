@@ -218,7 +218,8 @@ class BallGame : public BaseApplication
     CEGUI::ToggleButton *has_force_button;
     CEGUI::Editbox *force_edit;
     CEGUI::ToggleButton *has_direction_button;
-    bool UpdateEditButtonsCallback(const CEGUI::EventArgs &e);
+    bool ToggleForceCallback(const CEGUI::EventArgs &e);
+    bool ToggleForceDirectedCallback(const CEGUI::EventArgs &event);
     CEGUI::Editbox *direction_x_edit;
     CEGUI::Editbox *direction_y_edit;
     CEGUI::Editbox *direction_z_edit;
