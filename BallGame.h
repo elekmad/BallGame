@@ -75,7 +75,8 @@ class BallGameEntity
 	BallGameEntity(const dMatrix& matrix);
 	~BallGameEntity(){}
     static void TransformCallback(const NewtonBody* body, const dFloat* matrix, int threadIndex);
-	protected:
+    void ExportToJson(rapidjson::Value &v, rapidjson::Document::AllocatorType& allocator);
+   	protected:
 	mutable dMatrix m_matrix;			// interpolated matrix
 	dVector m_curPosition;				// position one physics simulation step in the future
 	dVector m_nextPosition;             // position at the current physics simulation step
@@ -83,6 +84,9 @@ class BallGameEntity
 	dQuaternion m_nextRotation;         // rotation at the current physics simulation step
 	SceneNode *OgreEntity;
 	int NewtonID;
+	Ogre::Vector3 InitialPos;
+	Ogre::Vector3 InitialScale;
+	Ogre::Quaternion InitialOrientation;
 
     void SetMatrixUsafe(const dQuaternion& rotation, const dVector& position);
 
@@ -96,10 +100,14 @@ class BallEntity : public BallGameEntity
 	public:
 	BallEntity(const dMatrix& matrix):BallGameEntity(matrix){}
 	void AddForceVector(dVector *force);
-	dVector *GetForceVector();
+    void ExportToJson(rapidjson::Value &v, rapidjson::Document::AllocatorType& allocator);
+  	dVector *GetForceVector();
 	protected:
 	dList<dVector*> Forces;
+	float InitialMass;
 
+	friend class BallGame;
+	friend class CaseEntity;
 };
 
 class CaseEntity : public BallGameEntity
@@ -107,8 +115,8 @@ class CaseEntity : public BallGameEntity
 	public:
 	enum CaseType
 	{
-		typeBox,
-		typeRamp
+		typeBox = 0,
+		typeRamp = 1
 	};
 	enum CaseType type;
 	CaseEntity(const dMatrix& matrix, enum CaseType _type = typeBox);
@@ -116,6 +124,7 @@ class CaseEntity : public BallGameEntity
 	bool CheckIfAlreadyColliding(NewtonBody *ball);
 	void SetForceToApply(float force, dVector *direction);
 	void ApplyForceOnBall(NewtonBody *ball);
+    void ExportToJson(rapidjson::Value &v, rapidjson::Document::AllocatorType& allocator);
 	protected:
 	dArray<NewtonBody*> BallsUnderCollide;
 
@@ -123,6 +132,7 @@ class CaseEntity : public BallGameEntity
 	dVector *force_direction;
 
 	friend class BallGame;
+	friend class BallEntity;
 };
 
 class BallGame : public BaseApplication
@@ -139,6 +149,8 @@ class BallGame : public BaseApplication
     void _StopPhysic(void);
     void SwitchEditMode(void);
 
+    String Level;
+    void SetLevel(String &level_name);
     //Edit Ball
     void EditBall(BallEntity *Entity);
     BallEntity *UnderEditBall;
@@ -255,6 +267,12 @@ class BallGame : public BaseApplication
 
 
 	//////////////////////////////////////////////////
+
+    /////////////////// RapidJson ////////////////////
+
+    void ExportLevelIntoJson(String &export_str);
+
+    //////////////////////////////////////////////////
 
     virtual bool frameEnded(const Ogre::FrameEvent& fe);
     int camx;

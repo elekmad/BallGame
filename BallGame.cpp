@@ -1288,11 +1288,116 @@ bool BallGame::keyReleased( const OIS::KeyEvent &arg )
 
 bool BallGame::SaveLevelPushBCallback(const CEGUI::EventArgs &e)
 {
+	String export_str;
+	ExportLevelIntoJson(export_str);
+//	std::ofstream myfile;
+//	myfile.open (Level.c_str());
+//	myfile << export_str;
+//	myfile.close();
 	return true;
 }
 
 bool BallGame::ChooseLevelComboBCallback(const CEGUI::EventArgs &e)
 {
-	LevelNameBanner->setText(ChooseLevelComboB->getSelectedItem()->getText().c_str());
+	Level = ChooseLevelComboB->getSelectedItem()->getText().c_str();
+	LevelNameBanner->setText(Level);
 	return true;
+}
+
+void BallGame::SetLevel(String &level_name)
+{
+	Level = level_name;
+	LevelNameBanner->setText(Level);
+}
+
+void BallEntity::ExportToJson(rapidjson::Value &v, rapidjson::Document::AllocatorType& allocator)
+{
+	BallGameEntity::ExportToJson(v, allocator);
+	v.AddMember("Mass", InitialMass, allocator);
+}
+
+void CaseEntity::ExportToJson(rapidjson::Value &v, rapidjson::Document::AllocatorType& allocator)
+{
+	BallGameEntity::ExportToJson(v, allocator);
+	v.AddMember("Type", (int)type, allocator);
+	if(isnan(force_to_apply))
+		v.AddMember("ForcePresent", false, allocator);
+	else
+	{
+		v.AddMember("ForcePresent", true, allocator);
+		v.AddMember("ForceValue", force_to_apply, allocator);
+		if(force_direction == NULL)
+			v.AddMember("ForceDirectionPresent", false, allocator);
+		else
+		{
+			dVector *force_dir = force_direction;
+			v.AddMember("ForceDirectionPresent", true, allocator);
+			v.AddMember("ForceDirectionX", force_dir->m_x, allocator);
+			v.AddMember("ForceDirectionY", force_dir->m_y, allocator);
+			v.AddMember("ForceDirectionZ", force_dir->m_z, allocator);
+			v.AddMember("ForceDirectionW", force_dir->m_w, allocator);
+		}
+	}
+}
+
+void BallGameEntity::ExportToJson(rapidjson::Value &v, rapidjson::Document::AllocatorType& allocator)
+{
+	v.AddMember("PosX", InitialPos.x, allocator);
+	v.AddMember("PosY", InitialPos.y, allocator);
+	v.AddMember("PosZ", InitialPos.z, allocator);
+	v.AddMember("ScaleX", InitialScale.x, allocator);
+	v.AddMember("ScaleY", InitialScale.y, allocator);
+	v.AddMember("ScaleZ", InitialScale.z, allocator);
+	v.AddMember("OrientationX", InitialOrientation.x, allocator);
+	v.AddMember("OrientationY", InitialOrientation.y, allocator);
+	v.AddMember("OrientationZ", InitialOrientation.z, allocator);
+	v.AddMember("OrientationW", InitialOrientation.w, allocator);
+}
+
+void BallGame::ExportLevelIntoJson(String &export_str)
+{
+	rapidjson::Document document;
+	document.SetArray();
+
+	rapidjson::Document::AllocatorType& allocator = document.GetAllocator();
+	rapidjson::Value cases(rapidjson::kArrayType);
+
+	for(int cmpt = 0; cmpt < Cases.GetSize(); cmpt++)
+	{
+		NewtonBody *BEntity = Cases[cmpt];
+		if(BEntity == NULL)
+			continue;
+		CaseEntity *Entity = (CaseEntity*)NewtonBodyGetUserData(BEntity);
+		rapidjson::Value JCase(rapidjson::kObjectType);
+		JCase.AddMember("Type", Entity->type, allocator);
+		Entity->ExportToJson(JCase, allocator);
+
+		cases.PushBack(JCase, allocator);
+	}
+
+	document.PushBack(cases, allocator);
+
+	rapidjson::Value balls(rapidjson::kArrayType);
+
+	for(int cmpt = 0; cmpt < Balls.GetSize(); cmpt++)
+	{
+		NewtonBody *BEntity = Balls[cmpt];
+		if(BEntity == NULL)
+			continue;
+		BallEntity *Entity = (BallEntity*)NewtonBodyGetUserData(BEntity);
+		rapidjson::Value JCase(rapidjson::kObjectType);
+		Entity->ExportToJson(JCase, allocator);
+
+		balls.PushBack(JCase, allocator);
+	}
+
+	document.PushBack(balls, allocator);
+
+	rapidjson::StringBuffer strbuf;
+	rapidjson::Writer<rapidjson::StringBuffer> writer(strbuf);
+	document.Accept(writer);
+
+	export_str = strbuf.GetString();
+
+	std::cout << strbuf.GetString() << std::endl;
 }
