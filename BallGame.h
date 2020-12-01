@@ -37,7 +37,7 @@
 #define WORLD_LENGTH 20
 //#define WORLD_LENGTH 1
 //#define WORLD_DEPTH 20
-#define WORLD_DEPTH 1
+#define WORLD_DEPTH 2
 
 using namespace Ogre;
 using namespace OgreBites;
@@ -77,6 +77,7 @@ class BallGameEntity
 	~BallGameEntity(){}
     static void TransformCallback(const NewtonBody* body, const dFloat* matrix, int threadIndex);
     void ExportToJson(rapidjson::Value &v, rapidjson::Document::AllocatorType& allocator);
+    void ImportFromJson(rapidjson::Value &v);
     void SetOgreNode(SceneNode *node);
     void SetNewtonBody(NewtonBody *body);
 	protected:
@@ -103,9 +104,11 @@ class BallEntity : public BallGameEntity
 	public:
 	BallEntity(const dMatrix& matrix):BallGameEntity(matrix){}
 	BallEntity(){}
+	void CreateFromJson(rapidjson::Value &v, Ogre::SceneManager* mSceneMgr, NewtonWorld *m_world);
 	void AddForceVector(dVector *force);
     void ExportToJson(rapidjson::Value &v, rapidjson::Document::AllocatorType& allocator);
-  	dVector *GetForceVector();
+    void ImportFromJson(rapidjson::Value &v);
+	dVector *GetForceVector();
 	protected:
 	dList<dVector*> Forces;
 	float InitialMass;
@@ -125,11 +128,13 @@ class CaseEntity : public BallGameEntity
 	enum CaseType type;
 	CaseEntity(const dMatrix& matrix, enum CaseType _type = typeBox);
 	CaseEntity(enum CaseType _type = typeBox);
+	void CreateFromJson(rapidjson::Value &v, Ogre::SceneManager* mSceneMgr, NewtonWorld *m_world);
 //	void AddBallColliding(NewtonBody *ball);
 //	bool CheckIfAlreadyColliding(NewtonBody *ball);
 	void SetForceToApply(float force, dVector *direction);
 	void ApplyForceOnBall(BallEntity *ball);
     void ExportToJson(rapidjson::Value &v, rapidjson::Document::AllocatorType& allocator);
+    void ImportFromJson(rapidjson::Value &v);
 	protected:
 	dArray<NewtonBody*> BallsUnderCollide;
 
@@ -153,9 +158,12 @@ class BallGame : public BaseApplication
     void _StartPhysic(void);
     void _StopPhysic(void);
     void SwitchEditMode(void);
+    void ChangeLevel(void);
+    void ImportLevelFromJson(void);
 
     String Level;
     void SetLevel(String &level_name);
+
     //Edit Ball
     void EditBall(BallEntity *Entity);
     BallEntity *UnderEditBall;
