@@ -28,6 +28,9 @@
 #undef False
 #undef None
 #undef Bool
+#include <rapidjson/document.h>
+#include <rapidjson/writer.h>
+#include <rapidjson/stringbuffer.h>
 #include <CEGUI/CEGUI.h>
 #include <CEGUI/RendererModules/Ogre/Renderer.h>
 
@@ -214,14 +217,21 @@ class BallGame : public BaseApplication
 
     CEGUI::LayoutContainer* MainLayout;
 
-    bool QuitPushBCallback(const CEGUI::EventArgs &e);
-    bool EditModePushBCallback(const CEGUI::EventArgs &e);
-
-    //Edit buttons
     CEGUI::PushButton *StopPhysicPushB;
     bool StopPhysicPushBCallback(const CEGUI::EventArgs &e);
+    CEGUI::PushButton *EditModePushB;
+    bool EditModePushBCallback(const CEGUI::EventArgs &e);
+    CEGUI::Combobox *ChooseLevelComboB;
+    bool ChooseLevelComboBCallback(const CEGUI::EventArgs &e);
+    CEGUI::PushButton *SaveLevelPushB;
+    bool SaveLevelPushBCallback(const CEGUI::EventArgs &e);
+    CEGUI::PushButton *QuitPushB;
+    bool QuitPushBCallback(const CEGUI::EventArgs &e);
+
+    //Edit buttons
 
     CEGUI::Titlebar *EditingModeTitleBanner;
+    CEGUI::Titlebar *LevelNameBanner;
 
 
     //Edit Ball Buttons & Callbacks

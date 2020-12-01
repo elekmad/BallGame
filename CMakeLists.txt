@@ -26,6 +26,11 @@ add_executable(Demo ${CPP_SOURCE})
 
 find_package(PkgConfig REQUIRED)
 
+#RapidJson
+pkg_check_modules(Json REQUIRED IMPORTED_TARGET RapidJSON)
+target_link_libraries(Demo ${Json_LIBRARIES})
+include_directories(${Json_INCLUDE_DIRS})
+
 #CEGUI
 pkg_check_modules(CEGUI REQUIRED IMPORTED_TARGET CEGUI-0-OGRE)
 target_link_libraries(Demo ${CEGUI_LIBRARIES})

@@ -414,20 +414,21 @@ void BallGame::SetupGUI(void)
     //Main GUI
     MainLayout = static_cast<CEGUI::LayoutContainer*>(wmgr.createWindow("VerticalLayoutContainer"));
     sheet->addChild(MainLayout);
-    MainLayout->setVisible(false);
 
     StopPhysicPushB = (CEGUI::PushButton*)wmgr.createWindow("OgreTray/Button");
     StopPhysicPushB->setText("Start/Stop Physic");
     StopPhysicPushB->setSize(CEGUI::USize(CEGUI::UDim(0, 150), CEGUI::UDim(0, 30)));
+    StopPhysicPushB->setVisible(false);
 
     MainLayout->addChild(StopPhysicPushB);
 
     StopPhysicPushB->subscribeEvent(CEGUI::PushButton::EventClicked,
     		CEGUI::Event::Subscriber(&BallGame::StopPhysicPushBCallback, this));
 
-    CEGUI::PushButton *EditModePushB = (CEGUI::PushButton*)wmgr.createWindow("OgreTray/Button");
+    EditModePushB = (CEGUI::PushButton*)wmgr.createWindow("OgreTray/Button");
     EditModePushB->setText("Edit");
     EditModePushB->setSize(CEGUI::USize(CEGUI::UDim(0, 150), CEGUI::UDim(0, 30)));
+    EditModePushB->setVisible(false);
 
     MainLayout->addChild(EditModePushB);
 
@@ -436,16 +437,53 @@ void BallGame::SetupGUI(void)
 
     SetWindowsPosNearToOther(EditModePushB, StopPhysicPushB, 0, 1);
 
-    CEGUI::PushButton *QuitPushB = (CEGUI::PushButton*)wmgr.createWindow("OgreTray/Button");
+    ChooseLevelComboB = (CEGUI::Combobox*)wmgr.createWindow("OgreTray/Combobox");
+    ChooseLevelComboB->addItem(new CEGUI::ListboxTextItem("default.json"));
+    String default_level("default.json");
+    ChooseLevelComboB->setText(default_level);
+    ChooseLevelComboB->addItem(new CEGUI::ListboxTextItem("1.json"));
+    ChooseLevelComboB->addItem(new CEGUI::ListboxTextItem("2.json"));
+    ChooseLevelComboB->setSize(CEGUI::USize(CEGUI::UDim(0, 150), CEGUI::UDim(0, 30 * (ChooseLevelComboB->getItemCount() + 1))));
+    ChooseLevelComboB->setVisible(false);
+
+    MainLayout->addChild(ChooseLevelComboB);
+
+    ChooseLevelComboB->subscribeEvent(CEGUI::Combobox::EventListSelectionAccepted,
+    		CEGUI::Event::Subscriber(&BallGame::ChooseLevelComboBCallback, this));
+
+    SetWindowsPosNearToOther(ChooseLevelComboB, EditModePushB, 0, 1);
+
+    SaveLevelPushB = (CEGUI::PushButton*)wmgr.createWindow("OgreTray/Button");
+    SaveLevelPushB->setText("Save");
+    SaveLevelPushB->setSize(CEGUI::USize(CEGUI::UDim(0, 150), CEGUI::UDim(0, 30)));
+    SaveLevelPushB->setVisible(false);
+
+    MainLayout->addChild(SaveLevelPushB);
+
+    SaveLevelPushB->subscribeEvent(CEGUI::PushButton::EventClicked,
+    		CEGUI::Event::Subscriber(&BallGame::SaveLevelPushBCallback, this));
+
+    SetWindowsPosNearToOther(SaveLevelPushB, EditModePushB, 0, 2);// Be Carefull, Combobox size is size with combo expanded !
+
+    QuitPushB = (CEGUI::PushButton*)wmgr.createWindow("OgreTray/Button");
     QuitPushB->setText("Quit");
     QuitPushB->setSize(CEGUI::USize(CEGUI::UDim(0, 150), CEGUI::UDim(0, 30)));
+    QuitPushB->setVisible(false);
 
     MainLayout->addChild(QuitPushB);
 
     QuitPushB->subscribeEvent(CEGUI::PushButton::EventClicked,
     		CEGUI::Event::Subscriber(&BallGame::QuitPushBCallback, this));
 
-    SetWindowsPosNearToOther(QuitPushB, EditModePushB, 0, 1);
+    SetWindowsPosNearToOther(QuitPushB, SaveLevelPushB, 0, 1);
+
+    LevelNameBanner = (CEGUI::Titlebar*)wmgr.createWindow("OgreTray/Title");
+    LevelNameBanner->setText("Level");
+    LevelNameBanner->setSize(CEGUI::USize(CEGUI::UDim(0, 150), CEGUI::UDim(0, 30)));
+    LevelNameBanner->setVerticalAlignment(CEGUI::VA_TOP);
+    LevelNameBanner->setHorizontalAlignment(CEGUI::HA_CENTRE);
+
+    MainLayout->addChild(LevelNameBanner);
 
 
     //Edit GUI
@@ -458,6 +496,8 @@ void BallGame::SetupGUI(void)
     EditingModeTitleBanner->setVisible(false);
 
     MainLayout->addChild(EditingModeTitleBanner);
+
+    SetWindowsPosNearToOther(EditingModeTitleBanner, EditingModeTitleBanner, 0, 1);
 
     // Edit Case GUI
 
@@ -527,8 +567,6 @@ void BallGame::SetupGUI(void)
     NormalizeCaseForceDirectionPushB->setVisible(false);
     NormalizeCaseForceDirectionPushB->subscribeEvent(CEGUI::PushButton::EventClicked,
     		CEGUI::Event::Subscriber(&BallGame::NormalizeCaseForceDirectionPushBCallback, this));
-
-    SetWindowsPosNearToOther(QuitPushB, EditModePushB, 0, 1);
 
     MainLayout->addChild(NormalizeCaseForceDirectionPushB);
 
@@ -1183,10 +1221,18 @@ bool BallGame::keyPressed(const OIS::KeyEvent &arg)
     switch (arg.key)
     {
     case OIS::KeyCode::KC_ESCAPE :
-		if(MainLayout->isVisible())
+		if(QuitPushB->isVisible())
+		{
 			mRoot->queueEndRendering();
+		}
 		else
-			MainLayout->setVisible(true);
+		{
+			StopPhysicPushB->setVisible(true);
+			EditModePushB->setVisible(true);
+			ChooseLevelComboB->setVisible(true);
+			SaveLevelPushB->setVisible(true);
+			QuitPushB->setVisible(true);
+		}
 	    break;
 	case OIS::KeyCode::KC_UP:
 	    MoveCam(0, 0, 10);
@@ -1238,4 +1284,15 @@ bool BallGame::keyReleased( const OIS::KeyEvent &arg )
     	return true;
 	//BaseApplication::keyReleased(arg);
     return true;
+}
+
+bool BallGame::SaveLevelPushBCallback(const CEGUI::EventArgs &e)
+{
+	return true;
+}
+
+bool BallGame::ChooseLevelComboBCallback(const CEGUI::EventArgs &e)
+{
+	LevelNameBanner->setText(ChooseLevelComboB->getSelectedItem()->getText().c_str());
+	return true;
 }
