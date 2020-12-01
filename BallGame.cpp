@@ -16,13 +16,39 @@
 #include "BallGame.h"
 
 
-BallGameEntity::BallGameEntity(const dMatrix& matrix) : m_matrix(matrix)
-	,m_curPosition (matrix.m_posit)
-	,m_nextPosition (matrix.m_posit)
-	,m_curRotation (dQuaternion (matrix))
-	,m_nextRotation (dQuaternion (matrix))
+BallGameEntity::BallGameEntity(const dMatrix& matrix) :// m_matrix(matrix),
+	m_curPosition (matrix.m_posit),
+	m_nextPosition (matrix.m_posit),
+	m_curRotation (dQuaternion (matrix)),
+	m_nextRotation (dQuaternion (matrix))
 {
 	OgreEntity = NULL;
+	Body = NULL;
+}
+
+BallGameEntity::BallGameEntity()
+{
+	OgreEntity = NULL;
+	Body = NULL;
+}
+
+void BallGameEntity::SetOgreNode(SceneNode *node)
+{
+	OgreEntity = node;
+	if(node != NULL)
+	{
+		node->setPosition(InitialPos);
+		node->setScale(InitialScale);
+		node->setOrientation(InitialOrientation);
+		((Ogre::Entity*)node->getAttachedObject(0))->getUserObjectBindings().setUserAny(Ogre::Any(this));
+	}
+}
+
+void BallGameEntity::SetNewtonBody(NewtonBody *body)
+{
+	Body = body;
+	if(body != NULL)
+		NewtonBodySetUserData(body, this);
 }
 
 void BallGameEntity::SetMatrixUsafe(const dQuaternion& rotation, const dVector& position)
@@ -84,6 +110,13 @@ CaseEntity::CaseEntity(const dMatrix& matrix, enum CaseType _type):BallGameEntit
 	force_direction = NULL;
 }
 
+CaseEntity::CaseEntity(enum CaseType _type)
+{
+	type = _type;
+	force_to_apply = NAN;
+	force_direction = NULL;
+}
+
 void CaseEntity::SetForceToApply(float force, dVector *direction)
 {
 	force_to_apply = force;
@@ -92,6 +125,7 @@ void CaseEntity::SetForceToApply(float force, dVector *direction)
 	force_direction = direction;
 }
 
+/*
 void CaseEntity::AddBallColliding(NewtonBody *ball)
 {
 	if(ball == NULL)
@@ -118,32 +152,31 @@ bool CaseEntity::CheckIfAlreadyColliding(NewtonBody *ball)
 	}
 	return ret;
 }
-
-void CaseEntity::ApplyForceOnBall(NewtonBody *ball)
+*/
+void CaseEntity::ApplyForceOnBall(BallEntity *ball)
 {
-	BallEntity *BEntity = (BallEntity*)NewtonBodyGetUserData(ball);
 	if(!isnanf(force_to_apply))
 	{
 		if(force_direction != NULL)
 		{
 			dVector *force = new dVector();
 			*force = force_direction->Scale(force_to_apply);
-			BEntity->AddForceVector(force);
+			ball->AddForceVector(force);
 		}
 		else
 		{
 			dFloat velocity[3], sum;
-			NewtonBodyGetVelocity(ball, velocity);
+			NewtonBodyGetVelocity(ball->Body, velocity);
 			sum = velocity[0] + velocity[1] + velocity[2];
 			velocity[0] /= sum;
 			velocity[1] /= sum;
 			velocity[2] /= sum;//Like that we have normalization of velocity into percents, we can use it to scale force.
 			dVector *force = new dVector(velocity[0], velocity[1], velocity[2]);
 			*force = force->Scale(force_to_apply);
-			BEntity->AddForceVector(force);
+			ball->AddForceVector(force);
 		}
 	}
-	AddBallColliding(ball);
+	//AddBallColliding(ball);
 }
 
 NewtonWorld* BallGame::GetNewton(void)
@@ -682,8 +715,11 @@ void BallGame::SetupGame(void)
 					collision_tree = ParseEntity(m_world, ptr, ident_ogre_matrix);
 				}
 				tableBody = WorldAddCase(m_world, tsize, 0, casematrix, type, collision_tree);
-				CaseEntity *Entity = (CaseEntity*)NewtonBodyGetUserData(tableBody);
-				if(cmpt == 0 && cmpt2 == 0)
+				CaseEntity *Entity = new CaseEntity(casematrix, type);
+				Entity->InitialPos = ogreNode->getPosition();
+				Entity->InitialScale = ogreNode->getScale();
+				Entity->InitialOrientation = ogreNode->getOrientation();
+				if(cmpt == 0)
 				{
 					dVector *direction = new dVector(1.0, 0.0, 0.0);
 					Entity->SetForceToApply(100.0, direction);
@@ -699,9 +735,9 @@ void BallGame::SetupGame(void)
 					Entity->SetForceToApply(1000.0, direction);
 						//					dVector *force = new dVector(0.0, 0.0, 1000.0);
 				}
-				Entity->OgreEntity = ogreNode;
-				ogreEntity->getUserObjectBindings().setUserAny(Ogre::Any(Entity));
-				AddCase(tableBody);
+				Entity->SetOgreNode(ogreNode);
+				Entity->SetNewtonBody(tableBody);
+				AddCase(Entity);
 		}
     }
 
@@ -731,10 +767,14 @@ void BallGame::SetupGame(void)
 			Quaternion orientation = ogreNode->getOrientation();
 			dMatrix ballmatrix(orientation.getPitch(false).valueRadians(), orientation.getYaw(false).valueRadians(), orientation.getRoll(false).valueRadians(), location);
 			BallBody = WorldAddBall(m_world, 10, tsize, 0, ballmatrix);
-			BallEntity *Entity = (BallEntity*)NewtonBodyGetUserData(BallBody);
-			Entity->OgreEntity = ogreNode;
-			ogreEntity->getUserObjectBindings().setUserAny(Ogre::Any(Entity));
-			AddBall(BallBody);
+			BallEntity *Entity = new BallEntity(ballmatrix);
+			Entity->InitialPos = ogreNode->getPosition();
+			Entity->InitialScale = ogreNode->getScale();
+			Entity->InitialOrientation = ogreNode->getOrientation();
+			Entity->InitialMass = 10;
+			Entity->SetOgreNode(ogreNode);
+			Entity->SetNewtonBody(BallBody);
+			AddBall(Entity);
 		}
     }
 
@@ -750,25 +790,24 @@ void BallGame::CheckforCollides(void)
 {
 	for(int cmpt = 0; cmpt < Balls.GetSize(); cmpt++)
 	{
-		NewtonBody *ball = Balls[cmpt];
+		BallEntity *ball = Balls[cmpt];
 		if(ball == NULL)
 			continue;
 		for(int cmpt2 = 0; cmpt2 < Cases.GetSize(); cmpt2++)
 		{
-			NewtonBody *Case = Cases[cmpt2];
+			CaseEntity *Case = Cases[cmpt2];
 			if(Case == NULL)
 				continue;
 //          if(NewtonBodyFindContact(ball, Case) != NULL)
-			if(CheckIfBodiesCollide(ball, Case) != NULL)
+			if(CheckIfBodiesCollide(ball->Body, Case->Body) != NULL)
 			{
 				std::cout << ball << " id " << cmpt << " and " << Case << " id " << cmpt2 << " Collides by joints" << std::endl;
 			}
-			if(DoBodiesCollide(m_world, ball, Case))
+			if(DoBodiesCollide(m_world, ball->Body, Case->Body))
 			{
-				CaseEntity *CEntity = (CaseEntity*)NewtonBodyGetUserData(Case);
 				//if(!CEntity->CheckIfAlreadyColliding(ball))
 				{
-					CEntity->ApplyForceOnBall(ball);
+					Case->ApplyForceOnBall(ball);
 
 					std::cout << ball << " id " << cmpt << " and " << Case << " id " << cmpt2 << " Collides" << std::endl;
 				}
@@ -779,13 +818,11 @@ void BallGame::CheckforCollides(void)
 	}
 }
 
-void BallGame::AddBall(NewtonBody *ball)
+void BallGame::AddBall(BallEntity *ball)
 {
 	if(ball == NULL)
 		return;
-	int id = NewtonBodyGetID(ball), size = Balls.GetSize();
-	BallEntity *Entity = (BallEntity*)NewtonBodyGetUserData(ball);
-	Entity->NewtonID = id;
+	int id = NewtonBodyGetID(ball->Body), size = Balls.GetSize();
 	while(size < id)
 		Balls[size++] = NULL;
 	Balls[id] = ball;
@@ -794,13 +831,11 @@ void BallGame::AddBall(NewtonBody *ball)
 		Balls[size++] = NULL;
 }
 
-void BallGame::AddCase(NewtonBody *Wcase)
+void BallGame::AddCase(CaseEntity *Wcase)
 {
 	if(Wcase == NULL)
 		return;
-	int id = NewtonBodyGetID(Wcase), size = Cases.GetSize();
-	CaseEntity *Entity = (CaseEntity*)NewtonBodyGetUserData(Wcase);
-	Entity->NewtonID = id;
+	int id = NewtonBodyGetID(Wcase->Body), size = Cases.GetSize();
 	while(size < id)
 		Cases[size++] = NULL;
 	Cases[id] = Wcase;
@@ -818,10 +853,10 @@ bool BallGame::frameEnded(const Ogre::FrameEvent& fe)
 
 	for(int cmpt = 0; cmpt < Balls.GetSize(); cmpt++)
 	{
-		NewtonBody *ball = Balls[cmpt];
+		BallEntity *ball = Balls[cmpt];
 		if(ball == NULL)
 			continue;
-		Vector3 worldPos = ((BallGameEntity*)NewtonBodyGetUserData(ball))->OgreEntity->getPosition();
+		Vector3 worldPos = ball->OgreEntity->getPosition();
 		Vector3 hcsPosition = mCamera->getProjectionMatrix() * mCamera->getViewMatrix() * worldPos;
 #define ECART 0.25
 //#define ECART 0.8
@@ -1120,7 +1155,7 @@ bool BallGame::ApplyMassChangesToBallPushBCallback(const CEGUI::EventArgs &event
 		return true;
 	UnderEditBallMass = strtof(BallMassValueEditB->getText().c_str(), NULL);
 	std::cout << "Ball new mass : " << UnderEditBallMass << std::endl;
-	NewtonBody *Nball = Balls[UnderEditBall->NewtonID];
+	NewtonBody *Nball = UnderEditBall->Body;
 	NewtonCollision *collision = NewtonBodyGetCollision(Nball);
 	NewtonBodySetMassProperties(Nball, UnderEditBallMass, collision);
 	return true;
@@ -1139,7 +1174,7 @@ void BallGame::EditBall(BallEntity *Entity)
 	if(UnderEditBall != NULL)
 	{
 		UnderEditBall->OgreEntity->showBoundingBox(true);
-		NewtonBody *Nball = Balls[UnderEditBall->NewtonID];
+		NewtonBody *Nball = UnderEditBall->Body;
 		dFloat inertx, inerty, inertz;
 		NewtonBodyGetMass(Nball, &UnderEditBallMass, &inertx, &inerty, &inertz);
 		BallMassValueEditB->setVisible(true);
@@ -1364,10 +1399,9 @@ void BallGame::ExportLevelIntoJson(String &export_str)
 
 	for(int cmpt = 0; cmpt < Cases.GetSize(); cmpt++)
 	{
-		NewtonBody *BEntity = Cases[cmpt];
-		if(BEntity == NULL)
+		CaseEntity *Entity = Cases[cmpt];
+		if(Entity == NULL)
 			continue;
-		CaseEntity *Entity = (CaseEntity*)NewtonBodyGetUserData(BEntity);
 		rapidjson::Value JCase(rapidjson::kObjectType);
 		JCase.AddMember("Type", Entity->type, allocator);
 		Entity->ExportToJson(JCase, allocator);
@@ -1381,10 +1415,9 @@ void BallGame::ExportLevelIntoJson(String &export_str)
 
 	for(int cmpt = 0; cmpt < Balls.GetSize(); cmpt++)
 	{
-		NewtonBody *BEntity = Balls[cmpt];
-		if(BEntity == NULL)
+		BallEntity *Entity = Balls[cmpt];
+		if(Entity == NULL)
 			continue;
-		BallEntity *Entity = (BallEntity*)NewtonBodyGetUserData(BEntity);
 		rapidjson::Value JCase(rapidjson::kObjectType);
 		Entity->ExportToJson(JCase, allocator);
 

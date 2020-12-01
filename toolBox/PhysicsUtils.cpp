@@ -1186,8 +1186,6 @@ NewtonBody* WorldAddCase(NewtonWorld* const world, const dVector& size, int mate
 	tableBody = CreateSimpleSolid(world, 0.0f, matrix, collision, 0);
 	NewtonBodySetMassProperties(tableBody, 0.0f, NewtonBodyGetCollision(tableBody));
 	NewtonBodySetMaterialGroupID(tableBody, 0);
-	CaseEntity *entity = new CaseEntity(matrix, type);
-	NewtonBodySetUserData(tableBody, entity);
 	if(collision != NULL)
 		NewtonDestroyCollision(collision);
 	return tableBody;
@@ -1199,8 +1197,6 @@ NewtonBody* WorldAddBall(NewtonWorld* const world, dFloat mass, const dVector& s
 	NewtonCollision* const collision = CreateConvexCollision (world, dGetIdentityMatrix(), size, _SPHERE_PRIMITIVE, materialID);
 	dMatrix matrix (shapeOffsetMatrix);
 	ret = CreateSimpleSolid(world, mass, matrix, collision, materialID);
-	BallEntity *entity = new BallEntity(matrix);
-	NewtonBodySetUserData(ret, entity);
 	NewtonBodySetForceAndTorqueCallback(ret,  PhysicsAddForceAndGravity);
 	NewtonDestroyCollision(collision);
 

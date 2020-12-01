@@ -73,17 +73,20 @@ class BallGameEntity
 {
 	public:
 	BallGameEntity(const dMatrix& matrix);
+	BallGameEntity();
 	~BallGameEntity(){}
     static void TransformCallback(const NewtonBody* body, const dFloat* matrix, int threadIndex);
     void ExportToJson(rapidjson::Value &v, rapidjson::Document::AllocatorType& allocator);
-   	protected:
-	mutable dMatrix m_matrix;			// interpolated matrix
+    void SetOgreNode(SceneNode *node);
+    void SetNewtonBody(NewtonBody *body);
+	protected:
+	//mutable dMatrix m_matrix;			// interpolated matrix
 	dVector m_curPosition;				// position one physics simulation step in the future
 	dVector m_nextPosition;             // position at the current physics simulation step
 	dQuaternion m_curRotation;          // rotation one physics simulation step in the future
 	dQuaternion m_nextRotation;         // rotation at the current physics simulation step
 	SceneNode *OgreEntity;
-	int NewtonID;
+	NewtonBody *Body;
 	Ogre::Vector3 InitialPos;
 	Ogre::Vector3 InitialScale;
 	Ogre::Quaternion InitialOrientation;
@@ -99,6 +102,7 @@ class BallEntity : public BallGameEntity
 {
 	public:
 	BallEntity(const dMatrix& matrix):BallGameEntity(matrix){}
+	BallEntity(){}
 	void AddForceVector(dVector *force);
     void ExportToJson(rapidjson::Value &v, rapidjson::Document::AllocatorType& allocator);
   	dVector *GetForceVector();
@@ -120,10 +124,11 @@ class CaseEntity : public BallGameEntity
 	};
 	enum CaseType type;
 	CaseEntity(const dMatrix& matrix, enum CaseType _type = typeBox);
-	void AddBallColliding(NewtonBody *ball);
-	bool CheckIfAlreadyColliding(NewtonBody *ball);
+	CaseEntity(enum CaseType _type = typeBox);
+//	void AddBallColliding(NewtonBody *ball);
+//	bool CheckIfAlreadyColliding(NewtonBody *ball);
 	void SetForceToApply(float force, dVector *direction);
-	void ApplyForceOnBall(NewtonBody *ball);
+	void ApplyForceOnBall(BallEntity *ball);
     void ExportToJson(rapidjson::Value &v, rapidjson::Document::AllocatorType& allocator);
 	protected:
 	dArray<NewtonBody*> BallsUnderCollide;
@@ -189,13 +194,13 @@ class BallGame : public BaseApplication
     dFloat m_mainThreadPhysicsTimeAcc;
     bool m_asynchronousPhysicsUpdate;
 
-    dArray<NewtonBody*> Cases;
-    dArray<NewtonBody*> Balls;
+    dArray<CaseEntity*> Cases;
+    dArray<BallEntity*> Balls;
 
 
     void CheckforCollides(void);
-    void AddCase(NewtonBody *Entity);
-    void AddBall(NewtonBody *Entity);
+    void AddCase(CaseEntity *Entity);
+    void AddBall(BallEntity *Entity);
 
     /////////////////////////////////////////////////
 
