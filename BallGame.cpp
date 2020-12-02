@@ -888,7 +888,7 @@ bool BallGame::frameEnded(const Ogre::FrameEvent& fe)
 //    std::cout << "Render a frame" << std::endl;
 	dFloat timestep = dGetElapsedSeconds();
 	UpdatePhysics(timestep);
-/*
+
 	for(int cmpt = 0; cmpt < Balls.GetSize(); cmpt++)
 	{
 		BallEntity *ball = Balls[cmpt];
@@ -919,7 +919,7 @@ bool BallGame::frameEnded(const Ogre::FrameEvent& fe)
 			hcsPosition = mCamera->getProjectionMatrix() * mCamera->getViewMatrix() * worldPos;
 		}
 	}
-*/
+
     return true;
 }
 
