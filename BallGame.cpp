@@ -49,7 +49,15 @@ void BallGameEntity::SetNewtonBody(NewtonBody *body)
 {
 	Body = body;
 	if(body != NULL)
+	{
+		dMatrix matrix;
 		NewtonBodySetUserData(body, this);
+		NewtonBodyGetMatrix(body, &matrix[0][0]);
+		m_curPosition = matrix.m_posit;
+		m_nextPosition = matrix.m_posit;
+		m_curRotation = dQuaternion(matrix);
+		m_nextRotation = dQuaternion(matrix);
+	}
 }
 
 void BallGameEntity::SetMatrixUsafe(const dQuaternion& rotation, const dVector& position)
@@ -84,6 +92,16 @@ void BallGameEntity::TransformCallback(const NewtonBody* body, const dFloat* mat
 		ent->OgreEntity->setPosition(ent->m_curPosition.m_x, ent->m_curPosition.m_y, ent->m_curPosition.m_z);
 		ent->OgreEntity->setOrientation(ent->m_curRotation.m_w, ent->m_curRotation.m_x, ent->m_curRotation.m_y, ent->m_curRotation.m_z);
 	}
+}
+
+BallEntity::BallEntity(const dMatrix& matrix):BallGameEntity(matrix)
+{
+	InitialMass = 1;
+}
+
+BallEntity::BallEntity()
+{
+	InitialMass = 1;
 }
 
 void BallEntity::AddForceVector(dVector *force)
@@ -472,12 +490,11 @@ void BallGame::SetupGUI(void)
     SetWindowsPosNearToOther(EditModePushB, StopPhysicPushB, 0, 1);
 
     ChooseLevelComboB = (CEGUI::Combobox*)wmgr.createWindow("OgreTray/Combobox");
-    ChooseLevelComboB->addItem(new CEGUI::ListboxTextItem("default.json"));
-    String default_level("default.json");
+    ChooseLevelComboB->addItem(new CEGUI::ListboxTextItem("default_1.json"));
+    String default_level("default_1.json");
     ChooseLevelComboB->setText(default_level);
-    ChooseLevelComboB->addItem(new CEGUI::ListboxTextItem("1.json"));
-    ChooseLevelComboB->addItem(new CEGUI::ListboxTextItem("2.json"));
-    ChooseLevelComboB->setSize(CEGUI::USize(CEGUI::UDim(0, 150), CEGUI::UDim(0, 30 * (ChooseLevelComboB->getItemCount() + 1))));
+    ChooseLevelComboB->addItem(new CEGUI::ListboxTextItem("default_2.json"));
+    ChooseLevelComboB->setSize(CEGUI::USize(CEGUI::UDim(0, 150), CEGUI::UDim(0, 40 * (ChooseLevelComboB->getItemCount() + 1))));
     ChooseLevelComboB->setVisible(false);
 
     MainLayout->addChild(ChooseLevelComboB);
@@ -671,8 +688,9 @@ void BallGame::SetupGame(void)
     lightNode->setPosition(20, 80, 50);
     //! [lightpos]
 
-//    ChangeLevel();
+    ChangeLevel();
 
+#if 0
     //////////////   ADD CASES ///////////////////
 
 	for(int cmpt = 0; cmpt < WORLD_LENGTH; cmpt++)
@@ -750,7 +768,7 @@ void BallGame::SetupGame(void)
 
 	for(int cmpt = 0; cmpt < 1; cmpt++)
     {
-		for(int cmpt2 = 0; cmpt2 < 2; cmpt2++)
+		for(int cmpt2 = 0; cmpt2 < WORLD_DEPTH; cmpt2++)
 		{
 			dVector location;
 			dVector tsize;
@@ -785,7 +803,7 @@ void BallGame::SetupGame(void)
 			AddBall(Entity);
 		}
     }
-
+#endif
     //! [cameramove]
     SetCam(-184, -253, 352);
     mCamera->setOrientation(Ogre::Quaternion(0.835422, 0.393051, -0.238709, -0.300998));
@@ -809,7 +827,7 @@ void BallGame::CheckforCollides(void)
 //          if(NewtonBodyFindContact(ball, Case) != NULL)
 			if(CheckIfBodiesCollide(ball->Body, Case->Body) != NULL)
 			{
-				std::cout << ball << " id " << cmpt << " and " << Case << " id " << cmpt2 << " Collides by joints" << std::endl;
+				//std::cout << ball << " id " << cmpt << " and " << Case << " id " << cmpt2 << " Collides by joints" << std::endl;
 			}
 			if(DoBodiesCollide(m_world, ball->Body, Case->Body))
 			{
@@ -817,7 +835,7 @@ void BallGame::CheckforCollides(void)
 				{
 					Case->ApplyForceOnBall(ball);
 
-					std::cout << ball << " id " << cmpt << " and " << Case << " id " << cmpt2 << " Collides" << std::endl;
+					//std::cout << ball << " id " << cmpt << " and " << Case << " id " << cmpt2 << " Collides" << std::endl;
 				}
 //				else
 //					std::cout << ball << " id " << cmpt << " and " << Case << " id " << cmpt2 << " Already Colliding" << std::endl;
@@ -858,7 +876,7 @@ bool BallGame::frameEnded(const Ogre::FrameEvent& fe)
 //    std::cout << "Render a frame" << std::endl;
 	dFloat timestep = dGetElapsedSeconds();
 	UpdatePhysics(timestep);
-
+/*
 	for(int cmpt = 0; cmpt < Balls.GetSize(); cmpt++)
 	{
 		BallEntity *ball = Balls[cmpt];
@@ -889,7 +907,7 @@ bool BallGame::frameEnded(const Ogre::FrameEvent& fe)
 			hcsPosition = mCamera->getProjectionMatrix() * mCamera->getViewMatrix() * worldPos;
 		}
 	}
-
+*/
     return true;
 }
 
@@ -1333,17 +1351,21 @@ bool BallGame::SaveLevelPushBCallback(const CEGUI::EventArgs &e)
 {
 	String export_str;
 	ExportLevelIntoJson(export_str);
-//	std::ofstream myfile;
-//	myfile.open (Level.c_str());
-//	myfile << export_str;
-//	myfile.close();
+	std::ofstream myfile;
+	String Filename("Levels/");
+	Filename += Level;
+	myfile.open (Filename.c_str());
+	myfile << export_str;
+	myfile.close();
 	return true;
 }
 
 bool BallGame::ChooseLevelComboBCallback(const CEGUI::EventArgs &e)
 {
-	Level = ChooseLevelComboB->getSelectedItem()->getText().c_str();
-	LevelNameBanner->setText(Level);
+	String level;
+	level = ChooseLevelComboB->getSelectedItem()->getText().c_str();
+	SetLevel(level);
+	ChangeLevel();
 	return true;
 }
 
@@ -1510,7 +1532,27 @@ void BallGameEntity::ImportFromJson(rapidjson::Value &v)
 
 void BallGame::ChangeLevel(void)
 {
-
+	_StopPhysic();
+	for(int cmpt = 0; cmpt < Cases.GetSize(); cmpt++)
+	{
+		CaseEntity *Case = Cases[cmpt];
+		if(Case == NULL)
+			continue;
+		NewtonDestroyBody(Case->Body);
+		mSceneMgr->getRootSceneNode()->removeChild(Case->OgreEntity);
+		delete Case;
+		Cases[cmpt] = NULL;
+	}
+	for(int cmpt = 0; cmpt < Balls.GetSize(); cmpt++)
+	{
+		BallEntity *Ball = Balls[cmpt];
+		if(Ball == NULL)
+			continue;
+		NewtonDestroyBody(Ball->Body);
+		mSceneMgr->getRootSceneNode()->removeChild(Ball->OgreEntity);
+		delete Ball;
+		Balls[cmpt] = NULL;
+	}
 	ImportLevelFromJson();
 }
 
@@ -1518,7 +1560,9 @@ void BallGame::ImportLevelFromJson(void)
 {
 	std::ifstream myfile;
 	std::stringstream buffer;
-	myfile.open (Level.c_str());
+	String Filename("Levels/");
+	Filename += Level;
+	myfile.open (Filename.c_str());
 	buffer << myfile.rdbuf();
 	myfile.close();
 	rapidjson::Document in;

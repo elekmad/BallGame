@@ -37,7 +37,7 @@
 #define WORLD_LENGTH 20
 //#define WORLD_LENGTH 1
 //#define WORLD_DEPTH 20
-#define WORLD_DEPTH 2
+#define WORLD_DEPTH 1
 
 using namespace Ogre;
 using namespace OgreBites;
@@ -102,8 +102,8 @@ class BallGameEntity
 class BallEntity : public BallGameEntity
 {
 	public:
-	BallEntity(const dMatrix& matrix):BallGameEntity(matrix){}
-	BallEntity(){}
+	BallEntity(const dMatrix& matrix);
+	BallEntity();
 	void CreateFromJson(rapidjson::Value &v, Ogre::SceneManager* mSceneMgr, NewtonWorld *m_world);
 	void AddForceVector(dVector *force);
     void ExportToJson(rapidjson::Value &v, rapidjson::Document::AllocatorType& allocator);
