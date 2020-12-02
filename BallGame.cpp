@@ -205,20 +205,15 @@ NewtonWorld* BallGame::GetNewton(void)
 	return m_world;
 }
 
-void BallGame::SetCam(int x, int y, int z)
+void BallGame::SetCam(float x, float y, float z)
 {
-    camx = x;
-    camy = y;
-    camz = z;
     //camNode->translate(camx, camx, camz, Ogre::Node::TransformSpace::TS_LOCAL);
-    mCamera->setPosition(camx, camy, camz);
-    GetCamParams();
+    mCamera->setPosition(x, y, z);
 }
 
-void BallGame::MoveCam(int x, int y, int z)
+void BallGame::MoveCam(float x, float y, float z)
 {
 	mCamera->moveRelative(Ogre::Vector3(x, y, z));
-    //SetCam(camx + x, camy + y, camz + z);
 }
 
 
@@ -231,8 +226,6 @@ BallGame::BallGame() :
 		,m_mainThreadPhysicsTimeAcc(0.0f)
 {
 	mRenderer = NULL;
-
-    camx = camy = camz = 0;
 
 	m_world = NULL;
 	mWindow = NULL;
@@ -889,35 +882,58 @@ bool BallGame::frameEnded(const Ogre::FrameEvent& fe)
 	dFloat timestep = dGetElapsedSeconds();
 	UpdatePhysics(timestep);
 
-	for(int cmpt = 0; cmpt < Balls.GetSize(); cmpt++)
+	if(mode == Running)
 	{
-		BallEntity *ball = Balls[cmpt];
-		if(ball == NULL)
-			continue;
-		Vector3 worldPos = ball->OgreEntity->getPosition();
-		Vector3 hcsPosition = mCamera->getProjectionMatrix() * mCamera->getViewMatrix() * worldPos;
+		for(int cmpt = 0; cmpt < Balls.GetSize(); cmpt++)
+		{
+			BallEntity *ball = Balls[cmpt];
+			if(ball == NULL)
+				continue;
+			Vector3 worldPos = ball->OgreEntity->getPosition();
+			Vector3 hcsPosition = mCamera->getProjectionMatrix() * mCamera->getViewMatrix() * worldPos;
 #define ECART 0.25
 //#define ECART 0.8
-		while(hcsPosition.x >= ECART)
-		{
-			MoveCam(1, 0, 0);
-			hcsPosition = mCamera->getProjectionMatrix() * mCamera->getViewMatrix() * worldPos;
+			if(hcsPosition.x >= ECART)
+			{
+				MoveCam(0.1, 0, 0);
+				hcsPosition = mCamera->getProjectionMatrix() * mCamera->getViewMatrix() * worldPos;
+			}
+			if(hcsPosition.x <= -1 * ECART)
+			{
+				MoveCam(-0.1, 0, 0);
+				hcsPosition = mCamera->getProjectionMatrix() * mCamera->getViewMatrix() * worldPos;
+			}
+			if(hcsPosition.y >= ECART)
+			{
+				MoveCam(0, 0.1, 0);
+				hcsPosition = mCamera->getProjectionMatrix() * mCamera->getViewMatrix() * worldPos;
+			}
+			if(hcsPosition.y <= - 1 * ECART)
+			{
+				MoveCam(0, -0.1, 0);
+				hcsPosition = mCamera->getProjectionMatrix() * mCamera->getViewMatrix() * worldPos;
+			}
 		}
-		while(hcsPosition.x <= -1 * ECART)
-		{
-			MoveCam(-1, 0, 0);
-			hcsPosition = mCamera->getProjectionMatrix() * mCamera->getViewMatrix() * worldPos;
-		}
-		while(hcsPosition.y >= ECART)
-		{
-			MoveCam(0, 1, 0);
-			hcsPosition = mCamera->getProjectionMatrix() * mCamera->getViewMatrix() * worldPos;
-		}
-		while(hcsPosition.y <= - 1 * ECART)
-		{
-			MoveCam(0, -1, 0);
-			hcsPosition = mCamera->getProjectionMatrix() * mCamera->getViewMatrix() * worldPos;
-		}
+	}
+	else
+	{
+		CEGUI::Vector2f mpos = CEGUI::System::getSingleton().getDefaultGUIContext().getMouseCursor().getPosition();
+		// Will Mouse has not hit top left corner, there is a gap between OIS and CEGUI mouse coordinates. CEGUI is more reliable
+
+		float xmov = 0, ymov = 0;
+
+		if(mpos.d_x < 10)
+			xmov = -0.1;
+		if(mpos.d_x > mWindow->getWidth() - 10)
+			xmov = 0.1;
+
+		if(mpos.d_y < 10)
+			ymov = 0.1;
+		if(mpos.d_y > mWindow->getHeight() - 10)
+			ymov = -0.1;
+
+		if(xmov != 0 || ymov != 0)
+			MoveCam(xmov,  ymov,  0);
 	}
 
     return true;
@@ -929,9 +945,15 @@ bool BallGame::mouseMoved(const OIS::MouseEvent &arg)
     context.injectMouseMove(arg.state.X.rel, arg.state.Y.rel);
     //BaseApplication::mouseMoved(arg);
 
+	Real x, y;
+	CEGUI::Vector2f mpos = CEGUI::System::getSingleton().getDefaultGUIContext().getMouseCursor().getPosition();
+	// Will Mouse has not hit top left corner, there is a gap between OIS and CEGUI mouse coordinates. CEGUI is more reliable
+	x = mpos.d_x / (float)mWindow->getWidth();
+	y = mpos.d_y / (float)mWindow->getHeight();
 
 	if(arg.state.Z.rel != 0)
-		MoveCam(0,  0,  -10 * arg.state.Z.rel);
+		MoveCam(0,  0, -10 * arg.state.Z.rel);
+
 	if(mode == Editing)
 	{
 		if(LastHighligted != NULL)
@@ -943,11 +965,7 @@ bool BallGame::mouseMoved(const OIS::MouseEvent &arg)
 		}
 		RaySceneQuery *mRayScanQuery = mSceneMgr->createRayQuery(Ogre::Ray());
 
-		Real x, y;
-		CEGUI::Vector2f mpos = CEGUI::System::getSingleton().getDefaultGUIContext().getMouseCursor().getPosition();
-		// Will Mouse has not hit top left corner, there is a gap between OIS and CEGUI mouse coordinates. CEGUI is more reliable
-		x = mpos.d_x / (float)mWindow->getWidth();
-		y = mpos.d_y / (float)mWindow->getHeight();
+
 //		std::cout << "Coords Abs {" << arg.state.X.abs << ", " << arg.state.Y.abs << "}" << std::endl;
 //		std::cout << "Coords CEGUI {" << mpos.d_x << ", " << mpos.d_y << "}" << std::endl;
 //		std::cout << "Edit mode, try to pick {" << x << ", " << y << "}" << std::endl;
@@ -1308,16 +1326,16 @@ bool BallGame::keyPressed(const OIS::KeyEvent &arg)
 		}
 	    break;
 	case OIS::KeyCode::KC_UP:
-	    MoveCam(0, 0, 10);
+//	    MoveCam(0, 0, 10);
 	    break;
 	case OIS::KeyCode::KC_DOWN:
-	    MoveCam(0, 0, -10);
+//	    MoveCam(0, 0, -10);
 	    break;
 	case OIS::KeyCode::KC_LEFT:
-	    MoveCam(-10, 0, 0);
+//	    MoveCam(-10, 0, 0);
 	    break;
 	case OIS::KeyCode::KC_RIGHT:
-	    MoveCam(10, 0, 0);
+//	    MoveCam(10, 0, 0);
 	    break;
 //	case OIS::KeyCode::KC_KP_8:
 //	    CamPitch(10);

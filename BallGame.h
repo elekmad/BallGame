@@ -288,43 +288,8 @@ class BallGame : public BaseApplication
     //////////////////////////////////////////////////
 
     virtual bool frameEnded(const Ogre::FrameEvent& fe);
-    int camx;
-    int camy;
-    int camz;
-    Radian CamAnglePitch;
-    Radian CamAngleYaw;
-    Radian CamAngleRoll;
-    void SetCam(int x, int y, int z);
-    void MoveCam(int x, int y, int z);
-    void CamPitch(float angle)
-    {
-		Degree dangle(angle);
-		CamAnglePitch += dangle;
-		std::cout << "Pitch " << CamAnglePitch << std::endl;
-		mCamera->pitch(CamAnglePitch);//, Ogre::Node::TransformSpace::TS_LOCAL);
-		GetCamParams();
-    }
-    void CamYaw(float angle)
-    {
-		Degree dangle(angle);
-		CamAngleYaw += dangle;
-		std::cout << "Yaw " << CamAngleYaw << std::endl;
-		mCamera->yaw(CamAngleYaw);//, Ogre::Node::TransformSpace::TS_LOCAL);
-		GetCamParams();
-    }
-    void CamRoll(float angle)
-    {
-		Degree dangle(angle);
-		CamAngleRoll += dangle;
-		std::cout << "Roll " << CamAngleRoll << std::endl;
-		mCamera->roll(CamAngleRoll);//, Ogre::Node::TransformSpace::TS_LOCAL);
-		GetCamParams();
-    }
-    void GetCamParams(void)
-    {
-		std::cout << "Cam pos {" << camx << ", " << camy << ", " << camz << "}" << std::endl;
-		std::cout << "Orientation = " << mCamera->getOrientation() << std::endl;
-    }
+    void SetCam(float x, float y, float z);
+    void MoveCam(float x, float y, float z);
 };
 
 
