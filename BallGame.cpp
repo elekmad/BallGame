@@ -13,6 +13,8 @@
 #include <dNewtonScopeBuffer.h>
 #include <Newton.h>
 #include <OgreRay.h>
+#include <sys/types.h>
+#include <dirent.h>
 //Put BallGame.h in last because of Xlib defines (True False Bool None) which must be undef
 #include "BallGame.h"
 
@@ -490,10 +492,19 @@ void BallGame::SetupGUI(void)
     SetWindowsPosNearToOther(EditModePushB, StopPhysicPushB, 0, 1);
 
     ChooseLevelComboB = (CEGUI::Combobox*)wmgr.createWindow("OgreTray/Combobox");
-    ChooseLevelComboB->addItem(new CEGUI::ListboxTextItem("default_1.json"));
-    String default_level("default_1.json");
-    ChooseLevelComboB->setText(default_level);
-    ChooseLevelComboB->addItem(new CEGUI::ListboxTextItem("default_2.json"));
+    DIR *dir = opendir("Levels");
+    dirent *entry;
+    while((entry = readdir(dir)) != NULL)
+    {
+    	if(strcmp(entry->d_name, ".") == 0)
+    		continue;
+    	if(strcmp(entry->d_name, "..") == 0)
+    		continue;
+    	ChooseLevelComboB->addItem(new CEGUI::ListboxTextItem(entry->d_name));
+        if(ChooseLevelComboB->getText().empty() == true)
+        	ChooseLevelComboB->setText(entry->d_name);
+    }
+    closedir(dir);
     ChooseLevelComboB->setSize(CEGUI::USize(CEGUI::UDim(0, 150), CEGUI::UDim(0, 40 * (ChooseLevelComboB->getItemCount() + 1))));
     ChooseLevelComboB->setVisible(false);
 
@@ -537,6 +548,7 @@ void BallGame::SetupGUI(void)
     MainLayout->addChild(LevelNameBanner);
 
     //Now LevelNameBanner exist, we can call SetLevel !
+    String default_level = ChooseLevelComboB->getText().c_str();
     SetLevel(default_level);
 
 
