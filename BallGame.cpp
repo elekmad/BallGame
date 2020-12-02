@@ -27,12 +27,14 @@ BallGameEntity::BallGameEntity(const dMatrix& matrix) :// m_matrix(matrix),
 {
 	OgreEntity = NULL;
 	Body = NULL;
+	type = Case;
 }
 
 BallGameEntity::BallGameEntity()
 {
 	OgreEntity = NULL;
 	Body = NULL;
+	type = Case;
 }
 
 void BallGameEntity::SetOgreNode(SceneNode *node)
@@ -99,11 +101,13 @@ void BallGameEntity::TransformCallback(const NewtonBody* body, const dFloat* mat
 BallEntity::BallEntity(const dMatrix& matrix):BallGameEntity(matrix)
 {
 	InitialMass = 1;
+	type = Ball;
 }
 
 BallEntity::BallEntity()
 {
 	InitialMass = 1;
+	type = Ball;
 }
 
 void BallEntity::AddForceVector(dVector *force)
@@ -127,6 +131,7 @@ dVector *BallEntity::GetForceVector()
 CaseEntity::CaseEntity(const dMatrix& matrix, enum CaseType _type):BallGameEntity(matrix)
 {
 	type = _type;
+	this->BallGameEntity::type = Case;
 	force_to_apply = NAN;
 	force_direction = NULL;
 }
@@ -134,6 +139,7 @@ CaseEntity::CaseEntity(const dMatrix& matrix, enum CaseType _type):BallGameEntit
 CaseEntity::CaseEntity(enum CaseType _type)
 {
 	type = _type;
+	this->BallGameEntity::type = Case;
 	force_to_apply = NAN;
 	force_direction = NULL;
 }
@@ -232,6 +238,8 @@ BallGame::BallGame() :
 	LastHighligted = NULL;
 	UnderEditCase = NULL;
 	UnderEditBall = NULL;
+	ToBePlacedEntity = NULL;
+	PlacementMode = Move;
 	mode = Running;
 	// create the newton world
 	SetupNewton();
@@ -396,6 +404,9 @@ void BallGame::SwitchEditMode(void)
 		mode = Editing;
 		_StopPhysic();
 		EditingModeTitleBanner->setVisible(true);
+		AddElementTitleBanner->setVisible(true);
+		ChooseTypeOfElementToAddB->setVisible(true);
+		PlaceNewElementB->setVisible(true);
 	}
 	else
 	{
@@ -410,6 +421,9 @@ void BallGame::SwitchEditMode(void)
 		CaseForceDirectionYValueEditB->setVisible(false);
 		CaseForceDirectionZValueEditB->setVisible(false);
 		NormalizeCaseForceDirectionPushB->setVisible(false);
+		AddElementTitleBanner->setVisible(false);
+		ChooseLevelComboB->setVisible(false);
+		PlaceNewElementB->setVisible(false);
 		if(LastHighligted != NULL)
 		{
 			LastHighligted->showBoundingBox(false);
@@ -421,6 +435,79 @@ void BallGame::SwitchEditMode(void)
 			UnderEditCase = NULL;
 		}
 	}
+}
+
+bool BallGame::PlaceNewElementBCallback(const CEGUI::EventArgs &e)
+{
+	if(ToBePlacedEntity != NULL)
+		return true;
+	std::cout << "Placing new element ?" << std::endl;
+	ToBePlacedEntity = new CaseEntity();
+
+	ToBePlacedEntity->InitialPos.x = 0;
+	ToBePlacedEntity->InitialPos.y = 0;
+	ToBePlacedEntity->InitialPos.z = 0;
+	ToBePlacedEntity->InitialScale.x = 25;
+	ToBePlacedEntity->InitialScale.y = 25;
+	ToBePlacedEntity->InitialScale.z = 25;
+	ToBePlacedEntity->InitialOrientation.x = 0;
+	ToBePlacedEntity->InitialOrientation.y = 0;
+	ToBePlacedEntity->InitialOrientation.z = 0;
+	ToBePlacedEntity->InitialOrientation.w = 1;
+
+	Entity *ogreEntity;
+	SceneNode *ogreNode;
+	ogreEntity = mSceneMgr->createEntity("Cube.mesh");
+	ogreNode = mSceneMgr->getRootSceneNode()->createChildSceneNode(ToBePlacedEntity->InitialPos);
+	ogreNode->attachObject(ogreEntity);
+	ogreNode->showBoundingBox(true);
+	ToBePlacedEntity->SetOgreNode(ogreNode);
+
+	return true;
+}
+
+void BallGame::PlaceNewElement(void)
+{
+	if(ToBePlacedEntity == NULL)
+		return;
+	std::cout << "Placing new element !" << std::endl;
+	ToBePlacedEntity->OgreEntity->showBoundingBox(false);
+
+
+	dVector NewtonBodyLocation;
+	dVector NewtonBodySize;
+	NewtonBody *newtonBody;
+
+	ToBePlacedEntity->InitialPos = ToBePlacedEntity->OgreEntity->getPosition();
+	ToBePlacedEntity->InitialScale = ToBePlacedEntity->OgreEntity->getScale();
+	ToBePlacedEntity->InitialOrientation = ToBePlacedEntity->OgreEntity->getOrientation();
+	NewtonBodyLocation.m_x = ToBePlacedEntity->InitialPos.x;
+	NewtonBodyLocation.m_y = ToBePlacedEntity->InitialPos.y;
+	NewtonBodyLocation.m_z = ToBePlacedEntity->InitialPos.z;
+	NewtonBodyLocation.m_w = 1;
+	Entity *ogreEntity = (Ogre::Entity*)ToBePlacedEntity->OgreEntity->getAttachedObject(0);
+	Vector3 AABB(ogreEntity->getBoundingBox().getSize());
+	NewtonBodySize.m_x = AABB.x * ToBePlacedEntity->InitialScale.x;
+	NewtonBodySize.m_y = AABB.y * ToBePlacedEntity->InitialScale.y;
+	NewtonBodySize.m_z = AABB.z * ToBePlacedEntity->InitialScale.z;
+	NewtonBodySize.m_w = 0.0f;
+
+	dMatrix casematrix(ToBePlacedEntity->InitialOrientation.getPitch(false).valueRadians(), ToBePlacedEntity->InitialOrientation.getYaw(false).valueRadians(), ToBePlacedEntity->InitialOrientation.getRoll(false).valueRadians(), NewtonBodyLocation);
+	if(ToBePlacedEntity->type == Case)
+	{
+		CaseEntity *Case = (CaseEntity*)ToBePlacedEntity;
+		NewtonCollision *collision_tree = NULL;
+		if(Case->type == CaseEntity::CaseType::typeRamp)
+		{
+			Matrix4 ident_ogre_matrix = Matrix4::IDENTITY;
+			const MeshPtr ptr = ogreEntity->getMesh();
+			collision_tree = ParseEntity(m_world, ptr, ident_ogre_matrix);
+		}
+		newtonBody = WorldAddCase(m_world, NewtonBodySize, 0, casematrix, Case->type, collision_tree);
+		ToBePlacedEntity->SetNewtonBody(newtonBody);
+		AddCase(Case);
+	}
+	ToBePlacedEntity = NULL;
 }
 
 bool BallGame::EditModePushBCallback(const CEGUI::EventArgs &e)
@@ -557,6 +644,44 @@ void BallGame::SetupGUI(void)
     MainLayout->addChild(EditingModeTitleBanner);
 
     SetWindowsPosNearToOther(EditingModeTitleBanner, EditingModeTitleBanner, 0, 1);
+
+    // Add new Element GUI
+    AddElementTitleBanner = (CEGUI::Titlebar*)wmgr.createWindow("OgreTray/Title");
+    AddElementTitleBanner->setText("Add");
+    AddElementTitleBanner->setSize(CEGUI::USize(CEGUI::UDim(0, 150), CEGUI::UDim(0, 30)));
+    AddElementTitleBanner->setVerticalAlignment(CEGUI::VA_CENTRE);
+    AddElementTitleBanner->setHorizontalAlignment(CEGUI::HA_RIGHT);
+    AddElementTitleBanner->setVisible(false);
+
+    MainLayout->addChild(AddElementTitleBanner);
+
+
+    ChooseTypeOfElementToAddB = (CEGUI::Combobox*)wmgr.createWindow("OgreTray/Combobox");
+    ChooseTypeOfElementToAddB->addItem(new CEGUI::ListboxTextItem("Case"));
+    ChooseTypeOfElementToAddB->setText("Case");
+    ChooseTypeOfElementToAddB->addItem(new CEGUI::ListboxTextItem("Ball"));
+    ChooseTypeOfElementToAddB->setSize(CEGUI::USize(CEGUI::UDim(0, 150), CEGUI::UDim(0, 40 * (ChooseLevelComboB->getItemCount() + 1))));
+    ChooseTypeOfElementToAddB->setVerticalAlignment(CEGUI::VA_CENTRE);
+    ChooseTypeOfElementToAddB->setHorizontalAlignment(CEGUI::HA_RIGHT);
+    ChooseTypeOfElementToAddB->setVisible(false);
+
+    MainLayout->addChild(ChooseTypeOfElementToAddB);
+
+    SetWindowsPosNearToOther(ChooseTypeOfElementToAddB, AddElementTitleBanner, 0, 1);
+
+    PlaceNewElementB = (CEGUI::PushButton*)wmgr.createWindow("OgreTray/Button");
+    PlaceNewElementB->setText("Place");
+    PlaceNewElementB->setSize(CEGUI::USize(CEGUI::UDim(0, 150), CEGUI::UDim(0, 30)));
+    PlaceNewElementB->setVerticalAlignment(CEGUI::VA_CENTRE);
+    PlaceNewElementB->setHorizontalAlignment(CEGUI::HA_RIGHT);
+    PlaceNewElementB->setVisible(false);
+
+    PlaceNewElementB->subscribeEvent(CEGUI::PushButton::EventClicked,
+			CEGUI::Event::Subscriber(&BallGame::PlaceNewElementBCallback, this));
+
+    MainLayout->addChild(PlaceNewElementB);
+
+    SetWindowsPosNearToOther(PlaceNewElementB, AddElementTitleBanner, 0, 2);
 
     // Edit Case GUI
 
@@ -1259,34 +1384,21 @@ bool BallGame::mousePressed( const OIS::MouseEvent &arg, OIS::MouseButtonID id )
     	if(LastHighligted != NULL)
     	{
 			//Case Entity ?
-			try
-			{
-				CaseEntity *Entity = Ogre::any_cast<CaseEntity*>(((Ogre::Entity*)LastHighligted->getAttachedObject(0))->getUserObjectBindings().getUserAny());
-				if(Entity != NULL)
-				{
+    		std::cout << "Edit by Mouse Pressed" << std::endl;
+    		BallGameEntity *Entity = Ogre::any_cast<BallGameEntity*>(((Ogre::Entity*)LastHighligted->getAttachedObject(0))->getUserObjectBindings().getUserAny());
+    		switch(Entity->type)
+    		{
+    		case Case :
 					std::cout << "Edit Case by Mouse Pressed" << std::endl;
 					EditBall(NULL);//Hide Ball Editing buttons;
-					EditCase(Entity);
-				}
-			}
-			catch(Ogre::Exception &e)
-			{
-				//Ball Entity ?
-				try
-				{
-					BallEntity *Entity = Ogre::any_cast<BallEntity*>(((Ogre::Entity*)LastHighligted->getAttachedObject(0))->getUserObjectBindings().getUserAny());
-					if(Entity != NULL)
-					{
-						std::cout << "Edit Ball by Mouse Pressed" << std::endl;
-						EditCase(NULL);//Hide Case Editing buttons;
-						EditBall(Entity);
-					}
-				}
-				catch(Ogre::Exception &e)
-				{
-
-				}
-			}
+					EditCase((CaseEntity*)Entity);
+					break;
+    		case Ball :
+					std::cout << "Edit Ball by Mouse Pressed" << std::endl;
+					EditCase(NULL);//Hide Case Editing buttons;
+					EditBall((BallEntity*)Entity);
+					break;
+    		}
     	}
     }
     return true;
@@ -1326,44 +1438,185 @@ bool BallGame::keyPressed(const OIS::KeyEvent &arg)
 		}
 	    break;
 	case OIS::KeyCode::KC_UP:
-//	    MoveCam(0, 0, 10);
+		if(ToBePlacedEntity != NULL)
+		{
+			switch(PlacementMode)
+			{
+			case Move :
+				{
+					Vector3 pos = ToBePlacedEntity->OgreEntity->getPosition();
+					pos.y += 10;
+					ToBePlacedEntity->OgreEntity->setPosition(pos);
+				}
+				break;
+			case Rotate :
+				ToBePlacedEntity->OgreEntity->yaw(Degree(10));
+				break;
+			case Scale :
+				{
+					Vector3 pos = ToBePlacedEntity->OgreEntity->getScale();
+					pos.y += 10;
+					ToBePlacedEntity->OgreEntity->setScale(pos);
+				}
+				break;
+			}
+		}
 	    break;
 	case OIS::KeyCode::KC_DOWN:
-//	    MoveCam(0, 0, -10);
+		if(ToBePlacedEntity != NULL)
+		{
+			switch(PlacementMode)
+			{
+			case Move :
+				{
+					Vector3 pos = ToBePlacedEntity->OgreEntity->getPosition();
+					pos.y -= 10;
+					ToBePlacedEntity->OgreEntity->setPosition(pos);
+				}
+				break;
+			case Rotate :
+				ToBePlacedEntity->OgreEntity->yaw(Degree(-10));
+				break;
+			case Scale :
+				{
+					Vector3 pos = ToBePlacedEntity->OgreEntity->getScale();
+					pos.y -= 10;
+					ToBePlacedEntity->OgreEntity->setScale(pos);
+				}
+				break;
+			}
+		}
 	    break;
 	case OIS::KeyCode::KC_LEFT:
-//	    MoveCam(-10, 0, 0);
+		if(ToBePlacedEntity != NULL)
+		{
+			switch(PlacementMode)
+			{
+			case Move :
+				{
+					Vector3 pos = ToBePlacedEntity->OgreEntity->getPosition();
+					pos.x -= 10;
+					ToBePlacedEntity->OgreEntity->setPosition(pos);
+				}
+				break;
+			case Rotate :
+				ToBePlacedEntity->OgreEntity->pitch(Degree(10));
+				break;
+			case Scale :
+				{
+					Vector3 pos = ToBePlacedEntity->OgreEntity->getScale();
+					pos.x -= 10;
+					ToBePlacedEntity->OgreEntity->setScale(pos);
+				}
+				break;
+			}
+		}
 	    break;
 	case OIS::KeyCode::KC_RIGHT:
-//	    MoveCam(10, 0, 0);
+		if(ToBePlacedEntity != NULL)
+		{
+			switch(PlacementMode)
+			{
+			case Move :
+				{
+					Vector3 pos = ToBePlacedEntity->OgreEntity->getPosition();
+					pos.x += 10;
+					ToBePlacedEntity->OgreEntity->setPosition(pos);
+				}
+				break;
+			case Rotate :
+				ToBePlacedEntity->OgreEntity->pitch(Degree(-10));
+				break;
+			case Scale :
+				{
+					Vector3 pos = ToBePlacedEntity->OgreEntity->getScale();
+					pos.x += 10;
+					ToBePlacedEntity->OgreEntity->setScale(pos);
+				}
+				break;
+			}
+		}
 	    break;
-//	case OIS::KeyCode::KC_KP_8:
-//	    CamPitch(10);
-//	    break;
-//	case OIS::KeyCode::KC_KP_5:
-//	    CamPitch(-10);
-//	    break;
-//	case OIS::KeyCode::KC_KP_4:
-//	    CamYaw(10);
-//	    break;
-//	case OIS::KeyCode::KC_KP_6:
-//	    CamYaw(-10);
-//	    break;
-//	case OIS::KeyCode::KC_KP_7:
-//	    CamRoll(10);
-//	    break;
-//	case OIS::KeyCode::KC_KP_9:
-//	    CamRoll(-10);
-//	    break;
-        case OIS::KeyCode::KC_PAUSE:
-        	if(m_suspendPhysicsUpdate)
-        		_StartPhysic();
-        	else
-        		_StopPhysic();
-            break;
-        case OIS::KeyCode::KC_F1:
-        	SwitchEditMode();
-            break;
+	case OIS::KeyCode::KC_PGUP:
+		if(ToBePlacedEntity != NULL)
+		{
+			switch(PlacementMode)
+			{
+			case Move :
+				{
+					Vector3 pos = ToBePlacedEntity->OgreEntity->getPosition();
+					pos.z += 10;
+					ToBePlacedEntity->OgreEntity->setPosition(pos);
+				}
+				break;
+			case Rotate :
+				ToBePlacedEntity->OgreEntity->roll(Degree(10));
+				break;
+			case Scale :
+				{
+					Vector3 pos = ToBePlacedEntity->OgreEntity->getScale();
+					pos.z += 10;
+					ToBePlacedEntity->OgreEntity->setScale(pos);
+				}
+				break;
+			}
+		}
+	    break;
+	case OIS::KeyCode::KC_PGDOWN:
+		if(ToBePlacedEntity != NULL)
+		{
+			switch(PlacementMode)
+			{
+			case Move :
+				{
+					Vector3 pos = ToBePlacedEntity->OgreEntity->getPosition();
+					pos.z -= 10;
+					ToBePlacedEntity->OgreEntity->setPosition(pos);
+				}
+				break;
+			case Rotate :
+				ToBePlacedEntity->OgreEntity->roll(Degree(-10));
+				break;
+			case Scale :
+				{
+					Vector3 pos = ToBePlacedEntity->OgreEntity->getScale();
+					pos.z -= 10;
+					ToBePlacedEntity->OgreEntity->setScale(pos);
+				}
+				break;
+			}
+		}
+	    break;
+	case OIS::KeyCode::KC_SPACE:
+		if(mode == Editing)
+			PlaceNewElement();
+		break;
+	case OIS::KeyCode::KC_M:
+		if(mode == Editing)
+		{
+			switch(PlacementMode)
+			{
+			case Move :
+				PlacementMode = Rotate;
+				break;
+			case Rotate :
+				PlacementMode = Scale;
+				break;
+			case Scale :
+				PlacementMode = Move;
+				break;
+			}
+		}
+		break;
+	case OIS::KeyCode::KC_PAUSE:
+		if(m_suspendPhysicsUpdate)
+			_StartPhysic();
+		else
+			_StopPhysic();
+		break;
+	case OIS::KeyCode::KC_F1:
+		SwitchEditMode();
+		break;
     }
     return true;
 }

@@ -68,7 +68,11 @@ using namespace OgreBites;
 #endif
 
 class BallGame;
-
+enum BallGameEntityType
+{
+	Case,
+	Ball
+};
 class BallGameEntity
 {
 	public:
@@ -81,6 +85,7 @@ class BallGameEntity
     void SetOgreNode(SceneNode *node);
     void SetNewtonBody(NewtonBody *body);
 	protected:
+    enum BallGameEntityType type;
 	//mutable dMatrix m_matrix;			// interpolated matrix
 	dVector m_curPosition;				// position one physics simulation step in the future
 	dVector m_nextPosition;             // position at the current physics simulation step
@@ -163,6 +168,17 @@ class BallGame : public BaseApplication
 
     String Level;
     void SetLevel(String &level_name);
+
+    //Place New Element
+    enum PlacementModes
+	{
+    	Move,
+		Rotate,
+		Scale
+	}PlacementMode;
+
+    BallGameEntity *ToBePlacedEntity;
+    void PlaceNewElement(void);
 
     //Edit Ball
     void EditBall(BallEntity *Entity);
@@ -257,6 +273,13 @@ class BallGame : public BaseApplication
 
     CEGUI::Titlebar *EditingModeTitleBanner;
     CEGUI::Titlebar *LevelNameBanner;
+
+    //Add new elements Buttons & Callbacks
+    CEGUI::Titlebar *AddElementTitleBanner;
+    CEGUI::Combobox *ChooseTypeOfElementToAddB;
+    bool ChooseTypeOfElementToAddBCallback(const CEGUI::EventArgs &e);
+    CEGUI::PushButton *PlaceNewElementB;
+    bool PlaceNewElementBCallback(const CEGUI::EventArgs &e);
 
 
     //Edit Ball Buttons & Callbacks
