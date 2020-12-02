@@ -13,8 +13,8 @@
 #include <dNewtonScopeBuffer.h>
 #include <Newton.h>
 #include <OgreRay.h>
-#include <sys/types.h>
-#include <dirent.h>
+//#include <sys/types.h>
+#include <glob.h>
 //Put BallGame.h in last because of Xlib defines (True False Bool None) which must be undef
 #include "BallGame.h"
 
@@ -492,19 +492,19 @@ void BallGame::SetupGUI(void)
     SetWindowsPosNearToOther(EditModePushB, StopPhysicPushB, 0, 1);
 
     ChooseLevelComboB = (CEGUI::Combobox*)wmgr.createWindow("OgreTray/Combobox");
-    DIR *dir = opendir("Levels");
-    dirent *entry;
-    while((entry = readdir(dir)) != NULL)
-    {
-    	if(strcmp(entry->d_name, ".") == 0)
-    		continue;
-    	if(strcmp(entry->d_name, "..") == 0)
-    		continue;
-    	ChooseLevelComboB->addItem(new CEGUI::ListboxTextItem(entry->d_name));
+    glob_t glob_result;
+	memset(&glob_result, 0, sizeof(glob_result));
+	glob("Levels/*.json", 0, NULL, &glob_result);
+	for(size_t i = 0; i < glob_result.gl_pathc; ++i)
+	{
+		String globname(glob_result.gl_pathv[i]), filename;
+		size_t slashpos = globname.find_last_of('/'), dotpos = globname.find_last_of('.');
+		filename = globname.substr(slashpos + 1, dotpos - (slashpos + 1));
+		ChooseLevelComboB->addItem(new CEGUI::ListboxTextItem(filename));
         if(ChooseLevelComboB->getText().empty() == true)
-        	ChooseLevelComboB->setText(entry->d_name);
-    }
-    closedir(dir);
+        	ChooseLevelComboB->setText(filename);
+	}
+	globfree(&glob_result);
     ChooseLevelComboB->setSize(CEGUI::USize(CEGUI::UDim(0, 150), CEGUI::UDim(0, 40 * (ChooseLevelComboB->getItemCount() + 1))));
     ChooseLevelComboB->setVisible(false);
 
@@ -1366,6 +1366,7 @@ bool BallGame::SaveLevelPushBCallback(const CEGUI::EventArgs &e)
 	std::ofstream myfile;
 	String Filename("Levels/");
 	Filename += Level;
+	Filename += ".json";
 	myfile.open (Filename.c_str());
 	myfile << export_str;
 	myfile.close();
@@ -1574,6 +1575,7 @@ void BallGame::ImportLevelFromJson(void)
 	std::stringstream buffer;
 	String Filename("Levels/");
 	Filename += Level;
+	Filename += ".json";
 	myfile.open (Filename.c_str());
 	buffer << myfile.rdbuf();
 	myfile.close();
