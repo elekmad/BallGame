@@ -177,6 +177,7 @@ class BallGame : public BaseApplication
 		Scale
 	}PlacementMode;
 
+	enum BallGameEntityType ToBePlacedEntityType;
     BallGameEntity *ToBePlacedEntity;
     void PlaceNewElement(void);
 

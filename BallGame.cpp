@@ -239,6 +239,7 @@ BallGame::BallGame() :
 	UnderEditCase = NULL;
 	UnderEditBall = NULL;
 	ToBePlacedEntity = NULL;
+	ToBePlacedEntityType = Case;
 	PlacementMode = Move;
 	mode = Running;
 	// create the newton world
@@ -437,12 +438,37 @@ void BallGame::SwitchEditMode(void)
 	}
 }
 
+bool BallGame::ChooseTypeOfElementToAddBCallback(const CEGUI::EventArgs &e)
+{
+	String ElementType;
+	ElementType = ChooseTypeOfElementToAddB->getSelectedItem()->getText().c_str();
+	if(ElementType == "Case")
+		ToBePlacedEntityType = Case;
+	else if(ElementType == "Ball")
+		ToBePlacedEntityType = Ball;
+	return true;
+}
+
 bool BallGame::PlaceNewElementBCallback(const CEGUI::EventArgs &e)
 {
+	Entity *ogreEntity;
+	SceneNode *ogreNode;
+
 	if(ToBePlacedEntity != NULL)
 		return true;
+
 	std::cout << "Placing new element ?" << std::endl;
-	ToBePlacedEntity = new CaseEntity();
+	switch(ToBePlacedEntityType)
+	{
+	case Case :
+		ToBePlacedEntity = new CaseEntity();
+		ogreEntity = mSceneMgr->createEntity("Cube.mesh");
+		break;
+	case Ball :
+		ToBePlacedEntity = new BallEntity();
+		ogreEntity = mSceneMgr->createEntity("Sphere.mesh");
+		break;
+	}
 
 	ToBePlacedEntity->InitialPos.x = 0;
 	ToBePlacedEntity->InitialPos.y = 0;
@@ -455,9 +481,6 @@ bool BallGame::PlaceNewElementBCallback(const CEGUI::EventArgs &e)
 	ToBePlacedEntity->InitialOrientation.z = 0;
 	ToBePlacedEntity->InitialOrientation.w = 1;
 
-	Entity *ogreEntity;
-	SceneNode *ogreNode;
-	ogreEntity = mSceneMgr->createEntity("Cube.mesh");
 	ogreNode = mSceneMgr->getRootSceneNode()->createChildSceneNode(ToBePlacedEntity->InitialPos);
 	ogreNode->attachObject(ogreEntity);
 	ogreNode->showBoundingBox(true);
@@ -492,20 +515,29 @@ void BallGame::PlaceNewElement(void)
 	NewtonBodySize.m_z = AABB.z * ToBePlacedEntity->InitialScale.z;
 	NewtonBodySize.m_w = 0.0f;
 
-	dMatrix casematrix(ToBePlacedEntity->InitialOrientation.getPitch(false).valueRadians(), ToBePlacedEntity->InitialOrientation.getYaw(false).valueRadians(), ToBePlacedEntity->InitialOrientation.getRoll(false).valueRadians(), NewtonBodyLocation);
-	if(ToBePlacedEntity->type == Case)
+	dMatrix bodymatrix(ToBePlacedEntity->InitialOrientation.getPitch(false).valueRadians(), ToBePlacedEntity->InitialOrientation.getYaw(false).valueRadians(), ToBePlacedEntity->InitialOrientation.getRoll(false).valueRadians(), NewtonBodyLocation);
+	switch(ToBePlacedEntity->type)
 	{
-		CaseEntity *Case = (CaseEntity*)ToBePlacedEntity;
-		NewtonCollision *collision_tree = NULL;
-		if(Case->type == CaseEntity::CaseType::typeRamp)
+	case Case :
 		{
-			Matrix4 ident_ogre_matrix = Matrix4::IDENTITY;
-			const MeshPtr ptr = ogreEntity->getMesh();
-			collision_tree = ParseEntity(m_world, ptr, ident_ogre_matrix);
+			CaseEntity *Case = (CaseEntity*)ToBePlacedEntity;
+			NewtonCollision *collision_tree = NULL;
+			if(Case->type == CaseEntity::CaseType::typeRamp)
+			{
+				Matrix4 ident_ogre_matrix = Matrix4::IDENTITY;
+				const MeshPtr ptr = ogreEntity->getMesh();
+				collision_tree = ParseEntity(m_world, ptr, ident_ogre_matrix);
+			}
+			newtonBody = WorldAddCase(m_world, NewtonBodySize, 0, bodymatrix, Case->type, collision_tree);
+			ToBePlacedEntity->SetNewtonBody(newtonBody);
+			AddCase(Case);
 		}
-		newtonBody = WorldAddCase(m_world, NewtonBodySize, 0, casematrix, Case->type, collision_tree);
+		break;
+	case Ball :
+		newtonBody = WorldAddBall(m_world, 10, NewtonBodySize, 0, bodymatrix);
 		ToBePlacedEntity->SetNewtonBody(newtonBody);
-		AddCase(Case);
+		AddBall((BallEntity*)ToBePlacedEntity);
+		break;
 	}
 	ToBePlacedEntity = NULL;
 }
@@ -665,9 +697,11 @@ void BallGame::SetupGUI(void)
     ChooseTypeOfElementToAddB->setHorizontalAlignment(CEGUI::HA_RIGHT);
     ChooseTypeOfElementToAddB->setVisible(false);
 
+    ChooseTypeOfElementToAddB->subscribeEvent(CEGUI::Combobox::EventListSelectionAccepted,
+    		CEGUI::Event::Subscriber(&BallGame::ChooseTypeOfElementToAddBCallback, this));
+
     MainLayout->addChild(ChooseTypeOfElementToAddB);
 
-    SetWindowsPosNearToOther(ChooseTypeOfElementToAddB, AddElementTitleBanner, 0, 1);
 
     PlaceNewElementB = (CEGUI::PushButton*)wmgr.createWindow("OgreTray/Button");
     PlaceNewElementB->setText("Place");
@@ -681,7 +715,8 @@ void BallGame::SetupGUI(void)
 
     MainLayout->addChild(PlaceNewElementB);
 
-    SetWindowsPosNearToOther(PlaceNewElementB, AddElementTitleBanner, 0, 2);
+    SetWindowsPosNearToOther(AddElementTitleBanner, ChooseTypeOfElementToAddB, 0, -1);
+    SetWindowsPosNearToOther(PlaceNewElementB, ChooseTypeOfElementToAddB, 0, 1);
 
     // Edit Case GUI
 
