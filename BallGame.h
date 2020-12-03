@@ -67,6 +67,21 @@ using namespace OgreBites;
 #  include "OgreStaticPluginLoader.h"
 #endif
 
+#define Normalize2(a, b) \
+	({ typeof(a) __a = (a); \
+	typeof(b) __b = (b); \
+	sqrt(__a * __a + __b * __b);})
+
+#define Normalize3(a, b, c) \
+		({ typeof(a) __a = (a); \
+		typeof(b) __b = (b); \
+		typeof(c) __c = (c); \
+		sqrt(__a * __a + __b * __b + __c * __c);})
+#define max(a,b) \
+  ({ typeof (a) _a = (a); \
+      typeof (b) _b = (b); \
+    _a > _b ? _a : _b; })
+
 class BallGame;
 enum BallGameEntityType
 {
@@ -298,12 +313,21 @@ class BallGame : public BaseApplication
     //Edit Case Buttons & Callbacks
     CEGUI::ToggleButton *CaseHasForceToggleB;
     CEGUI::Editbox *CaseForceValueEditB;
+    inline void CaseForceValueEditBSetText(float value);
+    inline void CaseForceValueEditBSetText(double value);
+    bool CaseForceValueEditBCallback(const CEGUI::EventArgs &event);
     CEGUI::ToggleButton *CaseHasForceDirectionToggleB;
     bool ToggleForceCallback(const CEGUI::EventArgs &e);
     bool ToggleForceDirectedCallback(const CEGUI::EventArgs &event);
     CEGUI::Editbox *CaseForceDirectionXValueEditB;
+    inline void CaseForceDirectionXValueEditBSetText(float value);
+    inline void CaseForceDirectionXValueEditBSetText(double value);
     CEGUI::Editbox *CaseForceDirectionYValueEditB;
+    inline void CaseForceDirectionYValueEditBSetText(float value);
+    inline void CaseForceDirectionYValueEditBSetText(double value);
     CEGUI::Editbox *CaseForceDirectionZValueEditB;
+    inline void CaseForceDirectionZValueEditBSetText(float value);
+    inline void CaseForceDirectionZValueEditBSetText(double value);
     CEGUI::PushButton *NormalizeCaseForceDirectionPushB;
     bool NormalizeCaseForceDirectionPushBCallback(const CEGUI::EventArgs &e);
     CEGUI::PushButton *ApplyForceChangesToCasePushB;

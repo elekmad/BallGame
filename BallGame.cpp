@@ -195,7 +195,7 @@ void CaseEntity::ApplyForceOnBall(BallEntity *ball)
 		{
 			dFloat velocity[3], sum;
 			NewtonBodyGetVelocity(ball->Body, velocity);
-			sum = velocity[0] + velocity[1] + velocity[2];
+			sum = Normalize3(velocity[0], velocity[1], velocity[2]);
 			velocity[0] /= sum;
 			velocity[1] /= sum;
 			velocity[2] /= sum;//Like that we have normalization of velocity into percents, we can use it to scale force.
@@ -350,6 +350,68 @@ void BallGame::createScene(void)
 	SetupGame();
 }
 
+bool BallGame::CaseForceValueEditBCallback(const CEGUI::EventArgs &event)
+{
+	UnderEditCaseForce = strtof(CaseForceValueEditB->getText().c_str(), NULL);
+	return true;
+}
+
+inline void BallGame::CaseForceValueEditBSetText(float value)
+{
+	char force_c[20];
+	snprintf(force_c, 19, "%.3f", value);
+	CaseForceValueEditB->setText(force_c);
+}
+
+inline void BallGame::CaseForceValueEditBSetText(double value)
+{
+	char force_c[20];
+	snprintf(force_c, 19, "%.3f", value);
+	CaseForceValueEditB->setText(force_c);
+}
+
+inline void BallGame::CaseForceDirectionXValueEditBSetText(float value)
+{
+	char force_c[20];
+	snprintf(force_c, 19, "%.3f", value);
+	CaseForceDirectionXValueEditB->setText(force_c);
+}
+
+inline void BallGame::CaseForceDirectionXValueEditBSetText(double value)
+{
+	char force_c[20];
+	snprintf(force_c, 19, "%.3f", value);
+	CaseForceDirectionXValueEditB->setText(force_c);
+}
+
+inline void BallGame::CaseForceDirectionYValueEditBSetText(float value)
+{
+	char force_c[20];
+	snprintf(force_c, 19, "%.3f", value);
+	CaseForceDirectionYValueEditB->setText(force_c);
+}
+
+inline void BallGame::CaseForceDirectionYValueEditBSetText(double value)
+{
+	char force_c[20];
+	snprintf(force_c, 19, "%.3f", value);
+	CaseForceDirectionYValueEditB->setText(force_c);
+}
+
+inline void BallGame::CaseForceDirectionZValueEditBSetText(float value)
+{
+	char force_c[20];
+	snprintf(force_c, 19, "%.3f", value);
+	CaseForceDirectionZValueEditB->setText(force_c);
+}
+
+inline void BallGame::CaseForceDirectionZValueEditBSetText(double value)
+{
+	char force_c[20];
+	snprintf(force_c, 19, "%.3f", value);
+	CaseForceDirectionZValueEditB->setText(force_c);
+}
+
 bool BallGame::NormalizeCaseForceDirectionPushBCallback(const CEGUI::EventArgs &e)
 {
 	char force_c[20];
@@ -357,19 +419,13 @@ bool BallGame::NormalizeCaseForceDirectionPushBCallback(const CEGUI::EventArgs &
 	direction_x = strtod(CaseForceDirectionXValueEditB->getText().c_str(), NULL);
 	direction_y = strtod(CaseForceDirectionYValueEditB->getText().c_str(), NULL);
 	direction_z = strtod(CaseForceDirectionZValueEditB->getText().c_str(), NULL);
-	direction = sqrt(direction_x * direction_x + direction_y * direction_y + direction_z * direction_z);
+	direction = Normalize3(direction_x, direction_y, direction_z);
 
-	direction_x /= direction;
-	snprintf(force_c, 19, "%f", direction_x);
-	CaseForceDirectionXValueEditB->setText(force_c);
+	CaseForceDirectionXValueEditBSetText(direction_x / direction);
 
-	direction_y /= direction;
-	snprintf(force_c, 19, "%f", direction_y);
-	CaseForceDirectionYValueEditB->setText(force_c);
+	CaseForceDirectionYValueEditBSetText(direction_y / direction);
 
-	direction_z /= direction;
-	snprintf(force_c, 19, "%f", direction_z);
-	CaseForceDirectionZValueEditB->setText(force_c);
+	CaseForceDirectionZValueEditBSetText(direction_z / direction);
     return true;
 }
 
@@ -791,6 +847,11 @@ void BallGame::SetupGUI(void)
     CaseForceValueEditB->setVerticalAlignment(CEGUI::VA_BOTTOM);
     CaseForceValueEditB->setHorizontalAlignment(CEGUI::HA_CENTRE);
     CaseForceValueEditB->setVisible(false);
+
+    CaseForceValueEditB->subscribeEvent(CEGUI::Editbox::EventTextAccepted,
+			CEGUI::Event::Subscriber(&BallGame::CaseForceValueEditBCallback, this));
+    CaseForceValueEditB->subscribeEvent(CEGUI::Editbox::EventMouseLeavesArea,
+			CEGUI::Event::Subscriber(&BallGame::CaseForceValueEditBCallback, this));
 
     MainLayout->addChild(CaseForceValueEditB);
 
@@ -1308,13 +1369,8 @@ void BallGame::UpdateEditButtons(void)
 		std::cout << "Base Force is present"<< std::endl;
 		CaseHasForceToggleB->setSelected(true);
 		CaseHasForceDirectionToggleB->setDisabled(false);
-		String ForceStr;
-		char force_c[50];
-		snprintf(force_c, 49, "%.3f", UnderEditCaseForce);
-		ForceStr = force_c;
-		std::cout << "Force " <<  UnderEditCaseForce << ", " << force_c << ", " << ForceStr << std::endl;
+		CaseForceValueEditBSetText(UnderEditCaseForce);
 		CaseForceValueEditB->setDisabled(false);
-		CaseForceValueEditB->setText(ForceStr);
 
 		if(force_directed == false)
 		{
@@ -1336,15 +1392,9 @@ void BallGame::UpdateEditButtons(void)
 			CaseForceDirectionXValueEditB->setDisabled(false);
 			CaseForceDirectionYValueEditB->setDisabled(false);
 			CaseForceDirectionZValueEditB->setDisabled(false);
-			snprintf(force_c, 49, "%.3f", force_direction.m_x);
-			ForceStr = force_c;
-			CaseForceDirectionXValueEditB->setText(ForceStr);
-			snprintf(force_c, 49, "%.3f", force_direction.m_y);
-			ForceStr = force_c;
-			CaseForceDirectionYValueEditB->setText(ForceStr);
-			snprintf(force_c, 49, "%.3f", force_direction.m_z);
-			ForceStr = force_c;
-			CaseForceDirectionZValueEditB->setText(ForceStr);
+			CaseForceDirectionXValueEditBSetText(force_direction.m_x);
+			CaseForceDirectionYValueEditBSetText(force_direction.m_y);
+			CaseForceDirectionZValueEditBSetText(force_direction.m_z);
 			NormalizeCaseForceDirectionPushB->setDisabled(false);
 		}
 	}
@@ -1507,7 +1557,13 @@ bool BallGame::keyPressed(const OIS::KeyEvent &arg)
     case OIS::KeyCode::KC_ESCAPE :
 		if(QuitPushB->isVisible())
 		{
-			mRoot->queueEndRendering();
+			StopPhysicPushB->setVisible(false);
+			EditModePushB->setVisible(false);
+			ChooseLevelComboB->setVisible(false);
+			NewLevelEditB->setVisible(false);
+			NewLevelCreateB->setVisible(false);
+			SaveLevelPushB->setVisible(false);
+			QuitPushB->setVisible(false);
 		}
 		else
 		{
