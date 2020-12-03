@@ -81,6 +81,7 @@ void BallGameEntity::SetMatrixUsafe(const dQuaternion& rotation, const dVector& 
 
 void BallGameEntity::TransformCallback(const NewtonBody* body, const dFloat* matrix, int threadIndex)
 {
+//	std::cout << "TransformCallback" << std::endl;
 	BallGameEntity* const ent = (BallGameEntity*) NewtonBodyGetUserData(body);
 	if (ent) {
 		BallGame* const scene = (BallGame*)NewtonWorldGetUserData(NewtonBodyGetWorld(body));
@@ -272,6 +273,7 @@ BallGame::~BallGame()
 
 void BallGame::PostUpdateCallback(const NewtonWorld* const world, dFloat timestep)
 {
+//	std::cout << "Post Update Time " << timestep << std::endl;
 /*	BallGame* const scene = (BallGame*) NewtonWorldGetUserData(world);
 	scene->m_cameraManager->FixUpdate(scene->GetNewton(), timestep);
 	if (scene->m_updateCamera) {
@@ -990,20 +992,12 @@ void BallGame::CheckforCollides(void)
 			if(Case == NULL)
 				continue;
 //          if(NewtonBodyFindContact(ball, Case) != NULL)
+//			if(DoBodiesCollide(m_world, ball->Body, Case->Body))
 			if(CheckIfBodiesCollide(ball->Body, Case->Body) != NULL)
 			{
-				//std::cout << ball << " id " << cmpt << " and " << Case << " id " << cmpt2 << " Collides by joints" << std::endl;
-			}
-			if(DoBodiesCollide(m_world, ball->Body, Case->Body))
-			{
-				//if(!CEntity->CheckIfAlreadyColliding(ball))
-				{
-					Case->ApplyForceOnBall(ball);
+				Case->ApplyForceOnBall(ball);
 
-					//std::cout << ball << " id " << cmpt << " and " << Case << " id " << cmpt2 << " Collides" << std::endl;
-				}
-//				else
-//					std::cout << ball << " id " << cmpt << " and " << Case << " id " << cmpt2 << " Already Colliding" << std::endl;
+				std::cout << ball << " id " << cmpt << " and " << Case << " id " << cmpt2 << " Collides" << std::endl;
 			}
 		}
 	}
@@ -1176,7 +1170,7 @@ bool BallGame::ApplyForceChangesToCasePushBCallback(const CEGUI::EventArgs &even
 	dVector *force_dir = NULL;
 	if(UnderEditCase == NULL)
 		return true;
-
+	UnderEditCaseForce = NAN;
 	if(CaseHasForce == true)
 	{
 		UnderEditCaseForce = strtof(CaseForceValueEditB->getText().c_str(), NULL);
@@ -1264,7 +1258,7 @@ void BallGame::UpdateEditButtons(void)
 		CaseHasForceDirectionToggleB->setDisabled(false);
 		String ForceStr;
 		char force_c[50];
-		snprintf(force_c, 49, "%f", UnderEditCaseForce);
+		snprintf(force_c, 49, "%.3f", UnderEditCaseForce);
 		ForceStr = force_c;
 		std::cout << "Force " <<  UnderEditCaseForce << ", " << force_c << ", " << ForceStr << std::endl;
 		CaseForceValueEditB->setDisabled(false);
@@ -1290,13 +1284,13 @@ void BallGame::UpdateEditButtons(void)
 			CaseForceDirectionXValueEditB->setDisabled(false);
 			CaseForceDirectionYValueEditB->setDisabled(false);
 			CaseForceDirectionZValueEditB->setDisabled(false);
-			snprintf(force_c, 49, "%f", force_direction.m_x);
+			snprintf(force_c, 49, "%.3f", force_direction.m_x);
 			ForceStr = force_c;
 			CaseForceDirectionXValueEditB->setText(ForceStr);
-			snprintf(force_c, 49, "%f", force_direction.m_y);
+			snprintf(force_c, 49, "%.3f", force_direction.m_y);
 			ForceStr = force_c;
 			CaseForceDirectionYValueEditB->setText(ForceStr);
-			snprintf(force_c, 49, "%f", force_direction.m_z);
+			snprintf(force_c, 49, "%.3f", force_direction.m_z);
 			ForceStr = force_c;
 			CaseForceDirectionZValueEditB->setText(ForceStr);
 			NormalizeCaseForceDirectionPushB->setDisabled(false);
