@@ -677,7 +677,7 @@ void BallGame::SetupGUI(void)
 
     SetWindowsPosNearToOther(QuitPushB, SaveLevelPushB, 0, 1);
 
-    LevelNameBanner = (CEGUI::Titlebar*)wmgr.createWindow("OgreTray/Title");
+    LevelNameBanner = (CEGUI::Titlebar*)wmgr.createWindow("OgreTray/Titlebar");
     LevelNameBanner->setText("Level");
     LevelNameBanner->setSize(CEGUI::USize(CEGUI::UDim(0, 150), CEGUI::UDim(0, 30)));
     LevelNameBanner->setVerticalAlignment(CEGUI::VA_TOP);
@@ -704,11 +704,14 @@ void BallGame::SetupGUI(void)
     SetWindowsPosNearToOther(EditingModeTitleBanner, EditingModeTitleBanner, 0, 1);
 
     // Add new Element GUI
-    AddElementTitleBanner = (CEGUI::Titlebar*)wmgr.createWindow("OgreTray/Title");
+    AddElementTitleBanner = (CEGUI::Titlebar*)wmgr.createWindow("OgreTray/Titlebar");
     AddElementTitleBanner->setText("Add");
     AddElementTitleBanner->setSize(CEGUI::USize(CEGUI::UDim(0, 150), CEGUI::UDim(0, 30)));
-    AddElementTitleBanner->setVerticalAlignment(CEGUI::VA_CENTRE);
+    AddElementTitleBanner->setVerticalAlignment(CEGUI::VA_TOP);
     AddElementTitleBanner->setHorizontalAlignment(CEGUI::HA_RIGHT);
+    CEGUI::UVector2 pos = AddElementTitleBanner->getPosition();
+    pos.d_y = CEGUI::UDim(0, (mWindow->getHeight() / 2) - 60);
+    AddElementTitleBanner->setPosition(pos);
     AddElementTitleBanner->setVisible(false);
 
     MainLayout->addChild(AddElementTitleBanner);
@@ -719,7 +722,7 @@ void BallGame::SetupGUI(void)
     ChooseTypeOfElementToAddB->setText("Case");
     ChooseTypeOfElementToAddB->addItem(new CEGUI::ListboxTextItem("Ball"));
     ChooseTypeOfElementToAddB->setSize(CEGUI::USize(CEGUI::UDim(0, 150), CEGUI::UDim(0, 40 * (ChooseLevelComboB->getItemCount() + 1))));
-    ChooseTypeOfElementToAddB->setVerticalAlignment(CEGUI::VA_CENTRE);
+    ChooseTypeOfElementToAddB->setVerticalAlignment(CEGUI::VA_TOP);
     ChooseTypeOfElementToAddB->setHorizontalAlignment(CEGUI::HA_RIGHT);
     ChooseTypeOfElementToAddB->setVisible(false);
 
@@ -732,7 +735,7 @@ void BallGame::SetupGUI(void)
     PlaceNewElementB = (CEGUI::PushButton*)wmgr.createWindow("OgreTray/Button");
     PlaceNewElementB->setText("Place");
     PlaceNewElementB->setSize(CEGUI::USize(CEGUI::UDim(0, 150), CEGUI::UDim(0, 30)));
-    PlaceNewElementB->setVerticalAlignment(CEGUI::VA_CENTRE);
+    PlaceNewElementB->setVerticalAlignment(CEGUI::VA_TOP);
     PlaceNewElementB->setHorizontalAlignment(CEGUI::HA_RIGHT);
     PlaceNewElementB->setVisible(false);
 
@@ -741,8 +744,8 @@ void BallGame::SetupGUI(void)
 
     MainLayout->addChild(PlaceNewElementB);
 
-    SetWindowsPosNearToOther(AddElementTitleBanner, ChooseTypeOfElementToAddB, 0, -1);
-    SetWindowsPosNearToOther(PlaceNewElementB, ChooseTypeOfElementToAddB, 0, 1);
+    SetWindowsPosNearToOther(ChooseTypeOfElementToAddB, AddElementTitleBanner, 0, 1);
+    SetWindowsPosNearToOther(PlaceNewElementB, AddElementTitleBanner, 0, 2);
 
     // Edit Case GUI
 
@@ -1435,7 +1438,7 @@ bool BallGame::mousePressed( const OIS::MouseEvent &arg, OIS::MouseButtonID id )
     //BaseApplication::mousePressed(arg, id);
     if(mode == Editing)
     {
-    	if(LastHighligted != NULL)
+    	if(LastHighligted != NULL && (ToBePlacedEntity == NULL || LastHighligted != ToBePlacedEntity->OgreEntity))
     	{
 			//Case Entity ?
     		std::cout << "Edit by Mouse Pressed" << std::endl;
