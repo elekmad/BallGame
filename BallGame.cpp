@@ -846,6 +846,8 @@ void BallGame::SetupGUI(void)
     CaseForceValueEditB->setSize(CEGUI::USize(CEGUI::UDim(0, 50), CEGUI::UDim(0, 30)));
     CaseForceValueEditB->setVerticalAlignment(CEGUI::VA_BOTTOM);
     CaseForceValueEditB->setHorizontalAlignment(CEGUI::HA_CENTRE);
+    String numRegex("^(\\-?[0-9]+(\\.[0-9]+)?)?");
+    CaseForceValueEditB->setValidationString(numRegex);
     CaseForceValueEditB->setVisible(false);
 
     CaseForceValueEditB->subscribeEvent(CEGUI::Editbox::EventTextAccepted,
@@ -872,6 +874,7 @@ void BallGame::SetupGUI(void)
     CaseForceDirectionXValueEditB->setSize(CEGUI::USize(CEGUI::UDim(0, 50), CEGUI::UDim(0, 30)));
     CaseForceDirectionXValueEditB->setVerticalAlignment(CEGUI::VA_BOTTOM);
     CaseForceDirectionXValueEditB->setHorizontalAlignment(CEGUI::HA_CENTRE);
+    CaseForceDirectionXValueEditB->setValidationString(numRegex);
     CaseForceDirectionXValueEditB->setVisible(false);
 
     MainLayout->addChild(CaseForceDirectionXValueEditB);
@@ -880,6 +883,7 @@ void BallGame::SetupGUI(void)
     CaseForceDirectionYValueEditB->setSize(CEGUI::USize(CEGUI::UDim(0, 50), CEGUI::UDim(0, 30)));
     CaseForceDirectionYValueEditB->setVerticalAlignment(CEGUI::VA_BOTTOM);
     CaseForceDirectionYValueEditB->setHorizontalAlignment(CEGUI::HA_CENTRE);
+    CaseForceDirectionYValueEditB->setValidationString(numRegex);
     CaseForceDirectionYValueEditB->setVisible(false);
 
     MainLayout->addChild(CaseForceDirectionYValueEditB);
@@ -888,6 +892,7 @@ void BallGame::SetupGUI(void)
     CaseForceDirectionZValueEditB->setSize(CEGUI::USize(CEGUI::UDim(0, 50), CEGUI::UDim(0, 30)));
     CaseForceDirectionZValueEditB->setVerticalAlignment(CEGUI::VA_BOTTOM);
     CaseForceDirectionZValueEditB->setHorizontalAlignment(CEGUI::HA_CENTRE);
+    CaseForceDirectionZValueEditB->setValidationString(numRegex);
     CaseForceDirectionZValueEditB->setVisible(false);
 
     MainLayout->addChild(CaseForceDirectionZValueEditB);
