@@ -163,6 +163,7 @@ class BallGame : public BaseApplication
     void _StartPhysic(void);
     void _StopPhysic(void);
     void SwitchEditMode(void);
+    void EmptyLevel(void);//Clean all BallGame, Newton and Ogre entities to start with new level.
     void ChangeLevel(void);
     void ImportLevelFromJson(void);
 
@@ -267,6 +268,10 @@ class BallGame : public BaseApplication
     bool EditModePushBCallback(const CEGUI::EventArgs &e);
     CEGUI::Combobox *ChooseLevelComboB;
     bool ChooseLevelComboBCallback(const CEGUI::EventArgs &e);
+    CEGUI::Editbox *NewLevelEditB;
+//    bool NewLevelEditBCallback(const CEGUI::EventArgs &e);
+    CEGUI::PushButton *NewLevelCreateB;
+    bool NewLevelCreateBCallback(const CEGUI::EventArgs &e);
     CEGUI::PushButton *SaveLevelPushB;
     bool SaveLevelPushBCallback(const CEGUI::EventArgs &e);
     CEGUI::PushButton *QuitPushB;

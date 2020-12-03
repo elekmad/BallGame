@@ -653,6 +653,30 @@ void BallGame::SetupGUI(void)
 
     SetWindowsPosNearToOther(ChooseLevelComboB, EditModePushB, 0, 1);
 
+    NewLevelEditB = (CEGUI::Editbox*)wmgr.createWindow("OgreTray/Editbox");
+    NewLevelEditB->setText("NewLevel");
+    NewLevelEditB->setSize(CEGUI::USize(CEGUI::UDim(0, 90), CEGUI::UDim(0, 30)));
+    NewLevelEditB->setVisible(false);
+
+    MainLayout->addChild(NewLevelEditB);
+
+//    NewLevelEditB->subscribeEvent(CEGUI::Editbox::EventClicked,
+//    		CEGUI::Event::Subscriber(&BallGame::SaveLevelPushBCallback, this));
+
+    SetWindowsPosNearToOther(NewLevelEditB, EditModePushB, 0, 2);// Be Carefull, Combobox size is size with combo expanded !
+
+    NewLevelCreateB = (CEGUI::PushButton*)wmgr.createWindow("OgreTray/Button");
+    NewLevelCreateB->setText("Create");
+    NewLevelCreateB->setSize(CEGUI::USize(CEGUI::UDim(0, 60), CEGUI::UDim(0, 30)));
+    NewLevelCreateB->setVisible(false);
+
+    MainLayout->addChild(NewLevelCreateB);
+
+    NewLevelCreateB->subscribeEvent(CEGUI::PushButton::EventClicked,
+			CEGUI::Event::Subscriber(&BallGame::NewLevelCreateBCallback, this));
+
+    SetWindowsPosNearToOther(NewLevelCreateB, NewLevelEditB, 1, 0);
+
     SaveLevelPushB = (CEGUI::PushButton*)wmgr.createWindow("OgreTray/Button");
     SaveLevelPushB->setText("Save");
     SaveLevelPushB->setSize(CEGUI::USize(CEGUI::UDim(0, 150), CEGUI::UDim(0, 30)));
@@ -663,7 +687,7 @@ void BallGame::SetupGUI(void)
     SaveLevelPushB->subscribeEvent(CEGUI::PushButton::EventClicked,
     		CEGUI::Event::Subscriber(&BallGame::SaveLevelPushBCallback, this));
 
-    SetWindowsPosNearToOther(SaveLevelPushB, EditModePushB, 0, 2);// Be Carefull, Combobox size is size with combo expanded !
+    SetWindowsPosNearToOther(SaveLevelPushB, NewLevelEditB, 0, 1);
 
     QuitPushB = (CEGUI::PushButton*)wmgr.createWindow("OgreTray/Button");
     QuitPushB->setText("Quit");
@@ -1490,6 +1514,8 @@ bool BallGame::keyPressed(const OIS::KeyEvent &arg)
 			StopPhysicPushB->setVisible(true);
 			EditModePushB->setVisible(true);
 			ChooseLevelComboB->setVisible(true);
+			NewLevelEditB->setVisible(true);
+			NewLevelCreateB->setVisible(true);
 			SaveLevelPushB->setVisible(true);
 			QuitPushB->setVisible(true);
 		}
@@ -1687,6 +1713,17 @@ bool BallGame::keyReleased( const OIS::KeyEvent &arg )
     return true;
 }
 
+bool BallGame::NewLevelCreateBCallback(const CEGUI::EventArgs &e)
+{
+	EmptyLevel();
+	String level;
+	level = NewLevelEditB->getText().c_str();
+	SetLevel(level);
+	if(mode == Running)
+		SwitchEditMode();
+	return true;
+}
+
 bool BallGame::SaveLevelPushBCallback(const CEGUI::EventArgs &e)
 {
 	String export_str;
@@ -1870,8 +1907,7 @@ void BallGameEntity::ImportFromJson(rapidjson::Value &v)
 	InitialOrientation.w = v["OrientationW"].GetFloat();
 }
 
-
-void BallGame::ChangeLevel(void)
+void BallGame::EmptyLevel(void)
 {
 	_StopPhysic();
 	for(int cmpt = 0; cmpt < Cases.GetSize(); cmpt++)
@@ -1894,6 +1930,11 @@ void BallGame::ChangeLevel(void)
 		delete Ball;
 		Balls[cmpt] = NULL;
 	}
+}
+
+void BallGame::ChangeLevel(void)
+{
+	EmptyLevel();
 	ImportLevelFromJson();
 }
 
