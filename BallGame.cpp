@@ -240,6 +240,7 @@ BallGame::BallGame() :
 	UnderEditCase = NULL;
 	UnderEditBall = NULL;
 	ToBePlacedEntity = NULL;
+	LastPlacedEntity = NULL;
 	ToBePlacedEntityType = Case;
 	PlacementMode = Move;
 	mode = Running;
@@ -425,7 +426,7 @@ void BallGame::SwitchEditMode(void)
 		CaseForceDirectionZValueEditB->setVisible(false);
 		NormalizeCaseForceDirectionPushB->setVisible(false);
 		AddElementTitleBanner->setVisible(false);
-		ChooseLevelComboB->setVisible(false);
+		ChooseTypeOfElementToAddB->setVisible(false);
 		PlaceNewElementB->setVisible(false);
 		if(LastHighligted != NULL)
 		{
@@ -436,6 +437,13 @@ void BallGame::SwitchEditMode(void)
 		{
 			UnderEditCase->OgreEntity->showBoundingBox(false);
 			UnderEditCase = NULL;
+		}
+		LastPlacedEntity = NULL;
+		if(ToBePlacedEntity != NULL)
+		{
+			mSceneMgr->getRootSceneNode()->removeChild(ToBePlacedEntity->OgreEntity);
+			delete ToBePlacedEntity;
+			ToBePlacedEntity = NULL;
 		}
 	}
 }
@@ -453,11 +461,27 @@ bool BallGame::ChooseTypeOfElementToAddBCallback(const CEGUI::EventArgs &e)
 
 bool BallGame::PlaceNewElementBCallback(const CEGUI::EventArgs &e)
 {
+	PrepareNewElement();
+	return true;
+}
+
+void BallGame::PrepareNewElement(void)
+{
 	Entity *ogreEntity;
 	SceneNode *ogreNode;
+	Vector3 Pos, Scale;
+	Quaternion Orient;
 
-	if(ToBePlacedEntity != NULL)
-		return true;
+	Pos.x = 0;
+	Pos.y = 0;
+	Pos.z = 0;
+	Scale.x = 25;
+	Scale.y = 25;
+	Scale.z = 25;
+	Orient.x = 0;
+	Orient.y = 0;
+	Orient.z = 0;
+	Orient.w = 1;
 
 	std::cout << "Placing new element ?" << std::endl;
 	switch(ToBePlacedEntityType)
@@ -467,28 +491,27 @@ bool BallGame::PlaceNewElementBCallback(const CEGUI::EventArgs &e)
 		ogreEntity = mSceneMgr->createEntity("Cube.mesh");
 		break;
 	case Ball :
+		Pos.z = 55;
 		ToBePlacedEntity = new BallEntity();
 		ogreEntity = mSceneMgr->createEntity("Sphere.mesh");
 		break;
 	}
 
-	ToBePlacedEntity->InitialPos.x = 0;
-	ToBePlacedEntity->InitialPos.y = 0;
-	ToBePlacedEntity->InitialPos.z = 0;
-	ToBePlacedEntity->InitialScale.x = 25;
-	ToBePlacedEntity->InitialScale.y = 25;
-	ToBePlacedEntity->InitialScale.z = 25;
-	ToBePlacedEntity->InitialOrientation.x = 0;
-	ToBePlacedEntity->InitialOrientation.y = 0;
-	ToBePlacedEntity->InitialOrientation.z = 0;
-	ToBePlacedEntity->InitialOrientation.w = 1;
+	if(LastPlacedEntity != NULL)
+	{
+		Pos = LastPlacedEntity->InitialPos;
+		Scale = LastPlacedEntity->InitialScale;
+		Orient = LastPlacedEntity->InitialOrientation;
+	}
+
+	ToBePlacedEntity->InitialPos = Pos;
+	ToBePlacedEntity->InitialScale = Scale;
+	ToBePlacedEntity->InitialOrientation = Orient;
 
 	ogreNode = mSceneMgr->getRootSceneNode()->createChildSceneNode(ToBePlacedEntity->InitialPos);
 	ogreNode->attachObject(ogreEntity);
 	ogreNode->showBoundingBox(true);
 	ToBePlacedEntity->SetOgreNode(ogreNode);
-
-	return true;
 }
 
 void BallGame::PlaceNewElement(void)
@@ -541,7 +564,8 @@ void BallGame::PlaceNewElement(void)
 		AddBall((BallEntity*)ToBePlacedEntity);
 		break;
 	}
-	ToBePlacedEntity = NULL;
+	LastPlacedEntity = ToBePlacedEntity;
+	PrepareNewElement();
 }
 
 bool BallGame::EditModePushBCallback(const CEGUI::EventArgs &e)
@@ -1113,7 +1137,8 @@ bool BallGame::mouseMoved(const OIS::MouseEvent &arg)
 		if(LastHighligted != NULL)
 		{
 			if((UnderEditCase == NULL || UnderEditCase->OgreEntity != LastHighligted)
-					&& (UnderEditBall == NULL || UnderEditBall->OgreEntity != LastHighligted))
+					&& (UnderEditBall == NULL || UnderEditBall->OgreEntity != LastHighligted)
+					&& (ToBePlacedEntity == NULL || ToBePlacedEntity->OgreEntity != LastHighligted))
 				LastHighligted->showBoundingBox(false);
 			LastHighligted = NULL;
 		}

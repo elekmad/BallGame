@@ -179,7 +179,9 @@ class BallGame : public BaseApplication
 
 	enum BallGameEntityType ToBePlacedEntityType;
     BallGameEntity *ToBePlacedEntity;
+    BallGameEntity *LastPlacedEntity;
     void PlaceNewElement(void);
+    void PrepareNewElement(void);
 
     //Edit Ball
     void EditBall(BallEntity *Entity);
