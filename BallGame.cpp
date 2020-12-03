@@ -508,10 +508,16 @@ bool BallGame::ChooseTypeOfElementToAddBCallback(const CEGUI::EventArgs &e)
 {
 	String ElementType;
 	ElementType = ChooseTypeOfElementToAddB->getSelectedItem()->getText().c_str();
-	if(ElementType == "Case")
+	if(ElementType == "Case" || ElementType == "Rampe")
 		ToBePlacedEntityType = Case;
 	else if(ElementType == "Ball")
 		ToBePlacedEntityType = Ball;
+	if(ToBePlacedEntity != NULL)
+	{
+		mSceneMgr->getRootSceneNode()->removeChild(ToBePlacedEntity->OgreEntity);
+		delete ToBePlacedEntity;
+		ToBePlacedEntity = NULL;
+	}
 	return true;
 }
 
@@ -544,7 +550,17 @@ void BallGame::PrepareNewElement(void)
 	{
 	case Case :
 		ToBePlacedEntity = new CaseEntity();
-		ogreEntity = mSceneMgr->createEntity("Cube.mesh");
+		if(ChooseTypeOfElementToAddB->getSelectedItem()->getText() == "Case")
+		{
+			((CaseEntity*)ToBePlacedEntity)->type = CaseEntity::CaseType::typeBox;
+			ogreEntity = mSceneMgr->createEntity("Cube.mesh");
+		}
+		else
+		{
+			Pos.z = 25;
+			((CaseEntity*)ToBePlacedEntity)->type = CaseEntity::CaseType::typeRamp;
+			ogreEntity = mSceneMgr->createEntity("Rampe.mesh");
+		}
 		break;
 	case Ball :
 		Pos.z = 55;
@@ -605,16 +621,20 @@ void BallGame::PlaceNewElement(void)
 			NewtonCollision *collision_tree = NULL;
 			if(Case->type == CaseEntity::CaseType::typeRamp)
 			{
+				std::cout << "Place a Ramp" << std::endl;
 				Matrix4 ident_ogre_matrix = Matrix4::IDENTITY;
 				const MeshPtr ptr = ogreEntity->getMesh();
 				collision_tree = ParseEntity(m_world, ptr, ident_ogre_matrix);
 			}
+			else
+				std::cout << "Place a Box" << std::endl;
 			newtonBody = WorldAddCase(m_world, NewtonBodySize, 0, bodymatrix, Case->type, collision_tree);
 			ToBePlacedEntity->SetNewtonBody(newtonBody);
 			AddCase(Case);
 		}
 		break;
 	case Ball :
+		std::cout << "Place a Ball" << std::endl;
 		newtonBody = WorldAddBall(m_world, 10, NewtonBodySize, 0, bodymatrix);
 		ToBePlacedEntity->SetNewtonBody(newtonBody);
 		AddBall((BallEntity*)ToBePlacedEntity);
@@ -800,6 +820,7 @@ void BallGame::SetupGUI(void)
     ChooseTypeOfElementToAddB = (CEGUI::Combobox*)wmgr.createWindow("OgreTray/Combobox");
     ChooseTypeOfElementToAddB->addItem(new CEGUI::ListboxTextItem("Case"));
     ChooseTypeOfElementToAddB->setText("Case");
+    ChooseTypeOfElementToAddB->addItem(new CEGUI::ListboxTextItem("Rampe"));
     ChooseTypeOfElementToAddB->addItem(new CEGUI::ListboxTextItem("Ball"));
     ChooseTypeOfElementToAddB->setSize(CEGUI::USize(CEGUI::UDim(0, 150), CEGUI::UDim(0, 40 * (ChooseLevelComboB->getItemCount() + 1))));
     ChooseTypeOfElementToAddB->setVerticalAlignment(CEGUI::VA_TOP);
