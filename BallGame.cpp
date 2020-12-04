@@ -467,6 +467,7 @@ void BallGame::SwitchEditMode(void)
 		AddElementTitleBanner->setVisible(true);
 		ChooseTypeOfElementToAddB->setVisible(true);
 		PlaceNewElementB->setVisible(true);
+		DeleteElementB->setVisible(true);
 		MoveNewElementB->setVisible(true);
 		RotateNewElementB->setVisible(true);
 		ScaleNewElementB->setVisible(true);
@@ -488,6 +489,7 @@ void BallGame::SwitchEditMode(void)
 		AddElementTitleBanner->setVisible(false);
 		ChooseTypeOfElementToAddB->setVisible(false);
 		PlaceNewElementB->setVisible(false);
+		DeleteElementB->setVisible(false);
 		MoveNewElementB->setVisible(false);
 		RotateNewElementB->setVisible(false);
 		ScaleNewElementB->setVisible(false);
@@ -525,6 +527,28 @@ bool BallGame::ChooseTypeOfElementToAddBCallback(const CEGUI::EventArgs &e)
 		delete ToBePlacedEntity;
 		ToBePlacedEntity = NULL;
 	}
+	return true;
+}
+
+void BallGame::DeleteElement(void)
+{
+	if(UnderEditBall != NULL)
+	{
+		RemoveBall(UnderEditBall);
+		UnderEditBall = NULL;
+		EditBall(NULL);
+	}
+	else if(UnderEditCase != NULL)
+	{
+		RemoveCase(UnderEditCase);
+		UnderEditCase = NULL;
+		EditCase(NULL);
+	}
+}
+
+bool BallGame::DeleteElementBCallback(const CEGUI::EventArgs &e)
+{
+	DeleteElement();
 	return true;
 }
 
@@ -881,10 +905,9 @@ void BallGame::SetupGUI(void)
 
     MainLayout->addChild(ChooseTypeOfElementToAddB);
 
-
     PlaceNewElementB = (CEGUI::PushButton*)wmgr.createWindow("OgreTray/Button");
     PlaceNewElementB->setText("Place");
-    PlaceNewElementB->setSize(CEGUI::USize(CEGUI::UDim(0, 150), CEGUI::UDim(0, 30)));
+    PlaceNewElementB->setSize(CEGUI::USize(CEGUI::UDim(0, 75), CEGUI::UDim(0, 30)));
     PlaceNewElementB->setVerticalAlignment(CEGUI::VA_TOP);
     PlaceNewElementB->setHorizontalAlignment(CEGUI::HA_RIGHT);
     PlaceNewElementB->setVisible(false);
@@ -894,7 +917,17 @@ void BallGame::SetupGUI(void)
 
     MainLayout->addChild(PlaceNewElementB);
 
-    MainLayout->addChild(ChooseTypeOfElementToAddB);
+    DeleteElementB = (CEGUI::PushButton*)wmgr.createWindow("OgreTray/Button");
+    DeleteElementB->setText("Delete");
+    DeleteElementB->setSize(CEGUI::USize(CEGUI::UDim(0, 75), CEGUI::UDim(0, 30)));
+    DeleteElementB->setVerticalAlignment(CEGUI::VA_TOP);
+    DeleteElementB->setHorizontalAlignment(CEGUI::HA_RIGHT);
+    DeleteElementB->setVisible(false);
+
+    DeleteElementB->subscribeEvent(CEGUI::PushButton::EventClicked,
+			CEGUI::Event::Subscriber(&BallGame::DeleteElementBCallback, this));
+
+    MainLayout->addChild(DeleteElementB);
 
 
     MoveNewElementB = (CEGUI::PushButton*)wmgr.createWindow("OgreTray/Button");
@@ -939,8 +972,9 @@ void BallGame::SetupGUI(void)
     MainLayout->addChild(ScaleNewElementB);
 
     SetWindowsPosNearToOther(ChooseTypeOfElementToAddB, AddElementTitleBanner, 0, 1);
-    SetWindowsPosNearToOther(PlaceNewElementB, AddElementTitleBanner, 0, 2);
-    SetWindowsPosNearToOther(ScaleNewElementB, PlaceNewElementB, 0, 1);
+    SetWindowsPosNearToOther(DeleteElementB, AddElementTitleBanner, 0, 2);
+    SetWindowsPosNearToOther(PlaceNewElementB, DeleteElementB, -1, 0);
+    SetWindowsPosNearToOther(ScaleNewElementB, DeleteElementB, 0, 1);
     SetWindowsPosNearToOther(RotateNewElementB, ScaleNewElementB, -1, 0);
     SetWindowsPosNearToOther(MoveNewElementB, RotateNewElementB, -1, 0);
 
@@ -1852,6 +1886,10 @@ bool BallGame::keyPressed(const OIS::KeyEvent &arg)
 		if(mode == Editing)
 			PlaceNewElement();
 		break;
+	case OIS::KeyCode::KC_DELETE:
+		if(mode == Editing)
+			DeleteElement();
+		break;
 	case OIS::KeyCode::KC_M:
 		if(mode == Editing)
 			SetMoveNewElement();
@@ -2080,6 +2118,24 @@ void BallGameEntity::ImportFromJson(rapidjson::Value &v)
 	InitialOrientation.w = v["OrientationW"].GetFloat();
 }
 
+void BallGame::RemoveBall(BallEntity *Entity)
+{
+	int id = NewtonBodyGetID(Entity->Body);
+	NewtonDestroyBody(Entity->Body);
+	mSceneMgr->getRootSceneNode()->removeChild(Entity->OgreEntity);
+	Balls[id] = NULL;
+	delete Entity;
+}
+
+void BallGame::RemoveCase(CaseEntity *Entity)
+{
+	int id = NewtonBodyGetID(Entity->Body);
+	NewtonDestroyBody(Entity->Body);
+	mSceneMgr->getRootSceneNode()->removeChild(Entity->OgreEntity);
+	Cases[id] = NULL;
+	delete Entity;
+}
+
 void BallGame::EmptyLevel(void)
 {
 	_StopPhysic();
@@ -2088,20 +2144,15 @@ void BallGame::EmptyLevel(void)
 		CaseEntity *Case = Cases[cmpt];
 		if(Case == NULL)
 			continue;
-		NewtonDestroyBody(Case->Body);
-		mSceneMgr->getRootSceneNode()->removeChild(Case->OgreEntity);
-		delete Case;
-		Cases[cmpt] = NULL;
+		RemoveCase(Case);
+
 	}
 	for(int cmpt = 0; cmpt < Balls.GetSize(); cmpt++)
 	{
 		BallEntity *Ball = Balls[cmpt];
 		if(Ball == NULL)
 			continue;
-		NewtonDestroyBody(Ball->Body);
-		mSceneMgr->getRootSceneNode()->removeChild(Ball->OgreEntity);
-		delete Ball;
-		Balls[cmpt] = NULL;
+		RemoveBall(Ball);
 	}
 }
 

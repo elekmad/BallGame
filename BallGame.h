@@ -178,6 +178,8 @@ class BallGame : public BaseApplication
     void _StartPhysic(void);
     void _StopPhysic(void);
     void SwitchEditMode(void);
+    void RemoveCase(CaseEntity *Entity);
+    void RemoveBall(BallEntity *Entity);
     void EmptyLevel(void);//Clean all BallGame, Newton and Ogre entities to start with new level.
     void ChangeLevel(void);
     void ImportLevelFromJson(void);
@@ -198,6 +200,7 @@ class BallGame : public BaseApplication
     BallGameEntity *LastPlacedEntity;
     void PlaceNewElement(void);
     void PrepareNewElement(void);
+    void DeleteElement(void);
 
     //Edit Ball
     void EditBall(BallEntity *Entity);
@@ -303,6 +306,8 @@ class BallGame : public BaseApplication
     bool ChooseTypeOfElementToAddBCallback(const CEGUI::EventArgs &e);
     CEGUI::PushButton *PlaceNewElementB;
     bool PlaceNewElementBCallback(const CEGUI::EventArgs &e);
+    CEGUI::PushButton *DeleteElementB;
+    bool DeleteElementBCallback(const CEGUI::EventArgs &e);
     CEGUI::PushButton *MoveNewElementB;
     bool MoveNewElementBCallback(const CEGUI::EventArgs &e);
     void SetMoveNewElement(void);
