@@ -899,7 +899,7 @@ void BallGame::SetupGUI(void)
 
     MoveNewElementB = (CEGUI::PushButton*)wmgr.createWindow("OgreTray/Button");
     MoveNewElementB->setText("M");
-    ScaleNewElementB->setTooltipText("Move Element. Press M to enter this mode.");
+    MoveNewElementB->setTooltipText("Move Element. Press M to enter this mode.");
     MoveNewElementB->setSize(CEGUI::USize(CEGUI::UDim(0, 50), CEGUI::UDim(0, 30)));
     MoveNewElementB->setVerticalAlignment(CEGUI::VA_TOP);
     MoveNewElementB->setHorizontalAlignment(CEGUI::HA_RIGHT);
@@ -913,7 +913,7 @@ void BallGame::SetupGUI(void)
 
     RotateNewElementB = (CEGUI::PushButton*)wmgr.createWindow("OgreTray/Button");
     RotateNewElementB->setText("R");
-    ScaleNewElementB->setTooltipText("Rotate Element. Press R to enter this mode.");
+    RotateNewElementB->setTooltipText("Rotate Element. Press R to enter this mode.");
     RotateNewElementB->setSize(CEGUI::USize(CEGUI::UDim(0, 50), CEGUI::UDim(0, 30)));
     RotateNewElementB->setVerticalAlignment(CEGUI::VA_TOP);
     RotateNewElementB->setHorizontalAlignment(CEGUI::HA_RIGHT);
