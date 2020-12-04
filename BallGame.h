@@ -192,7 +192,8 @@ class BallGame : public BaseApplication
 	{
     	Move,
 		Rotate,
-		Scale
+		Scale,
+		Delete
 	}PlacementMode;
 
 	enum BallGameEntityType ToBePlacedEntityType;

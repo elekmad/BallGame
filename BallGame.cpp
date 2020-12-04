@@ -526,34 +526,44 @@ bool BallGame::ChooseTypeOfElementToAddBCallback(const CEGUI::EventArgs &e)
 		mSceneMgr->getRootSceneNode()->removeChild(ToBePlacedEntity->OgreEntity);
 		delete ToBePlacedEntity;
 		ToBePlacedEntity = NULL;
+		LastPlacedEntity = NULL;
 	}
 	return true;
 }
 
 void BallGame::DeleteElement(void)
 {
+	if(PlacementMode != Delete)
+		return;
 	if(UnderEditBall != NULL)
 	{
 		RemoveBall(UnderEditBall);
-		UnderEditBall = NULL;
 		EditBall(NULL);
 	}
 	else if(UnderEditCase != NULL)
 	{
 		RemoveCase(UnderEditCase);
-		UnderEditCase = NULL;
 		EditCase(NULL);
 	}
 }
 
 bool BallGame::DeleteElementBCallback(const CEGUI::EventArgs &e)
 {
+	PlacementMode = Delete;
+	DeleteElementB->setDisabled(true);
+	PlaceNewElementB->setDisabled(false);
+	MoveNewElementB->setDisabled(false);
+	RotateNewElementB->setDisabled(false);
+	ScaleNewElementB->setDisabled(false);
+	EditBall(NULL);
+	EditCase(NULL);
 	DeleteElement();
 	return true;
 }
 
 bool BallGame::PlaceNewElementBCallback(const CEGUI::EventArgs &e)
 {
+	SetMoveNewElement();
 	PrepareNewElement();
 	return true;
 }
@@ -561,9 +571,11 @@ bool BallGame::PlaceNewElementBCallback(const CEGUI::EventArgs &e)
 void BallGame::SetMoveNewElement(void)
 {
 	PlacementMode = Move;
+	PlaceNewElementB->setDisabled(true);
 	MoveNewElementB->setDisabled(true);
 	RotateNewElementB->setDisabled(false);
 	ScaleNewElementB->setDisabled(false);
+	DeleteElementB->setDisabled(false);
 }
 
 bool BallGame::MoveNewElementBCallback(const CEGUI::EventArgs &e)
@@ -575,9 +587,11 @@ bool BallGame::MoveNewElementBCallback(const CEGUI::EventArgs &e)
 void BallGame::SetRotateNewElement(void)
 {
 	PlacementMode = Rotate;
+	PlaceNewElementB->setDisabled(true);
 	MoveNewElementB->setDisabled(false);
 	RotateNewElementB->setDisabled(true);
 	ScaleNewElementB->setDisabled(false);
+	DeleteElementB->setDisabled(false);
 }
 
 bool BallGame::RotateNewElementBCallback(const CEGUI::EventArgs &e)
@@ -589,9 +603,11 @@ bool BallGame::RotateNewElementBCallback(const CEGUI::EventArgs &e)
 void BallGame::SetScaleNewElement(void)
 {
 	PlacementMode = Scale;
+	PlaceNewElementB->setDisabled(true);
 	MoveNewElementB->setDisabled(false);
 	RotateNewElementB->setDisabled(false);
 	ScaleNewElementB->setDisabled(true);
+	DeleteElementB->setDisabled(false);
 }
 
 bool BallGame::ScaleNewElementBCallback(const CEGUI::EventArgs &e)
@@ -2158,6 +2174,10 @@ void BallGame::EmptyLevel(void)
 
 void BallGame::ChangeLevel(void)
 {
+	if(mode == Editing)
+		SwitchEditMode();
+	else
+		_StopPhysic();
 	EmptyLevel();
 	ImportLevelFromJson();
 }
