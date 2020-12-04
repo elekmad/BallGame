@@ -303,6 +303,15 @@ class BallGame : public BaseApplication
     bool ChooseTypeOfElementToAddBCallback(const CEGUI::EventArgs &e);
     CEGUI::PushButton *PlaceNewElementB;
     bool PlaceNewElementBCallback(const CEGUI::EventArgs &e);
+    CEGUI::PushButton *MoveNewElementB;
+    bool MoveNewElementBCallback(const CEGUI::EventArgs &e);
+    void SetMoveNewElement(void);
+    CEGUI::PushButton *RotateNewElementB;
+    bool RotateNewElementBCallback(const CEGUI::EventArgs &e);
+    void SetRotateNewElement(void);
+    CEGUI::PushButton *ScaleNewElementB;
+    bool ScaleNewElementBCallback(const CEGUI::EventArgs &e);
+    void SetScaleNewElement(void);
 
 
     //Edit Ball Buttons & Callbacks

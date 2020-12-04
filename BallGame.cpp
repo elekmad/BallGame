@@ -467,6 +467,10 @@ void BallGame::SwitchEditMode(void)
 		AddElementTitleBanner->setVisible(true);
 		ChooseTypeOfElementToAddB->setVisible(true);
 		PlaceNewElementB->setVisible(true);
+		MoveNewElementB->setVisible(true);
+		RotateNewElementB->setVisible(true);
+		ScaleNewElementB->setVisible(true);
+		SetMoveNewElement();
 	}
 	else
 	{
@@ -484,6 +488,9 @@ void BallGame::SwitchEditMode(void)
 		AddElementTitleBanner->setVisible(false);
 		ChooseTypeOfElementToAddB->setVisible(false);
 		PlaceNewElementB->setVisible(false);
+		MoveNewElementB->setVisible(false);
+		RotateNewElementB->setVisible(false);
+		ScaleNewElementB->setVisible(false);
 		if(LastHighligted != NULL)
 		{
 			LastHighligted->showBoundingBox(false);
@@ -524,6 +531,48 @@ bool BallGame::ChooseTypeOfElementToAddBCallback(const CEGUI::EventArgs &e)
 bool BallGame::PlaceNewElementBCallback(const CEGUI::EventArgs &e)
 {
 	PrepareNewElement();
+	return true;
+}
+
+void BallGame::SetMoveNewElement(void)
+{
+	PlacementMode = Move;
+	MoveNewElementB->setDisabled(true);
+	RotateNewElementB->setDisabled(false);
+	ScaleNewElementB->setDisabled(false);
+}
+
+bool BallGame::MoveNewElementBCallback(const CEGUI::EventArgs &e)
+{
+	SetMoveNewElement();
+	return true;
+}
+
+void BallGame::SetRotateNewElement(void)
+{
+	PlacementMode = Rotate;
+	MoveNewElementB->setDisabled(false);
+	RotateNewElementB->setDisabled(true);
+	ScaleNewElementB->setDisabled(false);
+}
+
+bool BallGame::RotateNewElementBCallback(const CEGUI::EventArgs &e)
+{
+	SetRotateNewElement();
+	return true;
+}
+
+void BallGame::SetScaleNewElement(void)
+{
+	PlacementMode = Scale;
+	MoveNewElementB->setDisabled(false);
+	RotateNewElementB->setDisabled(false);
+	ScaleNewElementB->setDisabled(true);
+}
+
+bool BallGame::ScaleNewElementBCallback(const CEGUI::EventArgs &e)
+{
+	SetScaleNewElement();
 	return true;
 }
 
@@ -845,8 +894,55 @@ void BallGame::SetupGUI(void)
 
     MainLayout->addChild(PlaceNewElementB);
 
+    MainLayout->addChild(ChooseTypeOfElementToAddB);
+
+
+    MoveNewElementB = (CEGUI::PushButton*)wmgr.createWindow("OgreTray/Button");
+    MoveNewElementB->setText("M");
+    ScaleNewElementB->setTooltipText("Move Element. Press M to enter this mode.");
+    MoveNewElementB->setSize(CEGUI::USize(CEGUI::UDim(0, 50), CEGUI::UDim(0, 30)));
+    MoveNewElementB->setVerticalAlignment(CEGUI::VA_TOP);
+    MoveNewElementB->setHorizontalAlignment(CEGUI::HA_RIGHT);
+    MoveNewElementB->setVisible(false);
+
+    MoveNewElementB->subscribeEvent(CEGUI::PushButton::EventClicked,
+			CEGUI::Event::Subscriber(&BallGame::MoveNewElementBCallback, this));
+
+    MainLayout->addChild(MoveNewElementB);
+
+
+    RotateNewElementB = (CEGUI::PushButton*)wmgr.createWindow("OgreTray/Button");
+    RotateNewElementB->setText("R");
+    ScaleNewElementB->setTooltipText("Rotate Element. Press R to enter this mode.");
+    RotateNewElementB->setSize(CEGUI::USize(CEGUI::UDim(0, 50), CEGUI::UDim(0, 30)));
+    RotateNewElementB->setVerticalAlignment(CEGUI::VA_TOP);
+    RotateNewElementB->setHorizontalAlignment(CEGUI::HA_RIGHT);
+    RotateNewElementB->setVisible(false);
+
+    RotateNewElementB->subscribeEvent(CEGUI::PushButton::EventClicked,
+			CEGUI::Event::Subscriber(&BallGame::RotateNewElementBCallback, this));
+
+    MainLayout->addChild(RotateNewElementB);
+
+
+    ScaleNewElementB = (CEGUI::PushButton*)wmgr.createWindow("OgreTray/Button");
+    ScaleNewElementB->setText("S");
+    ScaleNewElementB->setTooltipText("Scale Element. Press S to enter this mode.");
+    ScaleNewElementB->setSize(CEGUI::USize(CEGUI::UDim(0, 50), CEGUI::UDim(0, 30)));
+    ScaleNewElementB->setVerticalAlignment(CEGUI::VA_TOP);
+    ScaleNewElementB->setHorizontalAlignment(CEGUI::HA_RIGHT);
+    ScaleNewElementB->setVisible(false);
+
+    ScaleNewElementB->subscribeEvent(CEGUI::PushButton::EventClicked,
+			CEGUI::Event::Subscriber(&BallGame::ScaleNewElementBCallback, this));
+
+    MainLayout->addChild(ScaleNewElementB);
+
     SetWindowsPosNearToOther(ChooseTypeOfElementToAddB, AddElementTitleBanner, 0, 1);
     SetWindowsPosNearToOther(PlaceNewElementB, AddElementTitleBanner, 0, 2);
+    SetWindowsPosNearToOther(ScaleNewElementB, PlaceNewElementB, 0, 1);
+    SetWindowsPosNearToOther(RotateNewElementB, ScaleNewElementB, -1, 0);
+    SetWindowsPosNearToOther(MoveNewElementB, RotateNewElementB, -1, 0);
 
     // Edit Case GUI
 
@@ -1758,20 +1854,15 @@ bool BallGame::keyPressed(const OIS::KeyEvent &arg)
 		break;
 	case OIS::KeyCode::KC_M:
 		if(mode == Editing)
-		{
-			switch(PlacementMode)
-			{
-			case Move :
-				PlacementMode = Rotate;
-				break;
-			case Rotate :
-				PlacementMode = Scale;
-				break;
-			case Scale :
-				PlacementMode = Move;
-				break;
-			}
-		}
+			SetMoveNewElement();
+		break;
+	case OIS::KeyCode::KC_R:
+		if(mode == Editing)
+			SetRotateNewElement();
+		break;
+	case OIS::KeyCode::KC_S:
+		if(mode == Editing)
+			SetScaleNewElement();
 		break;
 	case OIS::KeyCode::KC_PAUSE:
 		if(m_suspendPhysicsUpdate)
