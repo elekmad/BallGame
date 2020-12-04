@@ -244,6 +244,7 @@ BallGame::BallGame() :
 	ToBePlacedEntityType = Case;
 	PlacementMode = Move;
 	mode = Running;
+	MouseOverButton = false;
 	// create the newton world
 	SetupNewton();
 }
@@ -341,6 +342,18 @@ void BallGame::UpdatePhysics(dFloat timestep)
 
 //dTrace (("%f\n", m_mainThreadPhysicsTime));
 	}
+}
+
+bool BallGame::EnteringArea(const CEGUI::EventArgs &event)
+{
+	MouseOverButton = true;
+	return true;
+}
+
+bool BallGame::LeavingArea(const CEGUI::EventArgs &event)
+{
+	MouseOverButton = false;
+	return true;
 }
 
 void BallGame::createScene(void)
@@ -1006,6 +1019,10 @@ void BallGame::SetupGUI(void)
 
     CaseHasForceToggleB->subscribeEvent(CEGUI::ToggleButton::EventSelectStateChanged,
 			CEGUI::Event::Subscriber(&BallGame::ToggleForceCallback, this));
+    CaseHasForceToggleB->subscribeEvent(CEGUI::ToggleButton::EventMouseEntersArea,
+			CEGUI::Event::Subscriber(&BallGame::EnteringArea, this));
+    CaseHasForceToggleB->subscribeEvent(CEGUI::ToggleButton::EventMouseLeavesArea,
+			CEGUI::Event::Subscriber(&BallGame::LeavingArea, this));
 
     MainLayout->addChild(CaseHasForceToggleB);
 
@@ -1021,6 +1038,10 @@ void BallGame::SetupGUI(void)
 			CEGUI::Event::Subscriber(&BallGame::CaseForceValueEditBCallback, this));
     CaseForceValueEditB->subscribeEvent(CEGUI::Editbox::EventMouseLeavesArea,
 			CEGUI::Event::Subscriber(&BallGame::CaseForceValueEditBCallback, this));
+    CaseForceValueEditB->subscribeEvent(CEGUI::Editbox::EventMouseEntersArea,
+			CEGUI::Event::Subscriber(&BallGame::EnteringArea, this));
+    CaseForceValueEditB->subscribeEvent(CEGUI::Editbox::EventMouseLeavesArea,
+			CEGUI::Event::Subscriber(&BallGame::LeavingArea, this));
 
     MainLayout->addChild(CaseForceValueEditB);
 
@@ -1034,6 +1055,10 @@ void BallGame::SetupGUI(void)
 
 	CaseHasForceDirectionToggleB->subscribeEvent(CEGUI::ToggleButton::EventSelectStateChanged,
 			CEGUI::Event::Subscriber(&BallGame::ToggleForceDirectedCallback, this));
+	CaseHasForceDirectionToggleB->subscribeEvent(CEGUI::ToggleButton::EventMouseEntersArea,
+			CEGUI::Event::Subscriber(&BallGame::EnteringArea, this));
+	CaseHasForceDirectionToggleB->subscribeEvent(CEGUI::ToggleButton::EventMouseLeavesArea,
+			CEGUI::Event::Subscriber(&BallGame::LeavingArea, this));
 
     MainLayout->addChild(CaseHasForceDirectionToggleB);
 
@@ -1044,6 +1069,11 @@ void BallGame::SetupGUI(void)
     CaseForceDirectionXValueEditB->setValidationString(numRegex);
     CaseForceDirectionXValueEditB->setVisible(false);
 
+    CaseForceDirectionXValueEditB->subscribeEvent(CEGUI::Editbox::EventMouseEntersArea,
+			CEGUI::Event::Subscriber(&BallGame::EnteringArea, this));
+    CaseForceDirectionXValueEditB->subscribeEvent(CEGUI::Editbox::EventMouseLeavesArea,
+			CEGUI::Event::Subscriber(&BallGame::LeavingArea, this));
+
     MainLayout->addChild(CaseForceDirectionXValueEditB);
 
     CaseForceDirectionYValueEditB = (CEGUI::Editbox*)wmgr.createWindow("OgreTray/Editbox");
@@ -1053,6 +1083,11 @@ void BallGame::SetupGUI(void)
     CaseForceDirectionYValueEditB->setValidationString(numRegex);
     CaseForceDirectionYValueEditB->setVisible(false);
 
+    CaseForceDirectionYValueEditB->subscribeEvent(CEGUI::Editbox::EventMouseEntersArea,
+			CEGUI::Event::Subscriber(&BallGame::EnteringArea, this));
+    CaseForceDirectionYValueEditB->subscribeEvent(CEGUI::Editbox::EventMouseLeavesArea,
+			CEGUI::Event::Subscriber(&BallGame::LeavingArea, this));
+
     MainLayout->addChild(CaseForceDirectionYValueEditB);
 
     CaseForceDirectionZValueEditB = (CEGUI::Editbox*)wmgr.createWindow("OgreTray/Editbox");
@@ -1061,6 +1096,11 @@ void BallGame::SetupGUI(void)
     CaseForceDirectionZValueEditB->setHorizontalAlignment(CEGUI::HA_CENTRE);
     CaseForceDirectionZValueEditB->setValidationString(numRegex);
     CaseForceDirectionZValueEditB->setVisible(false);
+
+    CaseForceDirectionZValueEditB->subscribeEvent(CEGUI::Editbox::EventMouseEntersArea,
+			CEGUI::Event::Subscriber(&BallGame::EnteringArea, this));
+    CaseForceDirectionZValueEditB->subscribeEvent(CEGUI::Editbox::EventMouseLeavesArea,
+			CEGUI::Event::Subscriber(&BallGame::LeavingArea, this));
 
     MainLayout->addChild(CaseForceDirectionZValueEditB);
 
@@ -1073,6 +1113,11 @@ void BallGame::SetupGUI(void)
     NormalizeCaseForceDirectionPushB->subscribeEvent(CEGUI::PushButton::EventClicked,
     		CEGUI::Event::Subscriber(&BallGame::NormalizeCaseForceDirectionPushBCallback, this));
 
+    NormalizeCaseForceDirectionPushB->subscribeEvent(CEGUI::PushButton::EventMouseEntersArea,
+			CEGUI::Event::Subscriber(&BallGame::EnteringArea, this));
+    NormalizeCaseForceDirectionPushB->subscribeEvent(CEGUI::PushButton::EventMouseLeavesArea,
+			CEGUI::Event::Subscriber(&BallGame::LeavingArea, this));
+
     MainLayout->addChild(NormalizeCaseForceDirectionPushB);
 
     ApplyForceChangesToCasePushB = (CEGUI::PushButton*)wmgr.createWindow("OgreTray/Button");
@@ -1081,8 +1126,13 @@ void BallGame::SetupGUI(void)
     ApplyForceChangesToCasePushB->setVerticalAlignment(CEGUI::VA_BOTTOM);
     ApplyForceChangesToCasePushB->setHorizontalAlignment(CEGUI::HA_CENTRE);
     ApplyForceChangesToCasePushB->setVisible(false);
+
     ApplyForceChangesToCasePushB->subscribeEvent(CEGUI::PushButton::EventClicked,
     		CEGUI::Event::Subscriber(&BallGame::ApplyForceChangesToCasePushBCallback, this));
+    ApplyForceChangesToCasePushB->subscribeEvent(CEGUI::PushButton::EventMouseEntersArea,
+			CEGUI::Event::Subscriber(&BallGame::EnteringArea, this));
+    ApplyForceChangesToCasePushB->subscribeEvent(CEGUI::PushButton::EventMouseLeavesArea,
+			CEGUI::Event::Subscriber(&BallGame::LeavingArea, this));
 
     MainLayout->addChild(ApplyForceChangesToCasePushB);
 
@@ -1682,7 +1732,7 @@ bool BallGame::mousePressed( const OIS::MouseEvent &arg, OIS::MouseButtonID id )
     context.injectMouseButtonDown(convertButton(id));
 
     //BaseApplication::mousePressed(arg, id);
-    if(mode == Editing)
+    if(mode == Editing && MouseOverButton == false)
     {
     	if(LastHighligted != NULL && (ToBePlacedEntity == NULL || LastHighligted != ToBePlacedEntity->OgreEntity))
     	{

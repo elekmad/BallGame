@@ -42,7 +42,7 @@
 using namespace Ogre;
 using namespace OgreBites;
 
-#define MAX_PHYSICS_FPS				60.0f
+#define MAX_PHYSICS_FPS				240.0f
 #define MAX_PHYSICS_SUB_STEPS		50
 //#define PROJECTILE_INITIAL_SPEED	20.0f
 
@@ -209,6 +209,7 @@ class BallGame : public BaseApplication
     dFloat UnderEditBallMass;
 
     //Edit Case
+    bool MouseOverButton;
     void EditCase(CaseEntity *Entity);
 	CaseEntity *UnderEditCase;
 	bool CaseHasForce;
@@ -276,6 +277,8 @@ class BallGame : public BaseApplication
     private :
 
     void SetupGUI(void);
+    bool EnteringArea(const CEGUI::EventArgs &e);
+    bool LeavingArea(const CEGUI::EventArgs &e);
 
     CEGUI::OgreRenderer* mRenderer;
 
