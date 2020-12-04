@@ -997,7 +997,7 @@ void BallGame::SetupGUI(void)
     CaseForceValueEditB->setSize(CEGUI::USize(CEGUI::UDim(0, 50), CEGUI::UDim(0, 30)));
     CaseForceValueEditB->setVerticalAlignment(CEGUI::VA_BOTTOM);
     CaseForceValueEditB->setHorizontalAlignment(CEGUI::HA_CENTRE);
-    String numRegex("^(\\-?[0-9]+(\\.[0-9]+)?)?");
+    String numRegex("^(\\-?[0-9]*(\\.[0-9]*)?)?");
     CaseForceValueEditB->setValidationString(numRegex);
     CaseForceValueEditB->setVisible(false);
 
