@@ -485,6 +485,7 @@ void BallGame::SwitchEditMode(void)
 		RotateNewElementB->setVisible(true);
 		ScaleNewElementB->setVisible(true);
 		SetMoveNewElement();
+		PrepareNewElement();
 	}
 	else
 	{
@@ -541,6 +542,7 @@ bool BallGame::ChooseTypeOfElementToAddBCallback(const CEGUI::EventArgs &e)
 		ToBePlacedEntity = NULL;
 		LastPlacedEntity = NULL;
 	}
+	PrepareNewElement();
 	return true;
 }
 
