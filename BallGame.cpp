@@ -2065,28 +2065,15 @@ void CaseEntity::ExportToJson(rapidjson::Value &v, rapidjson::Document::Allocato
 
 void CaseEntity::CreateFromJson(rapidjson::Value &v, Ogre::SceneManager* mSceneMgr, NewtonWorld *m_world)
 {
-	ImportFromJson(v);
+	ImportFromJson(v, mSceneMgr);
 	dVector NewtonBodyLocation;
 	dVector NewtonBodySize;
 	NewtonBody *newtonBody;
-	Entity *ogreEntity;
-	SceneNode *ogreNode;
-	switch(type)
-	{
-		case CaseEntity::typeRamp :
-			ogreEntity = mSceneMgr->createEntity("Rampe.mesh");
-			break;
-		case CaseEntity::typeBox :
-			ogreEntity = mSceneMgr->createEntity("Cube.mesh");
-			break;
-	}
-	ogreNode = mSceneMgr->getRootSceneNode()->createChildSceneNode(InitialPos);
-	ogreNode->attachObject(ogreEntity);
-	SetOgreNode(ogreNode);
 	NewtonBodyLocation.m_x = InitialPos.x;
 	NewtonBodyLocation.m_y = InitialPos.y;
 	NewtonBodyLocation.m_z = InitialPos.z;
 	NewtonBodyLocation.m_w = 1;
+	Entity* ogreEntity = (Ogre::Entity*)OgreEntity->getAttachedObject(0);
 	Vector3 AABB(ogreEntity->getBoundingBox().getSize());
 	NewtonBodySize.m_x = AABB.x * InitialScale.x;
 	NewtonBodySize.m_y = AABB.y * InitialScale.y;
@@ -2106,9 +2093,9 @@ void CaseEntity::CreateFromJson(rapidjson::Value &v, Ogre::SceneManager* mSceneM
 	SetNewtonBody(newtonBody);
 }
 
-void CaseEntity::ImportFromJson(rapidjson::Value &v)
+void CaseEntity::ImportFromJson(rapidjson::Value &v, Ogre::SceneManager* mSceneMgr)
 {
-	BallGameEntity::ImportFromJson(v);
+	BallGameEntity::ImportFromJson(v, mSceneMgr);
 	float force_json =  NAN;
 	dVector *direction_json = NULL;
 	type = (CaseEntity::CaseType)v["Type"].GetInt();
@@ -2130,6 +2117,11 @@ void CaseEntity::ImportFromJson(rapidjson::Value &v)
 
 void BallGameEntity::ExportToJson(rapidjson::Value &v, rapidjson::Document::AllocatorType& allocator)
 {
+	Ogre::Entity *entity = (Ogre::Entity*)OgreEntity->getAttachedObject(0);
+	const char *cname = (const char*)entity->getMesh().get()->getName().c_str();
+	rapidjson::Value name;
+	name.SetString(cname, allocator);
+	v.AddMember("Mesh", name, allocator);
 	v.AddMember("PosX", InitialPos.x, allocator);
 	v.AddMember("PosY", InitialPos.y, allocator);
 	v.AddMember("PosZ", InitialPos.z, allocator);
@@ -2144,18 +2136,15 @@ void BallGameEntity::ExportToJson(rapidjson::Value &v, rapidjson::Document::Allo
 
 void BallEntity::CreateFromJson(rapidjson::Value &v, Ogre::SceneManager* mSceneMgr, NewtonWorld *m_world)
 {
-	ImportFromJson(v);
+	ImportFromJson(v, mSceneMgr);
 	dVector NewtonBodyLocation;
 	dVector NewtonBodySize;
 	NewtonBody *BallBody;
-	Entity* ogreEntity = mSceneMgr->createEntity("Sphere.mesh");
-	SceneNode* ogreNode = mSceneMgr->getRootSceneNode()->createChildSceneNode(InitialPos);
-	ogreNode->attachObject(ogreEntity);
-	SetOgreNode(ogreNode);
 	NewtonBodyLocation.m_x = InitialPos.x;
 	NewtonBodyLocation.m_y = InitialPos.y;
 	NewtonBodyLocation.m_z = InitialPos.z;
 	NewtonBodyLocation.m_w = 1;
+	Entity* ogreEntity = (Ogre::Entity*)OgreEntity->getAttachedObject(0);
 	Vector3 AABB(ogreEntity->getBoundingBox().getSize());
 	NewtonBodySize.m_x = AABB.x * InitialScale.x;
 	NewtonBodySize.m_y = AABB.y * InitialScale.y;
@@ -2167,14 +2156,16 @@ void BallEntity::CreateFromJson(rapidjson::Value &v, Ogre::SceneManager* mSceneM
 	SetNewtonBody(BallBody);
 }
 
-void BallEntity::ImportFromJson(rapidjson::Value &v)
+void BallEntity::ImportFromJson(rapidjson::Value &v, Ogre::SceneManager* mSceneMgr)
 {
-	BallGameEntity::ImportFromJson(v);
+	BallGameEntity::ImportFromJson(v, mSceneMgr);
 	InitialMass = v["Mass"].GetFloat();
 }
 
-void BallGameEntity::ImportFromJson(rapidjson::Value &v)
+void BallGameEntity::ImportFromJson(rapidjson::Value &v, Ogre::SceneManager* mSceneMgr)
 {
+	const char *meshname = v["Mesh"].GetString();
+	Entity* ogreEntity = mSceneMgr->createEntity(meshname);
 	InitialPos.x = v["PosX"].GetFloat();
 	InitialPos.y = v["PosY"].GetFloat();
 	InitialPos.z = v["PosZ"].GetFloat();
@@ -2185,6 +2176,9 @@ void BallGameEntity::ImportFromJson(rapidjson::Value &v)
 	InitialOrientation.y = v["OrientationY"].GetFloat();
 	InitialOrientation.z = v["OrientationZ"].GetFloat();
 	InitialOrientation.w = v["OrientationW"].GetFloat();
+	SceneNode* ogreNode = mSceneMgr->getRootSceneNode()->createChildSceneNode(InitialPos);
+	ogreNode->attachObject(ogreEntity);
+	SetOgreNode(ogreNode);
 }
 
 void BallGame::RemoveBall(BallEntity *Entity)

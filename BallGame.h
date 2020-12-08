@@ -96,7 +96,7 @@ class BallGameEntity
 	~BallGameEntity(){}
     static void TransformCallback(const NewtonBody* body, const dFloat* matrix, int threadIndex);
     void ExportToJson(rapidjson::Value &v, rapidjson::Document::AllocatorType& allocator);
-    void ImportFromJson(rapidjson::Value &v);
+    void ImportFromJson(rapidjson::Value &v, Ogre::SceneManager* mSceneMgr);
     void SetOgreNode(SceneNode *node);
     void SetNewtonBody(NewtonBody *body);
 	protected:
@@ -127,7 +127,7 @@ class BallEntity : public BallGameEntity
 	void CreateFromJson(rapidjson::Value &v, Ogre::SceneManager* mSceneMgr, NewtonWorld *m_world);
 	void AddForceVector(dVector *force);
     void ExportToJson(rapidjson::Value &v, rapidjson::Document::AllocatorType& allocator);
-    void ImportFromJson(rapidjson::Value &v);
+    void ImportFromJson(rapidjson::Value &v, Ogre::SceneManager* mSceneMgr);
 	dVector *GetForceVector();
 	protected:
 	dList<dVector*> Forces;
@@ -154,7 +154,7 @@ class CaseEntity : public BallGameEntity
 	void SetForceToApply(float force, dVector *direction);
 	void ApplyForceOnBall(BallEntity *ball);
     void ExportToJson(rapidjson::Value &v, rapidjson::Document::AllocatorType& allocator);
-    void ImportFromJson(rapidjson::Value &v);
+    void ImportFromJson(rapidjson::Value &v, Ogre::SceneManager* mSceneMgr);
 	protected:
 	dArray<NewtonBody*> BallsUnderCollide;
 
