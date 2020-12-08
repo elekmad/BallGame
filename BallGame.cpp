@@ -721,16 +721,17 @@ void BallGame::PlaceNewElement(void)
 		{
 			CaseEntity *Case = (CaseEntity*)ToBePlacedEntity;
 			NewtonCollision *collision_tree = NULL;
+			Matrix4 ogre_matrix;
 			if(Case->type == CaseEntity::CaseType::typeRamp)
-			{
 				std::cout << "Place a Ramp" << std::endl;
-				Matrix4 ident_ogre_matrix = Matrix4::IDENTITY;
-				const MeshPtr ptr = ogreEntity->getMesh();
-				collision_tree = ParseEntity(m_world, ptr, ident_ogre_matrix);
-			}
 			else
 				std::cout << "Place a Box" << std::endl;
-			newtonBody = WorldAddCase(m_world, NewtonBodySize, 0, bodymatrix, Case->type, collision_tree);
+
+			ogre_matrix.makeTransform(Vector3::ZERO, ToBePlacedEntity->InitialScale, Quaternion::IDENTITY);
+			const MeshPtr ptr = ogreEntity->getMesh();
+			collision_tree = ParseEntity(m_world, ptr, ogre_matrix);
+
+			newtonBody = WorldAddCase(m_world, NewtonBodySize, 0, bodymatrix, collision_tree);
 			ToBePlacedEntity->SetNewtonBody(newtonBody);
 			AddCase(Case);
 		}
@@ -1232,12 +1233,12 @@ void BallGame::SetupGame(void)
 				Quaternion orientation = ogreNode->getOrientation();
 				dMatrix casematrix(orientation.getPitch(false).valueRadians(), orientation.getYaw(false).valueRadians(), orientation.getRoll(false).valueRadians(), location);
 				NewtonCollision *collision_tree = NULL;
-				if(type == CaseEntity::CaseType::typeRamp)
-				{
-					Matrix4 ident_ogre_matrix = Matrix4::IDENTITY;
-					const MeshPtr ptr = ogreEntity->getMesh();
-					collision_tree = ParseEntity(m_world, ptr, ident_ogre_matrix);
-				}
+
+				Matrix4 ogre_matrix;
+				ogre_matrix.makeTransform(Vector3::ZERO, scale, Quaternion::IDENTITY);
+				const MeshPtr ptr = ogreEntity->getMesh();
+				collision_tree = ParseEntity(m_world, ptr, ogre_matrix);
+
 				tableBody = WorldAddCase(m_world, tsize, 0, casematrix, type, collision_tree);
 				CaseEntity *Entity = new CaseEntity(casematrix, type);
 				Entity->InitialPos = ogreNode->getPosition();
@@ -2092,13 +2093,13 @@ void CaseEntity::CreateFromJson(rapidjson::Value &v, Ogre::SceneManager* mSceneM
 
 	dMatrix casematrix(InitialOrientation.getPitch(false).valueRadians(), InitialOrientation.getYaw(false).valueRadians(), InitialOrientation.getRoll(false).valueRadians(), NewtonBodyLocation);
 	NewtonCollision *collision_tree = NULL;
-	if(type == CaseEntity::CaseType::typeRamp)
-	{
-		Matrix4 ident_ogre_matrix = Matrix4::IDENTITY;
-		const MeshPtr ptr = ogreEntity->getMesh();
-		collision_tree = ParseEntity(m_world, ptr, ident_ogre_matrix);
-	}
-	newtonBody = WorldAddCase(m_world, NewtonBodySize, 0, casematrix, type, collision_tree);
+
+	Matrix4 ogre_matrix;
+	ogre_matrix.makeTransform(Vector3::ZERO, InitialScale, Quaternion::IDENTITY);
+	const MeshPtr ptr = ogreEntity->getMesh();
+	collision_tree = ParseEntity(m_world, ptr, ogre_matrix);
+
+	newtonBody = WorldAddCase(m_world, NewtonBodySize, 0, casematrix, collision_tree);
 
 	SetNewtonBody(newtonBody);
 }

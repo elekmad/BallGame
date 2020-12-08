@@ -1166,28 +1166,17 @@ NewtonCollision *ParseEntity (NewtonWorld *world, const MeshPtr mesh, const Matr
 	return tree;
 }
 
-NewtonBody* WorldAddCase(NewtonWorld* const world, const dVector& size, int materialID, const dMatrix& shapeMatrix, enum CaseEntity::CaseType type, NewtonCollision *tree)
+NewtonBody* WorldAddCase(NewtonWorld* const world, const dVector& size, int materialID, const dMatrix& shapeMatrix, NewtonCollision *tree)
 {
 	NewtonBody *tableBody;
-	NewtonCollision* collision = tree;
-	switch(type)
-	{
-		case CaseEntity::CaseType::typeBox :
-			if(collision != NULL)
-				NewtonDestroyCollision(collision);
-			collision = CreateConvexCollision(world, dGetIdentityMatrix(), size, _BOX_PRIMITIVE, 0);
-			break;
-		case CaseEntity::CaseType::typeRamp ://Collision Tree given in arg will be used.
-			break;
-	}
 
 	dMatrix matrix(shapeMatrix);
 
-	tableBody = CreateSimpleSolid(world, 0.0f, matrix, collision, 0);
+	tableBody = CreateSimpleSolid(world, 0.0f, matrix, tree, 0);
 	NewtonBodySetMassProperties(tableBody, 0.0f, NewtonBodyGetCollision(tableBody));
 	NewtonBodySetMaterialGroupID(tableBody, 0);
-	if(collision != NULL)
-		NewtonDestroyCollision(collision);
+	if(tree != NULL)
+		NewtonDestroyCollision(tree);
 	return tableBody;
 }
 

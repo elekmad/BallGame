@@ -98,7 +98,7 @@ NewtonBody* CreateSimpleSolid (NewtonWorld* const world, dFloat mass, const dMat
 NewtonCollision *ParseEntity (NewtonWorld *world, const MeshPtr mesh, const Matrix4& matrix);
 bool DoBodiesCollide(NewtonWorld* const world, NewtonBody *BodyA, NewtonBody *BodyB);
 //NewtonBody* AddCase(DemoEntityManager* const scene, const dVector& origin, const dVector& size, int materialID, const dMatrix& shapeOffsetMatrix);
-NewtonBody* WorldAddCase(NewtonWorld* const world, const dVector& size, int materialID, const dMatrix& shapeOffsetMatrix, enum CaseEntity::CaseType type, NewtonCollision *tree);
+NewtonBody* WorldAddCase(NewtonWorld* const world, const dVector& size, int materialID, const dMatrix& shapeOffsetMatrix, NewtonCollision *tree);
 //NewtonBody* AddBall(DemoEntityManager* const scene, dFloat mass, const dVector& origin, const dVector& size, int materialID, const dMatrix& shapeOffsetMatrix, dFloat startElevation = 1000.0f, dFloat offsetHigh = 5.0f);
 NewtonBody* WorldAddBall(NewtonWorld* const world, dFloat mass, const dVector& size, int materialID, const dMatrix& shapeOffsetMatrix);
 
