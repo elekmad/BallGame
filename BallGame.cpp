@@ -37,6 +37,12 @@ BallGameEntity::BallGameEntity()
 	type = Case;
 }
 
+void BallGameEntity::Finalize(Ogre::SceneManager* mSceneMgr)
+{
+	NewtonDestroyBody(Body);
+	mSceneMgr->getRootSceneNode()->removeChild(OgreEntity);
+}
+
 void BallGameEntity::SetOgreNode(SceneNode *node)
 {
 	OgreEntity = node;
@@ -2184,8 +2190,7 @@ void BallGameEntity::ImportFromJson(rapidjson::Value &v, Ogre::SceneManager* mSc
 void BallGame::RemoveBall(BallEntity *Entity)
 {
 	int id = NewtonBodyGetID(Entity->Body);
-	NewtonDestroyBody(Entity->Body);
-	mSceneMgr->getRootSceneNode()->removeChild(Entity->OgreEntity);
+	Entity->Finalize(mSceneMgr);
 	Balls[id] = NULL;
 	delete Entity;
 }
@@ -2193,8 +2198,7 @@ void BallGame::RemoveBall(BallEntity *Entity)
 void BallGame::RemoveCase(CaseEntity *Entity)
 {
 	int id = NewtonBodyGetID(Entity->Body);
-	NewtonDestroyBody(Entity->Body);
-	mSceneMgr->getRootSceneNode()->removeChild(Entity->OgreEntity);
+	Entity->Finalize(mSceneMgr);
 	Cases[id] = NULL;
 	delete Entity;
 }

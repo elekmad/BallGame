@@ -94,6 +94,7 @@ class BallGameEntity
 	BallGameEntity(const dMatrix& matrix);
 	BallGameEntity();
 	~BallGameEntity(){}
+	void Finalize(Ogre::SceneManager* mSceneMgr);
     static void TransformCallback(const NewtonBody* body, const dFloat* matrix, int threadIndex);
     void ExportToJson(rapidjson::Value &v, rapidjson::Document::AllocatorType& allocator);
     void ImportFromJson(rapidjson::Value &v, Ogre::SceneManager* mSceneMgr);
