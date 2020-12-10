@@ -174,6 +174,23 @@ class BallGame : public BaseApplication
     ~BallGame();
 
     private :
+    class EntityType
+	{
+	public :
+    	EntityType(){ InitialMass = 0.0; Type= Case; }
+    	~EntityType(){}
+		String Name;
+		enum BallGameEntityType Type;
+		String MeshName;
+		Vector3 InitialPos;
+		Vector3 InitialScale;
+		Quaternion InitialOrientation;
+		float InitialMass;
+	};
+
+    std::list<class EntityType*> EntityTypes;
+
+    void LoadBallGameEntityTypes(void);
 
     void Append(BallGameEntity *entity);
     void _StartPhysic(void);
@@ -197,7 +214,7 @@ class BallGame : public BaseApplication
 		Delete
 	}PlacementMode;
 
-	enum BallGameEntityType ToBePlacedEntityType;
+	EntityType *ToBePlacedEntityType;
     BallGameEntity *ToBePlacedEntity;
     BallGameEntity *LastPlacedEntity;
     void PlaceNewElement(void);

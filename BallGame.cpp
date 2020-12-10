@@ -247,7 +247,7 @@ BallGame::BallGame() :
 	UnderEditBall = NULL;
 	ToBePlacedEntity = NULL;
 	LastPlacedEntity = NULL;
-	ToBePlacedEntityType = Case;
+	ToBePlacedEntityType = NULL;
 	PlacementMode = Move;
 	mode = Running;
 	MouseOverButton = false;
@@ -277,6 +277,15 @@ BallGame::~BallGame()
 		NewtonDestroy(m_world);
 	if(mRenderer != NULL)
 		CEGUI::OgreRenderer::destroySystem();
+	std::list<class EntityType*>::iterator iter(EntityTypes.begin());
+	while(iter != EntityTypes.end())
+	{
+		EntityType *type = *iter;
+		if(type != NULL)
+			delete type;
+		iter++;
+	}
+	EntityTypes.clear();
 }
 
 void BallGame::PostUpdateCallback(const NewtonWorld* const world, dFloat timestep)
@@ -362,8 +371,49 @@ bool BallGame::LeavingArea(const CEGUI::EventArgs &event)
 	return true;
 }
 
+void BallGame::LoadBallGameEntityTypes(void)
+{
+    glob_t glob_result;
+	memset(&glob_result, 0, sizeof(glob_result));
+	glob("Elements/*.json", 0, NULL, &glob_result);
+	for(size_t i = 0; i < glob_result.gl_pathc; ++i)
+	{
+		String globname(glob_result.gl_pathv[i]), name;
+		size_t slashpos = globname.find_last_of('/'), dotpos = globname.find_last_of('.');
+		name = globname.substr(slashpos + 1, dotpos - (slashpos + 1));
+
+		std::ifstream myfile;
+		std::stringstream buffer;
+		myfile.open (globname.c_str());
+		buffer << myfile.rdbuf();
+		myfile.close();
+		rapidjson::Document in;
+		in.Parse(buffer.str().c_str());
+
+		EntityType *type = new EntityType;
+		type->Name = name;
+		type->Type = strcmp(in["Type"].GetString(), "Case") == 0 ? Case : Ball;
+		type->MeshName = in["Mesh"].GetString();
+		type->InitialPos.x = in["InitialPosX"].GetFloat();
+		type->InitialPos.y = in["InitialPosY"].GetFloat();
+		type->InitialPos.z = in["InitialPosZ"].GetFloat();
+		type->InitialScale.x = in["InitialScaleX"].GetFloat();
+		type->InitialScale.y = in["InitialScaleY"].GetFloat();
+		type->InitialScale.z = in["InitialScaleZ"].GetFloat();
+		type->InitialOrientation.x = in["InitialOrientationX"].GetFloat();
+		type->InitialOrientation.y = in["InitialOrientationY"].GetFloat();
+		type->InitialOrientation.z = in["InitialOrientationZ"].GetFloat();
+		type->InitialOrientation.w = in["InitialOrientationW"].GetFloat();
+		type->InitialMass = in["InitialMass"].GetFloat();
+
+		EntityTypes.push_back(type);
+	}
+}
+
 void BallGame::createScene(void)
 {
+	LoadBallGameEntityTypes();
+
 	SetupGUI();
 
 	SetupGame();
@@ -536,11 +586,20 @@ void BallGame::SwitchEditMode(void)
 bool BallGame::ChooseTypeOfElementToAddBCallback(const CEGUI::EventArgs &e)
 {
 	String ElementType;
+	ToBePlacedEntityType = NULL;
 	ElementType = ChooseTypeOfElementToAddB->getSelectedItem()->getText().c_str();
-	if(ElementType == "Case" || ElementType == "Rampe")
-		ToBePlacedEntityType = Case;
-	else if(ElementType == "Ball")
-		ToBePlacedEntityType = Ball;
+
+	std::list<class EntityType*>::iterator iter(EntityTypes.begin());
+	while(iter != EntityTypes.end())
+	{
+		EntityType *type = *iter;
+		if(type != NULL && type->Name == ElementType)
+		{
+			ToBePlacedEntityType = type;
+			break;
+		}
+		iter++;
+	}
 	if(ToBePlacedEntity != NULL)
 	{
 		mSceneMgr->getRootSceneNode()->removeChild(ToBePlacedEntity->OgreEntity);
@@ -644,40 +703,25 @@ void BallGame::PrepareNewElement(void)
 	Vector3 Pos, Scale;
 	Quaternion Orient;
 
-	Pos.x = 0;
-	Pos.y = 0;
-	Pos.z = 0;
-	Scale.x = 25;
-	Scale.y = 25;
-	Scale.z = 25;
-	Orient.x = 0;
-	Orient.y = 0;
-	Orient.z = 0;
-	Orient.w = 1;
+	Pos = ToBePlacedEntityType->InitialPos;
+	Scale = ToBePlacedEntityType->InitialScale;
+	Orient = ToBePlacedEntityType->InitialOrientation;
 
 	std::cout << "Placing new element ?" << std::endl;
-	switch(ToBePlacedEntityType)
+	switch(ToBePlacedEntityType->Type)
 	{
 	case Case :
 		ToBePlacedEntity = new CaseEntity();
-		if(ChooseTypeOfElementToAddB->getSelectedItem()->getText() == "Case")
-		{
-			((CaseEntity*)ToBePlacedEntity)->type = CaseEntity::CaseType::typeBox;
-			ogreEntity = mSceneMgr->createEntity("Cube.mesh");
-		}
-		else
-		{
-			Pos.z = 25;
-			((CaseEntity*)ToBePlacedEntity)->type = CaseEntity::CaseType::typeRamp;
-			ogreEntity = mSceneMgr->createEntity("Rampe.mesh");
-		}
 		break;
 	case Ball :
-		Pos.z = 55;
 		ToBePlacedEntity = new BallEntity();
-		ogreEntity = mSceneMgr->createEntity("Sphere.mesh");
 		break;
 	}
+	std::cout << "Pos = " << Pos.x << ", " << Pos.y << ", " << Pos.z << std::endl;
+	std::cout << "Scale = " << Scale.x << ", " << Scale.y << ", " << Scale.z << std::endl;
+	std::cout << "Orient = " << Orient.x << ", " << Orient.y << ", " << Orient.z << ", " << Orient.w << std::endl;
+	std::cout << "Mesh = " << ToBePlacedEntityType->MeshName << std::endl;
+	ogreEntity = mSceneMgr->createEntity(ToBePlacedEntityType->MeshName);
 
 	if(LastPlacedEntity != NULL)
 	{
@@ -746,7 +790,7 @@ void BallGame::PlaceNewElement(void)
 		break;
 	case Ball :
 		std::cout << "Place a Ball" << std::endl;
-		newtonBody = WorldAddBall(m_world, 10, NewtonBodySize, 0, bodymatrix);
+		newtonBody = WorldAddBall(m_world, ToBePlacedEntityType->InitialMass, NewtonBodySize, 0, bodymatrix);
 		ToBePlacedEntity->SetNewtonBody(newtonBody);
 		AddBall((BallEntity*)ToBePlacedEntity);
 		break;
@@ -929,10 +973,21 @@ void BallGame::SetupGUI(void)
 
 
     ChooseTypeOfElementToAddB = (CEGUI::Combobox*)wmgr.createWindow("OgreTray/Combobox");
-    ChooseTypeOfElementToAddB->addItem(new CEGUI::ListboxTextItem("Case"));
-    ChooseTypeOfElementToAddB->setText("Case");
-    ChooseTypeOfElementToAddB->addItem(new CEGUI::ListboxTextItem("Rampe"));
-    ChooseTypeOfElementToAddB->addItem(new CEGUI::ListboxTextItem("Ball"));
+	std::list<class EntityType*>::iterator iter(EntityTypes.begin());
+	while(iter != EntityTypes.end())
+	{
+		EntityType *type = *iter;
+		if(type != NULL)
+		{
+			ChooseTypeOfElementToAddB->addItem(new CEGUI::ListboxTextItem(type->Name));
+			if(ChooseTypeOfElementToAddB->getText().empty() == true)
+			{
+				ChooseTypeOfElementToAddB->setText(type->Name);
+				ToBePlacedEntityType = type;
+			}
+		}
+		iter++;
+	}
     ChooseTypeOfElementToAddB->setSize(CEGUI::USize(CEGUI::UDim(0, 150), CEGUI::UDim(0, 40 * (ChooseLevelComboB->getItemCount() + 1))));
     ChooseTypeOfElementToAddB->setVerticalAlignment(CEGUI::VA_TOP);
     ChooseTypeOfElementToAddB->setHorizontalAlignment(CEGUI::HA_RIGHT);
