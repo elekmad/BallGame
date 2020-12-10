@@ -1183,138 +1183,15 @@ void BallGame::SetupGame(void)
 //    RTShader::ShaderGenerator* shadergen = RTShader::ShaderGenerator::getSingletonPtr();
 //    shadergen->addSceneManager(scnMgr);
 
-    // -- tutorial section start --
-    //! [turnlights]
 	mSceneMgr->setAmbientLight(ColourValue(0.5, 0.5, 0.5));
-    //! [turnlights]
 
-    //! [newlight]
     Light* light = mSceneMgr->createLight("MainLight");
     SceneNode* lightNode = mSceneMgr->getRootSceneNode()->createChildSceneNode();
     lightNode->attachObject(light);
-    //! [newlight]
-
-    //! [lightpos]
     lightNode->setPosition(20, 80, 50);
-    //! [lightpos]
 
     ChangeLevel();
 
-#if 0
-    //////////////   ADD CASES ///////////////////
-
-	for(int cmpt = 0; cmpt < WORLD_LENGTH; cmpt++)
-    {
-		for(int cmpt2 = 0; cmpt2 < WORLD_DEPTH; cmpt2++)
-		{
-				dVector location;
-				dVector tsize;
-				NewtonBody *tableBody;
-				Entity* ogreEntity;
-				enum CaseEntity::CaseType type = CaseEntity::CaseType::typeBox;
-				if(cmpt == 5)
-				{
-					ogreEntity = mSceneMgr->createEntity("Rampe.mesh");
-					type = CaseEntity::CaseType::typeRamp;
-				}
-				else
-					ogreEntity = mSceneMgr->createEntity("Cube.mesh");
-				SceneNode* ogreNode = mSceneMgr->getRootSceneNode()->createChildSceneNode(Vector3(cmpt * 50, cmpt2 * 50, 0));
-				ogreNode->setScale(25, 25, 25);
-				if(cmpt == 5)
-				{
-					ogreNode->roll(Degree(-90));
-					ogreNode->setPosition(cmpt * 50, cmpt2 * 50, 25);
-				}
-				ogreNode->attachObject(ogreEntity);
-				Vector3 pos(ogreNode->getPosition());
-				location.m_x = pos.x;
-				location.m_y = pos.y;
-				location.m_z = pos.z;
-				location.m_w = 1;
-				Vector3 AABB(ogreEntity->getBoundingBox().getSize()), scale(ogreNode->getScale());
-				tsize.m_x = AABB.x * scale.x;
-				tsize.m_y = AABB.y * scale.y;
-				tsize.m_z = AABB.z * scale.z;
-				tsize.m_w = 0.0f;
-				//ident_matrix.m_posit = location;
-				Quaternion orientation = ogreNode->getOrientation();
-				dMatrix casematrix(orientation.getPitch(false).valueRadians(), orientation.getYaw(false).valueRadians(), orientation.getRoll(false).valueRadians(), location);
-				NewtonCollision *collision_tree = NULL;
-
-				Matrix4 ogre_matrix;
-				ogre_matrix.makeTransform(Vector3::ZERO, scale, Quaternion::IDENTITY);
-				const MeshPtr ptr = ogreEntity->getMesh();
-				collision_tree = ParseEntity(m_world, ptr, ogre_matrix);
-
-				tableBody = WorldAddCase(m_world, tsize, 0, casematrix, type, collision_tree);
-				CaseEntity *Entity = new CaseEntity(casematrix, type);
-				Entity->InitialPos = ogreNode->getPosition();
-				Entity->InitialScale = ogreNode->getScale();
-				Entity->InitialOrientation = ogreNode->getOrientation();
-				if(cmpt == 0)
-				{
-					dVector *direction = new dVector(1.0, 0.0, 0.0);
-					Entity->SetForceToApply(100.0, direction);
-						//					dVector *force = new dVector(0.0, 0.0, 1000.0);
-				}
-				if((cmpt == 4 && cmpt2 == 0) || (cmpt == 3 && cmpt2 == 1))
-				{
-					Entity->SetForceToApply(100.0, NULL);
-				}
-				if(cmpt >= 10)
-				{
-					dVector *direction = new dVector(0.0, 0.0, 1.0);
-					Entity->SetForceToApply(1000.0, direction);
-						//					dVector *force = new dVector(0.0, 0.0, 1000.0);
-				}
-				Entity->SetOgreNode(ogreNode);
-				Entity->SetNewtonBody(tableBody);
-				AddCase(Entity);
-		}
-    }
-
-    //////////////   ADD BALLS ///////////////////
-
-	for(int cmpt = 0; cmpt < 1; cmpt++)
-    {
-		for(int cmpt2 = 0; cmpt2 < WORLD_DEPTH; cmpt2++)
-		{
-			dVector location;
-			dVector tsize;
-			NewtonBody *BallBody;
-			Entity* ogreEntity = mSceneMgr->createEntity("Sphere.mesh");
-			SceneNode* ogreNode = mSceneMgr->getRootSceneNode()->createChildSceneNode(Vector3(cmpt * 50, cmpt2 * 50, 55));
-			ogreNode->setScale(25, 25, 25);
-			ogreNode->attachObject(ogreEntity);
-			Vector3 pos(ogreNode->getPosition());
-			location.m_x = pos.x;
-			location.m_y = pos.y;
-			location.m_z = pos.z;
-			location.m_w = 1;
-			Vector3 AABB(ogreEntity->getBoundingBox().getSize()), scale(ogreNode->getScale());
-			tsize.m_x = AABB.x * scale.x;
-			tsize.m_y = AABB.y * scale.y;
-			tsize.m_z = AABB.z * scale.z;
-			tsize.m_w = 0.0f;
-			Quaternion orientation = ogreNode->getOrientation();
-			dMatrix ballmatrix(orientation.getPitch(false).valueRadians(), orientation.getYaw(false).valueRadians(), orientation.getRoll(false).valueRadians(), location);
-			if(cmpt2 == 0)
-			    BallBody = WorldAddBall(m_world, 10, tsize, 0, ballmatrix);
-			else
-			    BallBody = WorldAddBall(m_world, 1000, tsize, 0, ballmatrix);
-			BallEntity *Entity = new BallEntity(ballmatrix);
-			Entity->InitialPos = ogreNode->getPosition();
-			Entity->InitialScale = ogreNode->getScale();
-			Entity->InitialOrientation = ogreNode->getOrientation();
-			Entity->InitialMass = cmpt2 == 0 ? 10 : 1000;
-			Entity->SetOgreNode(ogreNode);
-			Entity->SetNewtonBody(BallBody);
-			AddBall(Entity);
-		}
-    }
-#endif
-    //! [cameramove]
     SetCam(-184, -253, 352);
     mCamera->setOrientation(Ogre::Quaternion(0.835422, 0.393051, -0.238709, -0.300998));
 
