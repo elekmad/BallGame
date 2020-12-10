@@ -1168,16 +1168,7 @@ NewtonCollision *ParseEntity (NewtonWorld *world, const MeshPtr mesh, const Matr
 
 NewtonBody* WorldAddCase(NewtonWorld* const world, const dVector& size, int materialID, const dMatrix& shapeMatrix, NewtonCollision *tree)
 {
-	NewtonBody *tableBody;
-
-	dMatrix matrix(shapeMatrix);
-
-	tableBody = CreateSimpleSolid(world, 0.0f, matrix, tree, 0);
-	NewtonBodySetMassProperties(tableBody, 0.0f, NewtonBodyGetCollision(tableBody));
-	NewtonBodySetMaterialGroupID(tableBody, 0);
-	if(tree != NULL)
-		NewtonDestroyCollision(tree);
-	return tableBody;
+	return CreateSimpleSolid(world, 0.0f, shapeMatrix, tree, 0);
 }
 
 NewtonBody* WorldAddBall(NewtonWorld* const world, dFloat mass, const dVector& size, int materialID, const dMatrix& shapeOffsetMatrix)
