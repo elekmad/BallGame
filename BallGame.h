@@ -208,9 +208,12 @@ class BallGame : public BaseApplication
     //Place New Element
     enum PlacementModes
 	{
-    	Move,
-		Rotate,
-		Scale,
+    	PlaceMove,
+		PlaceRotate,
+		PlaceScale,
+    	EditMove,
+		EditRotate,
+		EditScale,
 		Delete
 	}PlacementMode;
 
@@ -218,7 +221,10 @@ class BallGame : public BaseApplication
     BallGameEntity *ToBePlacedEntity;
     BallGameEntity *LastPlacedEntity;
     void PlaceNewElement(void);
+    void PlaceUnderEditElement(void);
+    void PlaceElement(BallGameEntity *ToBePlacedEntity);
     void PrepareNewElement(void);
+    inline void UnprepareNewElement(void);
     void DeleteElement(void);
 
     //Edit Ball
@@ -328,17 +334,22 @@ class BallGame : public BaseApplication
     bool ChooseTypeOfElementToAddBCallback(const CEGUI::EventArgs &e);
     CEGUI::PushButton *PlaceNewElementB;
     bool PlaceNewElementBCallback(const CEGUI::EventArgs &e);
+    CEGUI::PushButton *EditElementB;
+    bool EditElementBCallback(const CEGUI::EventArgs &e);
     CEGUI::PushButton *DeleteElementB;
     bool DeleteElementBCallback(const CEGUI::EventArgs &e);
-    CEGUI::PushButton *MoveNewElementB;
-    bool MoveNewElementBCallback(const CEGUI::EventArgs &e);
+    CEGUI::PushButton *MoveElementB;
+    bool MoveElementBCallback(const CEGUI::EventArgs &e);
     void SetMoveNewElement(void);
-    CEGUI::PushButton *RotateNewElementB;
-    bool RotateNewElementBCallback(const CEGUI::EventArgs &e);
+    void SetMoveElement(void);
+    CEGUI::PushButton *RotateElementB;
+    bool RotateElementBCallback(const CEGUI::EventArgs &e);
     void SetRotateNewElement(void);
-    CEGUI::PushButton *ScaleNewElementB;
-    bool ScaleNewElementBCallback(const CEGUI::EventArgs &e);
+    void SetRotateElement(void);
+    CEGUI::PushButton *ScaleElementB;
+    bool ScaleElementBCallback(const CEGUI::EventArgs &e);
     void SetScaleNewElement(void);
+    void SetScaleElement(void);
 
 
     //Edit Ball Buttons & Callbacks
