@@ -1035,6 +1035,7 @@ void BallGame::SetupGUI(void)
 
     QuitPushB = (CEGUI::PushButton*)wmgr.createWindow("OgreTray/Button");
     QuitPushB->setText("Quit");
+    QuitPushB->setTooltipText("Quit");
     QuitPushB->setSize(CEGUI::USize(CEGUI::UDim(0, 150), CEGUI::UDim(0, 30)));
     QuitPushB->setVisible(false);
 
@@ -1078,7 +1079,7 @@ void BallGame::SetupGUI(void)
     AddElementTitleBanner->setVerticalAlignment(CEGUI::VA_TOP);
     AddElementTitleBanner->setHorizontalAlignment(CEGUI::HA_RIGHT);
     CEGUI::UVector2 pos = AddElementTitleBanner->getPosition();
-    pos.d_y = CEGUI::UDim(0, (mWindow->getHeight() / 2) - 60);
+    pos.d_y = CEGUI::UDim(0, (mWindow->getHeight() / 2) - 120);
     AddElementTitleBanner->setPosition(pos);
     AddElementTitleBanner->setVisible(false);
 
@@ -1111,6 +1112,15 @@ void BallGame::SetupGUI(void)
     		CEGUI::Event::Subscriber(&BallGame::ChooseTypeOfElementToAddBCallback, this));
 
     MainLayout->addChild(ChooseTypeOfElementToAddB);
+
+    ThumbnailWindow = CEGUI::WindowManager::getSingleton().createWindow("OgreTray/StaticImage", "RTTWindow");
+    ThumbnailWindow->setSize(CEGUI::USize(CEGUI::UDim(0, 150),
+ 						   CEGUI::UDim(0, 150)));
+    ThumbnailWindow->setVerticalAlignment(CEGUI::VA_TOP);
+    ThumbnailWindow->setHorizontalAlignment(CEGUI::HA_RIGHT);
+    ThumbnailWindow->setVisible(false);
+
+    sheet->addChild(ThumbnailWindow);
 
     PlaceNewElementB = (CEGUI::PushButton*)wmgr.createWindow("OgreTray/Button");
     PlaceNewElementB->setText("Place");
@@ -1191,23 +1201,14 @@ void BallGame::SetupGUI(void)
     MainLayout->addChild(ScaleElementB);
 
     SetWindowsPosNearToOther(ChooseTypeOfElementToAddB, AddElementTitleBanner, 0, 1);
-    SetWindowsPosNearToOther(EditElementB, AddElementTitleBanner, 0, 2);
+    SetWindowsPosNearToOther(ThumbnailWindow, AddElementTitleBanner, 0, 2);
+    SetWindowsPosNearToOther(EditElementB, ThumbnailWindow, 0, 1);
     SetWindowsPosNearToOther(PlaceNewElementB, EditElementB, -1, 0);
     SetWindowsPosNearToOther(DeleteElementB, EditElementB, 0, 1);
     SetWindowsPosNearToOther(ScaleElementB, DeleteElementB, 0, 1);
     SetWindowsPosNearToOther(RotateElementB, ScaleElementB, -1, 0);
     SetWindowsPosNearToOther(MoveElementB, RotateElementB, -1, 0);
 
-    ThumbnailWindow = CEGUI::WindowManager::getSingleton().createWindow("OgreTray/StaticImage", "RTTWindow");
-    ThumbnailWindow->setSize(CEGUI::USize(CEGUI::UDim(0, 150),
- 						   CEGUI::UDim(0, 150)));
-    ThumbnailWindow->setVerticalAlignment(CEGUI::VA_TOP);
-    ThumbnailWindow->setHorizontalAlignment(CEGUI::HA_RIGHT);
-    ThumbnailWindow->setVisible(false);
-
-    SetWindowsPosNearToOther(ThumbnailWindow, ScaleElementB, 0, 1);
-
-    sheet->addChild(ThumbnailWindow);
 
     // Edit Case GUI
 
@@ -1467,6 +1468,9 @@ bool BallGame::frameEnded(const Ogre::FrameEvent& fe)
 //    std::cout << "Render a frame" << std::endl;
 	dFloat timestep = dGetElapsedSeconds();
 	UpdatePhysics(timestep);
+
+	// Needed for tool tips ? For the moment doesn't work and if uncommented, all buttons places are broke down !
+//	CEGUI::System::getSingleton().getDefaultGUIContext().injectTimePulse( fe.timeSinceLastFrame );
 
 	if(ThumbnailWindow->isVisible() == true && ogreThumbnailNode != NULL)
 		ogreThumbnailNode->roll(Degree(0.01), Node::TS_WORLD);
