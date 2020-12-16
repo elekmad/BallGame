@@ -100,11 +100,14 @@ protected:
  
 	Ogre::Root *mRoot;
 	Ogre::Camera* mCamera;
+	Ogre::Camera* mThumbnailCamera;
 	Ogre::SceneManager* mSceneMgr;
+	Ogre::SceneManager* mThumbnailSceneMgr;
 	Ogre::RenderWindow* mWindow;
 	Ogre::String mResourcesCfg;
 	Ogre::String mPluginsCfg;
-
+	Ogre::TexturePtr tex;
+	Ogre::RenderTexture *rThumbnailtex;
 	Ogre::OverlaySystem *mOverlaySystem;
  
 	// OgreBites

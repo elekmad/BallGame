@@ -218,6 +218,7 @@ class BallGame : public BaseApplication
 	}PlacementMode;
 
 	EntityType *ToBePlacedEntityType;
+	SceneNode *ogreThumbnailNode;
     BallGameEntity *ToBePlacedEntity;
     BallGameEntity *LastPlacedEntity;
     void PlaceNewElement(void);
@@ -305,6 +306,7 @@ class BallGame : public BaseApplication
     bool LeavingArea(const CEGUI::EventArgs &e);
 
     CEGUI::OgreRenderer* mRenderer;
+    CEGUI::Window *ThumbnailWindow;
 
     CEGUI::LayoutContainer* MainLayout;
 
@@ -314,6 +316,7 @@ class BallGame : public BaseApplication
     bool EditModePushBCallback(const CEGUI::EventArgs &e);
     CEGUI::Combobox *ChooseLevelComboB;
     bool ChooseLevelComboBCallback(const CEGUI::EventArgs &e);
+    void CreateThumbnail(String meshname);
     CEGUI::Editbox *NewLevelEditB;
 //    bool NewLevelEditBCallback(const CEGUI::EventArgs &e);
     CEGUI::PushButton *NewLevelCreateB;

@@ -250,6 +250,7 @@ BallGame::BallGame() :
 	ToBePlacedEntity = NULL;
 	LastPlacedEntity = NULL;
 	ToBePlacedEntityType = NULL;
+	ogreThumbnailNode = NULL;
 	PlacementMode = PlaceMove;
 	mode = Running;
 	MouseOverButton = false;
@@ -543,6 +544,7 @@ void BallGame::SwitchEditMode(void)
 		MoveElementB->setVisible(true);
 		RotateElementB->setVisible(true);
 		ScaleElementB->setVisible(true);
+	    ThumbnailWindow->setVisible(true);
 		SetMoveNewElement();
 		PrepareNewElement();
 	}
@@ -567,6 +569,7 @@ void BallGame::SwitchEditMode(void)
 		MoveElementB->setVisible(false);
 		RotateElementB->setVisible(false);
 		ScaleElementB->setVisible(false);
+	    ThumbnailWindow->setVisible(false);
 		if(LastHighligted != NULL)
 		{
 			LastHighligted->showBoundingBox(false);
@@ -582,11 +585,21 @@ void BallGame::SwitchEditMode(void)
 	}
 }
 
+void BallGame::CreateThumbnail(String meshname)
+{
+	Entity *ogreEntity = mThumbnailSceneMgr->createEntity(meshname);
+	ogreThumbnailNode = mThumbnailSceneMgr->getRootSceneNode()->createChildSceneNode();
+	ogreThumbnailNode->attachObject(ogreEntity);
+	ogreThumbnailNode->scale(130, 130, 130);
+	ogreThumbnailNode->setPosition(270, 130, -30);
+}
+
 bool BallGame::ChooseTypeOfElementToAddBCallback(const CEGUI::EventArgs &e)
 {
 	String ElementType;
 	ToBePlacedEntityType = NULL;
 	ElementType = ChooseTypeOfElementToAddB->getSelectedItem()->getText().c_str();
+	mThumbnailSceneMgr->getRootSceneNode()->removeAllChildren();
 
 	std::list<class EntityType*>::iterator iter(EntityTypes.begin());
 	while(iter != EntityTypes.end())
@@ -599,6 +612,8 @@ bool BallGame::ChooseTypeOfElementToAddBCallback(const CEGUI::EventArgs &e)
 		}
 		iter++;
 	}
+	if(ToBePlacedEntityType != NULL)
+		CreateThumbnail(ToBePlacedEntityType->MeshName);
 	if(ToBePlacedEntity != NULL)
 	{
 		mSceneMgr->getRootSceneNode()->removeChild(ToBePlacedEntity->OgreEntity);
@@ -1082,6 +1097,7 @@ void BallGame::SetupGUI(void)
 			{
 				ChooseTypeOfElementToAddB->setText(type->Name);
 				ToBePlacedEntityType = type;
+				CreateThumbnail(ToBePlacedEntityType->MeshName);
 			}
 		}
 		iter++;
@@ -1181,6 +1197,17 @@ void BallGame::SetupGUI(void)
     SetWindowsPosNearToOther(ScaleElementB, DeleteElementB, 0, 1);
     SetWindowsPosNearToOther(RotateElementB, ScaleElementB, -1, 0);
     SetWindowsPosNearToOther(MoveElementB, RotateElementB, -1, 0);
+
+    ThumbnailWindow = CEGUI::WindowManager::getSingleton().createWindow("OgreTray/StaticImage", "RTTWindow");
+    ThumbnailWindow->setSize(CEGUI::USize(CEGUI::UDim(0, 150),
+ 						   CEGUI::UDim(0, 150)));
+    ThumbnailWindow->setVerticalAlignment(CEGUI::VA_TOP);
+    ThumbnailWindow->setHorizontalAlignment(CEGUI::HA_RIGHT);
+    ThumbnailWindow->setVisible(false);
+
+    SetWindowsPosNearToOther(ThumbnailWindow, ScaleElementB, 0, 1);
+
+    sheet->addChild(ThumbnailWindow);
 
     // Edit Case GUI
 
@@ -1356,10 +1383,29 @@ void BallGame::SetupGame(void)
     lightNode->attachObject(light);
     lightNode->setPosition(20, 80, 50);
 
-    ChangeLevel();
+	mThumbnailSceneMgr->setAmbientLight(ColourValue(0.5, 0.5, 0.5));
+
+    light = mThumbnailSceneMgr->createLight("MainThumbnailLight");
+    lightNode = mThumbnailSceneMgr->getRootSceneNode()->createChildSceneNode();
+    lightNode->attachObject(light);
+    lightNode->setPosition(20, 80, 50);
 
     SetCam(-184, -253, 352);
+    mThumbnailCamera->setPosition(-184, -253, 352);
     mCamera->setOrientation(Ogre::Quaternion(0.835422, 0.393051, -0.238709, -0.300998));
+    mThumbnailCamera->setOrientation(Ogre::Quaternion(0.835422, 0.393051, -0.238709, -0.300998));
+
+    CEGUI::Texture &guiTex = mRenderer->createTexture("textname", tex);
+
+    const CEGUI::Rectf rect(CEGUI::Vector2f(0.0f, 0.0f), guiTex.getOriginalDataSize());
+    CEGUI::BasicImage* image = (CEGUI::BasicImage*)( &CEGUI::ImageManager::getSingleton().create("BasicImage", "foobar"));
+       image->setTexture(&guiTex);
+       image->setArea(rect);
+       image->setAutoScaled(CEGUI::ASM_Both);
+
+   ThumbnailWindow->setProperty("Image", "foobar");
+
+    ChangeLevel();
 
     _StartPhysic();
 //    _StopPhysic();
@@ -1421,6 +1467,9 @@ bool BallGame::frameEnded(const Ogre::FrameEvent& fe)
 //    std::cout << "Render a frame" << std::endl;
 	dFloat timestep = dGetElapsedSeconds();
 	UpdatePhysics(timestep);
+
+	if(ThumbnailWindow->isVisible() == true && ogreThumbnailNode != NULL)
+		ogreThumbnailNode->roll(Degree(0.01), Node::TS_WORLD);
 
 	if(mode == Running)
 	{

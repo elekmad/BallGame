@@ -79,6 +79,7 @@ void BaseApplication::chooseSceneManager(void)
 {
 	// Get the SceneManager, in this case a generic one
 	mSceneMgr = mRoot->createSceneManager(Ogre::ST_GENERIC);
+	mThumbnailSceneMgr = mRoot->createSceneManager(Ogre::ST_GENERIC);
 
 	// initialize the OverlaySystem (changed for 1.9)
 	mOverlaySystem = new Ogre::OverlaySystem();
@@ -89,6 +90,8 @@ void BaseApplication::createCamera(void)
 {
 	// Create the camera
 	mCamera = mSceneMgr->createCamera("PlayerCam");
+	mThumbnailCamera = mThumbnailSceneMgr->createCamera("Cam");
+	mThumbnailCamera->setNearClipDistance(5);
  
 	// Position it at 500 in Z direction
 	mCamera->setPosition(Ogre::Vector3(0,0,80));
@@ -162,10 +165,28 @@ void BaseApplication::createViewports(void)
 	// Create one viewport, entire window
 	Ogre::Viewport* vp = mWindow->addViewport(mCamera);
 	vp->setBackgroundColour(Ogre::ColourValue(0,0,0));
-//	vp->setBackgroundColour(Ogre::ColourValue(255,255,255));
  
 	// Alter the camera aspect ratio to match the viewport
 	mCamera->setAspectRatio(
+		Ogre::Real(vp->getActualWidth()) / Ogre::Real(vp->getActualHeight()));
+
+    tex = mRoot->getTextureManager()->createManual(
+        "RTT",
+        Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME,
+        Ogre::TEX_TYPE_2D,
+        512,
+        512,
+        0,
+        Ogre::PF_R8G8B8,
+        Ogre::TU_RENDERTARGET);
+    rThumbnailtex = tex->getBuffer()->getRenderTarget();
+
+
+	vp = rThumbnailtex->addViewport(mThumbnailCamera);
+	vp->setBackgroundColour(Ogre::ColourValue(0,0,0));
+
+	// Alter the camera aspect ratio to match the viewport
+	mThumbnailCamera->setAspectRatio(
 		Ogre::Real(vp->getActualWidth()) / Ogre::Real(vp->getActualHeight()));
 }
 //-------------------------------------------------------------------------------------
