@@ -58,6 +58,142 @@ void EquilibrateAABBAroundOrigin(Node *node)
 	}
 }
 
+
+
+
+
+void BallGame::SerializeToFile (void* const serializeHandle, const void* const buffer, int size)
+{
+	// check that each chunk is a multiple of 4 bytes, this is useful for easy little to big Indian conversion
+	dAssert ((size & 0x03) == 0);
+	fwrite (buffer, size, 1, (FILE*) serializeHandle);
+}
+
+void BallGame::DeserializeFromFile (void* const serializeHandle, void* const buffer, int size)
+{
+	// check that each chunk is a multiple of 4 bytes, this is useful for easy little to big Indian conversion
+	dAssert ((size & 0x03) == 0);
+	size_t ret = fread (buffer, size, 1, (FILE*) serializeHandle);
+	ret = 0;
+}
+
+
+void BallGame::BodySerialization (NewtonBody* const body, void* const bodyUserData, NewtonSerializeCallback serializeCallback, void* const serializeHandle)
+{
+	BallGameEntity *Entity = (BallGameEntity*)NewtonBodyGetUserData(body);
+
+	const char* const bodyIndentification = Entity->OgreEntity->getName().c_str();
+	std::cout << "Entity (" << Entity << "/" << body << ") name :" << bodyIndentification << std::endl;
+	int size = (strlen (bodyIndentification) + 3) & -4;
+	serializeCallback (serializeHandle, &size, sizeof (size));
+	serializeCallback (serializeHandle, bodyIndentification, size);
+}
+
+void BallGame::BodyDeserialization (NewtonBody* const body, void* const bodyUserData, NewtonDeserializeCallback deserializecallback, void* const serializeHandle)
+{
+	int size;
+	char bodyIndentification[256];
+	BallGame *Game = (BallGame*)bodyUserData;
+
+	deserializecallback (serializeHandle, &size, sizeof (size));
+	deserializecallback (serializeHandle, bodyIndentification, size);
+
+	BallGameEntity *Entity = Game->GetEntity(bodyIndentification);
+
+	NewtonBodySetUserData (body, Entity);
+	Entity->SetNewtonBody(body);
+	NewtonBodySetTransformCallback(body, BallGameEntity::TransformCallback);
+	if(Entity->type == Ball)
+		NewtonBodySetForceAndTorqueCallback(body, PhysicsAddForceAndGravity);
+	else
+		NewtonBodySetForceAndTorqueCallback(body, PhysicsApplyGravityForce);
+	NewtonCollision* const collision = NewtonBodyGetCollision(body);
+
+	#ifdef USE_STATIC_MESHES_DEBUG_COLLISION
+	if (NewtonCollisionGetType(collision) == SERIALIZE_ID_TREE) {
+		NewtonStaticCollisionSetDebugCallback (collision, ShowMeshCollidingFaces);
+	}
+	#endif
+}
+
+BallGameEntity *BallGame::GetEntity(char *name_c)
+{
+	String name(name_c);
+	for(int cmpt = 0; cmpt < Cases.GetSize(); cmpt++)
+	{
+		CaseEntity *Entity = Cases[cmpt];
+		if(Entity == NULL)
+			continue;
+		if(Entity->OgreEntity->getName() == name)
+			return (BallGameEntity*)Entity;
+	}
+	for(int cmpt = 0; cmpt < Balls.GetSize(); cmpt++)
+	{
+		BallEntity *Entity = Balls[cmpt];
+		if(Entity == NULL)
+			continue;
+		if(Entity->OgreEntity->getName() == name)
+			return (BallGameEntity*)Entity;
+	}
+	return NULL;
+}
+
+void BallGame::SerializedPhysicScene(const String* const name)
+{
+//	NewtonSerializeToFile(m_world, name, NULL, NULL);
+	_StopPhysic();
+	NewtonSerializeToFile(m_world, name->c_str(), BodySerialization, NULL);
+	_StartPhysic();
+}
+
+void BallGame::DeserializedPhysicScene(const String* const name)
+{
+	std::cout << "Load '" << (*name) << "'" << std::endl;
+	_StopPhysic();
+	for(int cmpt = 0; cmpt < Balls.GetSize(); cmpt++)
+	{
+		BallEntity *Entity = Balls[cmpt];
+		if(Entity == NULL)
+			continue;
+		Entity->SetNewtonBody(NULL);
+		Entity->CleanupForces();
+	}
+	for(int cmpt = 0; cmpt < Cases.GetSize(); cmpt++)
+	{
+		CaseEntity *Entity = Cases[cmpt];
+		if(Entity == NULL)
+			continue;
+		Entity->SetNewtonBody(NULL);
+	}
+	NewtonDestroyAllBodies(m_world);
+	NewtonMaterialDestroyAllGroupID(m_world);
+	NewtonDeserializeFromFile(m_world, name->c_str(), BodyDeserialization, this);
+	_StartPhysic();
+}
+
+
+bool BallGame::SaveStatePushBCallback(const CEGUI::EventArgs &e)
+{
+	String state_name = Level;
+	state_name += "-";
+	state_name += std::to_string(ChooseStateToLoadB->getItemCount());
+	SerializedPhysicScene(&state_name);
+	ChooseStateToLoadB->addItem(new CEGUI::ListboxTextItem(state_name));
+	ChooseStateToLoadB->setSize(CEGUI::USize(CEGUI::UDim(0, 150), CEGUI::UDim(0, 40 * (ChooseStateToLoadB->getItemCount() + 1))));
+	return true;
+}
+
+bool BallGame::LoadStatePushBCallback(const CEGUI::EventArgs &e)
+{
+	CEGUI::ListboxItem *item = ChooseStateToLoadB->getSelectedItem();
+	if(item == NULL)
+		return true;
+	String state_name = item->getText().c_str();
+	if(state_name.empty() == false)
+		DeserializedPhysicScene(&state_name);
+	return true;
+}
+
 BallGameEntity::BallGameEntity(const dMatrix& matrix) :// m_matrix(matrix),
 	m_curPosition (matrix.m_posit),
 	m_nextPosition (matrix.m_posit),
@@ -162,6 +298,18 @@ void BallEntity::AddForceVector(dVector *force)
 {
 	std::cout << "Add Force {" << (*force)[0] << ", " << (*force)[1] << ", " << (*force)[2] << "} On ball" << std::endl;
 	Forces.Append(force);
+}
+
+void BallEntity::CleanupForces(void)
+{
+	dVector *f;
+	do
+	{
+		f = GetForceVector();
+		if(f != NULL)
+			delete f;
+	}
+	while(f != NULL);
 }
 
 dVector *BallEntity::GetForceVector()
@@ -556,6 +704,7 @@ void BallGame::_StopPhysic(void)
 {
 	StopPhysicPushB->setText("Start Physic");
 	m_suspendPhysicsUpdate = true;
+	NewtonWaitForUpdateToFinish(m_world);
 }
 
 bool BallGame::StopPhysicPushBCallback(const CEGUI::EventArgs &e)
@@ -957,6 +1106,25 @@ bool BallGame::EditModePushBCallback(const CEGUI::EventArgs &e)
     return true;
 }
 
+bool BallGame::StatesModePushBCallback(const CEGUI::EventArgs &e)
+{
+	if(StatesBanner->isVisible() == false)
+	{
+		StatesBanner->setVisible(true);
+		ChooseStateToLoadB->setVisible(true);
+		LoadStatePushB->setVisible(true);
+		SaveStatePushB->setVisible(true);
+	}
+	else
+	{
+		StatesBanner->setVisible(false);
+		ChooseStateToLoadB->setVisible(false);
+		LoadStatePushB->setVisible(false);
+		SaveStatePushB->setVisible(false);
+	}
+	return true;
+}
+
 inline void SetWindowsPosNearToOther(CEGUI::Window *self, CEGUI::Window *other, int H_factor, int V_factor)
 {
 	CEGUI::UVector2 pos(other->getPosition());
@@ -1002,7 +1170,7 @@ void BallGame::SetupGUI(void)
 
     EditModePushB = (CEGUI::PushButton*)wmgr.createWindow("OgreTray/Button");
     EditModePushB->setText("Edit");
-    EditModePushB->setSize(CEGUI::USize(CEGUI::UDim(0, 150), CEGUI::UDim(0, 30)));
+    EditModePushB->setSize(CEGUI::USize(CEGUI::UDim(0, 75), CEGUI::UDim(0, 30)));
     EditModePushB->setVisible(false);
 
     MainLayout->addChild(EditModePushB);
@@ -1011,6 +1179,18 @@ void BallGame::SetupGUI(void)
     		CEGUI::Event::Subscriber(&BallGame::EditModePushBCallback, this));
 
     SetWindowsPosNearToOther(EditModePushB, StopPhysicPushB, 0, 1);
+
+    StatesModePushB = (CEGUI::PushButton*)wmgr.createWindow("OgreTray/Button");
+    StatesModePushB->setText("States");
+    StatesModePushB->setSize(CEGUI::USize(CEGUI::UDim(0, 75), CEGUI::UDim(0, 30)));
+    StatesModePushB->setVisible(false);
+
+    MainLayout->addChild(StatesModePushB);
+
+    StatesModePushB->subscribeEvent(CEGUI::PushButton::EventClicked,
+    		CEGUI::Event::Subscriber(&BallGame::StatesModePushBCallback, this));
+
+    SetWindowsPosNearToOther(StatesModePushB, EditModePushB, 1, 0);
 
     ChooseLevelComboB = (CEGUI::Combobox*)wmgr.createWindow("OgreTray/Combobox");
     glob_t glob_result;
@@ -1092,6 +1272,48 @@ void BallGame::SetupGUI(void)
     LevelNameBanner->setHorizontalAlignment(CEGUI::HA_CENTRE);
 
     MainLayout->addChild(LevelNameBanner);
+
+    StatesBanner = (CEGUI::Titlebar*)wmgr.createWindow("OgreTray/Titlebar");
+    StatesBanner->setText("States");
+    StatesBanner->setSize(CEGUI::USize(CEGUI::UDim(0, 150), CEGUI::UDim(0, 30)));
+    StatesBanner->setVerticalAlignment(CEGUI::VA_TOP);
+    StatesBanner->setHorizontalAlignment(CEGUI::HA_RIGHT);
+    StatesBanner->setVisible(false);
+
+    MainLayout->addChild(StatesBanner);
+
+    ChooseStateToLoadB = (CEGUI::Combobox*)wmgr.createWindow("OgreTray/Combobox");
+    ChooseStateToLoadB->setSize(CEGUI::USize(CEGUI::UDim(0, 150), CEGUI::UDim(0, 30)));
+    ChooseStateToLoadB->setVerticalAlignment(CEGUI::VA_TOP);
+    ChooseStateToLoadB->setHorizontalAlignment(CEGUI::HA_RIGHT);
+    ChooseStateToLoadB->setVisible(false);
+
+    MainLayout->addChild(ChooseStateToLoadB);
+    SetWindowsPosNearToOther(ChooseStateToLoadB, StatesBanner, 0, 1);
+
+    LoadStatePushB = (CEGUI::PushButton*)wmgr.createWindow("OgreTray/Button");
+    LoadStatePushB->setText("Load");
+    LoadStatePushB->setSize(CEGUI::USize(CEGUI::UDim(0, 150), CEGUI::UDim(0, 30)));
+    LoadStatePushB->setVerticalAlignment(CEGUI::VA_TOP);
+    LoadStatePushB->setHorizontalAlignment(CEGUI::HA_RIGHT);
+    LoadStatePushB->setVisible(false);
+
+    MainLayout->addChild(LoadStatePushB);
+    LoadStatePushB->subscribeEvent(CEGUI::PushButton::EventClicked,
+    		CEGUI::Event::Subscriber(&BallGame::LoadStatePushBCallback, this));
+    SetWindowsPosNearToOther(LoadStatePushB, StatesBanner, 0, 2);
+
+    SaveStatePushB = (CEGUI::PushButton*)wmgr.createWindow("OgreTray/Button");
+    SaveStatePushB->setText("Save");
+    SaveStatePushB->setSize(CEGUI::USize(CEGUI::UDim(0, 150), CEGUI::UDim(0, 30)));
+    SaveStatePushB->setVerticalAlignment(CEGUI::VA_TOP);
+    SaveStatePushB->setHorizontalAlignment(CEGUI::HA_RIGHT);
+    SaveStatePushB->setVisible(false);
+
+    MainLayout->addChild(SaveStatePushB);
+    SaveStatePushB->subscribeEvent(CEGUI::PushButton::EventClicked,
+    		CEGUI::Event::Subscriber(&BallGame::SaveStatePushBCallback, this));
+    SetWindowsPosNearToOther(SaveStatePushB, LoadStatePushB, 0, 1);
 
     //Now LevelNameBanner exist, we can call SetLevel !
     String default_level = ChooseLevelComboB->getText().c_str();
@@ -1925,6 +2147,7 @@ bool BallGame::keyPressed(const OIS::KeyEvent &arg)
 		{
 			StopPhysicPushB->setVisible(false);
 			EditModePushB->setVisible(false);
+			StatesModePushB->setVisible(false);
 			ChooseLevelComboB->setVisible(false);
 			NewLevelEditB->setVisible(false);
 			NewLevelCreateB->setVisible(false);
@@ -1935,6 +2158,7 @@ bool BallGame::keyPressed(const OIS::KeyEvent &arg)
 		{
 			StopPhysicPushB->setVisible(true);
 			EditModePushB->setVisible(true);
+			StatesModePushB->setVisible(true);
 			ChooseLevelComboB->setVisible(true);
 			NewLevelEditB->setVisible(true);
 			NewLevelCreateB->setVisible(true);

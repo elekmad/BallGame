@@ -76,6 +76,7 @@ dCustomJoint* FindJoint(const NewtonBody* const body0, const NewtonBody* const b
 dVector FindFloor (const NewtonWorld* world, const dVector& origin, dFloat dist, dVector* const normal = NULL);
 
 void PhysicsBodyDestructor (const NewtonBody* body);
+void PhysicsAddForceAndGravity (const NewtonBody* body, dFloat timestep, int threadIndex);
 void PhysicsApplyGravityForce (const NewtonBody* body, dFloat timestep, int threadIndex);
 
 void SetAutoSleepMode (NewtonWorld* const world, int mode);

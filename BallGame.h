@@ -136,6 +136,7 @@ class BallEntity : public BallGameEntity
     void ExportToJson(rapidjson::Value &v, rapidjson::Document::AllocatorType& allocator);
     void ImportFromJson(rapidjson::Value &v, Ogre::SceneManager* mSceneMgr, Node *parent = NULL);
 	dVector *GetForceVector();
+	void CleanupForces(void);
 	protected:
 	dList<dVector*> Forces;
 	float InitialMass;
@@ -265,6 +266,13 @@ class BallGame : public BaseApplication
 
     void SetupNewton(void);
     NewtonWorld* GetNewton(void);
+    void SerializeToFile (void* const serializeHandle, const void* const buffer, int size);
+    void DeserializeFromFile (void* const serializeHandle, void* const buffer, int size);
+    static void BodySerialization (NewtonBody* const body, void* const bodyUserData, NewtonSerializeCallback serializeCallback, void* const serializeHandle);
+    static void BodyDeserialization (NewtonBody* const body, void* const bodyUserData, NewtonDeserializeCallback deserializecallback, void* const serializeHandle);
+    void SerializedPhysicScene(const String* const name);
+    void DeserializedPhysicScene(const String* const name);
+    BallGameEntity *GetEntity(char *name);
 
     bool m_suspendPhysicsUpdate;
     unsigned64 m_microsecunds;
@@ -320,6 +328,8 @@ class BallGame : public BaseApplication
     bool StopPhysicPushBCallback(const CEGUI::EventArgs &e);
     CEGUI::PushButton *EditModePushB;
     bool EditModePushBCallback(const CEGUI::EventArgs &e);
+    CEGUI::PushButton *StatesModePushB;
+    bool StatesModePushBCallback(const CEGUI::EventArgs &e);
     CEGUI::Combobox *ChooseLevelComboB;
     bool ChooseLevelComboBCallback(const CEGUI::EventArgs &e);
     void CreateThumbnail(String meshname);
@@ -336,6 +346,12 @@ class BallGame : public BaseApplication
 
     CEGUI::Titlebar *EditingModeTitleBanner;
     CEGUI::Titlebar *LevelNameBanner;
+    CEGUI::Titlebar *StatesBanner;
+    CEGUI::PushButton *SaveStatePushB;
+    bool SaveStatePushBCallback(const CEGUI::EventArgs &e);
+    CEGUI::Combobox *ChooseStateToLoadB;
+    CEGUI::PushButton *LoadStatePushB;
+    bool LoadStatePushBCallback(const CEGUI::EventArgs &e);
 
     //Add new elements Buttons & Callbacks
     CEGUI::Titlebar *AddElementTitleBanner;
