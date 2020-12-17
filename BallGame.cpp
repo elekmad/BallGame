@@ -19,6 +19,45 @@
 #include "BallGame.h"
 
 
+void EquilibrateAABBAroundOrigin(Node *node)
+{
+	Vector3 min(NAN, NAN, NAN), max(NAN, NAN, NAN);
+	Node::ChildNodeIterator ite(node->getChildIterator());
+	while ( ite.hasMoreElements() )
+	{
+	       SceneNode* child = static_cast<SceneNode*>(ite.getNext());
+	       Vector3 childmin = child->_getWorldAABB().getMinimum();
+	       Vector3 childmax = child->_getWorldAABB().getMaximum();
+
+	       childmin *= child->getScale();
+	       childmin += child->getPosition();
+	       childmax *= child->getScale();
+	       childmax += child->getPosition();
+
+	       if(min.isNaN())
+	    	   min = childmin;
+	       if(max.isNaN())
+	    	   max = childmax;
+
+	       min.x = min2(min.x, childmin.x);
+	       min.y = min2(min.y, childmin.y);
+	       min.z = min2(min.z, childmin.z);
+
+	       max.x = max2(max.x, childmax.x);
+	       max.y = max2(max.y, childmax.y);
+	       max.z = max2(max.z, childmax.z);
+	}
+
+	node->translate((min + max) / 2);
+
+	Node::ChildNodeIterator ite2(node->getChildIterator());
+	while ( ite2.hasMoreElements() )
+	{
+		   SceneNode* child = static_cast<SceneNode*>(ite2.getNext());
+		   child->translate(-1 * (min + max) / 2);
+	}
+}
+
 BallGameEntity::BallGameEntity(const dMatrix& matrix) :// m_matrix(matrix),
 	m_curPosition (matrix.m_posit),
 	m_nextPosition (matrix.m_posit),
@@ -2353,9 +2392,9 @@ void CaseEntity::ExportToJson(rapidjson::Value &v, rapidjson::Document::Allocato
 	}
 }
 
-void CaseEntity::CreateFromJson(rapidjson::Value &v, Ogre::SceneManager* mSceneMgr, NewtonWorld *m_world)
+void CaseEntity::CreateFromJson(rapidjson::Value &v, Ogre::SceneManager* mSceneMgr, NewtonWorld *m_world, Node *parent)
 {
-	ImportFromJson(v, mSceneMgr);
+	ImportFromJson(v, mSceneMgr, parent);
 	dVector NewtonBodyLocation;
 	dVector NewtonBodySize;
 	NewtonBody *newtonBody;
@@ -2383,9 +2422,9 @@ void CaseEntity::CreateFromJson(rapidjson::Value &v, Ogre::SceneManager* mSceneM
 	SetNewtonBody(newtonBody);
 }
 
-void CaseEntity::ImportFromJson(rapidjson::Value &v, Ogre::SceneManager* mSceneMgr)
+void CaseEntity::ImportFromJson(rapidjson::Value &v, Ogre::SceneManager* mSceneMgr, Node *parent)
 {
-	BallGameEntity::ImportFromJson(v, mSceneMgr);
+	BallGameEntity::ImportFromJson(v, mSceneMgr, parent);
 	float force_json =  NAN;
 	dVector *direction_json = NULL;
 	type = (CaseEntity::CaseType)v["Type"].GetInt();
@@ -2424,9 +2463,9 @@ void BallGameEntity::ExportToJson(rapidjson::Value &v, rapidjson::Document::Allo
 	v.AddMember("OrientationW", InitialOrientation.w, allocator);
 }
 
-void BallEntity::CreateFromJson(rapidjson::Value &v, Ogre::SceneManager* mSceneMgr, NewtonWorld *m_world)
+void BallEntity::CreateFromJson(rapidjson::Value &v, Ogre::SceneManager* mSceneMgr, NewtonWorld *m_world, Node *parent)
 {
-	ImportFromJson(v, mSceneMgr);
+	ImportFromJson(v, mSceneMgr, parent);
 	dVector NewtonBodyLocation;
 	dVector NewtonBodySize;
 	NewtonBody *BallBody;
@@ -2446,13 +2485,13 @@ void BallEntity::CreateFromJson(rapidjson::Value &v, Ogre::SceneManager* mSceneM
 	SetNewtonBody(BallBody);
 }
 
-void BallEntity::ImportFromJson(rapidjson::Value &v, Ogre::SceneManager* mSceneMgr)
+void BallEntity::ImportFromJson(rapidjson::Value &v, Ogre::SceneManager* mSceneMgr, Node *parent)
 {
-	BallGameEntity::ImportFromJson(v, mSceneMgr);
+	BallGameEntity::ImportFromJson(v, mSceneMgr, parent);
 	InitialMass = v["Mass"].GetFloat();
 }
 
-void BallGameEntity::ImportFromJson(rapidjson::Value &v, Ogre::SceneManager* mSceneMgr)
+void BallGameEntity::ImportFromJson(rapidjson::Value &v, Ogre::SceneManager* mSceneMgr, Node *parent)
 {
 	const char *meshname = v["Mesh"].GetString();
 	Entity* ogreEntity = mSceneMgr->createEntity(meshname);
@@ -2466,7 +2505,12 @@ void BallGameEntity::ImportFromJson(rapidjson::Value &v, Ogre::SceneManager* mSc
 	InitialOrientation.y = v["OrientationY"].GetFloat();
 	InitialOrientation.z = v["OrientationZ"].GetFloat();
 	InitialOrientation.w = v["OrientationW"].GetFloat();
-	SceneNode* ogreNode = mSceneMgr->getRootSceneNode()->createChildSceneNode(InitialPos);
+
+	SceneNode* ogreNode;
+	if(parent == NULL)
+		ogreNode = mSceneMgr->getRootSceneNode()->createChildSceneNode(InitialPos);
+	else
+		ogreNode = (SceneNode*)parent->createChild(InitialPos);
 	ogreNode->attachObject(ogreEntity);
 	SetOgreNode(ogreNode);
 }
@@ -2516,7 +2560,7 @@ void BallGame::ChangeLevel(void)
 	ImportLevelFromJson();
 }
 
-void BallGame::ImportLevelFromJson(void)
+void BallGame::ImportLevelFromJson(Node *parent)
 {
 	std::ifstream myfile;
 	std::stringstream buffer;
@@ -2534,7 +2578,7 @@ void BallGame::ImportLevelFromJson(void)
 	{
 		CaseEntity *newCase = new CaseEntity();
 		rapidjson::Value &casejson = cases[cmpt];
-		newCase->CreateFromJson(casejson, mSceneMgr, m_world);
+		newCase->CreateFromJson(casejson, mSceneMgr, m_world, parent);
 		AddCase(newCase);
 	}
 	//Parsing Balls
@@ -2543,7 +2587,7 @@ void BallGame::ImportLevelFromJson(void)
 	{
 		BallEntity *newBall = new BallEntity();
 		rapidjson::Value &balljson = balls[cmpt];
-		newBall->CreateFromJson(balljson, mSceneMgr, m_world);
+		newBall->CreateFromJson(balljson, mSceneMgr, m_world, parent);
 		AddBall(newBall);
 	}
 }
