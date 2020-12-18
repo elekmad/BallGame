@@ -203,8 +203,10 @@ class BallGame : public BaseApplication
     void _StartPhysic(void);
     void _StopPhysic(void);
     void SwitchEditMode(void);
-    void RemoveCase(CaseEntity *Entity);
-    void RemoveBall(BallEntity *Entity);
+    void DeleteCase(CaseEntity *Entity, std::list<CaseEntity*>::iterator *iter = NULL);
+    void RemoveCase(CaseEntity *Entity, std::list<CaseEntity*>::iterator *iter = NULL);
+    void DeleteBall(BallEntity *Entity, std::list<BallEntity*>::iterator *iter = NULL);
+    void RemoveBall(BallEntity *Entity, std::list<BallEntity*>::iterator *iter = NULL);
     void EmptyLevel(void);//Clean all BallGame, Newton and Ogre entities to start with new level.
     void ChangeLevel(void);
     void ImportLevelFromJson(Node *parent = NULL);
@@ -266,8 +268,6 @@ class BallGame : public BaseApplication
 
     void SetupNewton(void);
     NewtonWorld* GetNewton(void);
-    void SerializeToFile (void* const serializeHandle, const void* const buffer, int size);
-    void DeserializeFromFile (void* const serializeHandle, void* const buffer, int size);
     static void BodySerialization (NewtonBody* const body, void* const bodyUserData, NewtonSerializeCallback serializeCallback, void* const serializeHandle);
     static void BodyDeserialization (NewtonBody* const body, void* const bodyUserData, NewtonDeserializeCallback deserializecallback, void* const serializeHandle);
     void SerializedPhysicScene(const String* const name);
@@ -281,8 +281,8 @@ class BallGame : public BaseApplication
     dFloat m_mainThreadPhysicsTimeAcc;
     bool m_asynchronousPhysicsUpdate;
 
-    dArray<CaseEntity*> Cases;
-    dArray<BallEntity*> Balls;
+    std::list<CaseEntity*> Cases;
+    std::list<BallEntity*> Balls;
 
 
     void CheckforCollides(void);

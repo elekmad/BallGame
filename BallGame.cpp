@@ -60,24 +60,6 @@ void EquilibrateAABBAroundOrigin(Node *node)
 
 
 
-
-
-void BallGame::SerializeToFile (void* const serializeHandle, const void* const buffer, int size)
-{
-	// check that each chunk is a multiple of 4 bytes, this is useful for easy little to big Indian conversion
-	dAssert ((size & 0x03) == 0);
-	fwrite (buffer, size, 1, (FILE*) serializeHandle);
-}
-
-void BallGame::DeserializeFromFile (void* const serializeHandle, void* const buffer, int size)
-{
-	// check that each chunk is a multiple of 4 bytes, this is useful for easy little to big Indian conversion
-	dAssert ((size & 0x03) == 0);
-	size_t ret = fread (buffer, size, 1, (FILE*) serializeHandle);
-	ret = 0;
-}
-
-
 void BallGame::BodySerialization (NewtonBody* const body, void* const bodyUserData, NewtonSerializeCallback serializeCallback, void* const serializeHandle)
 {
 	BallGameEntity *Entity = (BallGameEntity*)NewtonBodyGetUserData(body);
@@ -119,20 +101,18 @@ void BallGame::BodyDeserialization (NewtonBody* const body, void* const bodyUser
 BallGameEntity *BallGame::GetEntity(char *name_c)
 {
 	String name(name_c);
-	for(int cmpt = 0; cmpt < Cases.GetSize(); cmpt++)
+	std::list<CaseEntity*>::iterator Citer(Cases.begin());
+	while(Citer != Cases.end())
 	{
-		CaseEntity *Entity = Cases[cmpt];
-		if(Entity == NULL)
-			continue;
-		if(Entity->OgreEntity->getName() == name)
+		CaseEntity *Entity = *(Citer++);
+		if(Entity != NULL && Entity->OgreEntity->getName() == name)
 			return (BallGameEntity*)Entity;
 	}
-	for(int cmpt = 0; cmpt < Balls.GetSize(); cmpt++)
+	std::list<BallEntity*>::iterator Biter(Balls.begin());
+	while(Biter != Balls.end())
 	{
-		BallEntity *Entity = Balls[cmpt];
-		if(Entity == NULL)
-			continue;
-		if(Entity->OgreEntity->getName() == name)
+		BallEntity *Entity = *(Biter++);
+		if(Entity != NULL && Entity->OgreEntity->getName() == name)
 			return (BallGameEntity*)Entity;
 	}
 	return NULL;
@@ -150,20 +130,21 @@ void BallGame::DeserializedPhysicScene(const String* const name)
 {
 	std::cout << "Load '" << (*name) << "'" << std::endl;
 	_StopPhysic();
-	for(int cmpt = 0; cmpt < Balls.GetSize(); cmpt++)
+	std::list<CaseEntity*>::iterator Citer(Cases.begin());
+	while(Citer != Cases.end())
 	{
-		BallEntity *Entity = Balls[cmpt];
+		CaseEntity *Entity = *(Citer++);
+		if(Entity != NULL)
+			Entity->SetNewtonBody(NULL);
+	}
+	std::list<BallEntity*>::iterator Biter(Balls.begin());
+	while(Biter != Balls.end())
+	{
+		BallEntity *Entity = *(Biter++);
 		if(Entity == NULL)
 			continue;
 		Entity->SetNewtonBody(NULL);
 		Entity->CleanupForces();
-	}
-	for(int cmpt = 0; cmpt < Cases.GetSize(); cmpt++)
-	{
-		CaseEntity *Entity = Cases[cmpt];
-		if(Entity == NULL)
-			continue;
-		Entity->SetNewtonBody(NULL);
 	}
 	NewtonDestroyAllBodies(m_world);
 	NewtonMaterialDestroyAllGroupID(m_world);
@@ -1023,14 +1004,12 @@ void BallGame::PlaceUnderEditElement(void)
 	BallGameEntity *EditingEntity = NULL;
 	if(UnderEditBall != NULL)
 	{
-		int id = NewtonBodyGetID(UnderEditBall->Body);
-		Balls[id] = NULL;
+		RemoveBall(UnderEditBall, NULL);
 		EditingEntity = UnderEditBall;
 	}
 	else if(UnderEditCase != NULL)
 	{
-		int id = NewtonBodyGetID(UnderEditCase->Body);
-		Cases[id] = NULL;
+		RemoveCase(UnderEditCase, NULL);
 		EditingEntity = UnderEditCase;
 	}
 	PlaceElement(EditingEntity);
@@ -1675,23 +1654,28 @@ void BallGame::SetupGame(void)
 
 void BallGame::CheckforCollides(void)
 {
-	for(int cmpt = 0; cmpt < Balls.GetSize(); cmpt++)
+	std::list<BallEntity*>::iterator Biter(Balls.begin());
+	while(Biter != Balls.end())
 	{
-		BallEntity *ball = Balls[cmpt];
+		BallEntity *ball = *(Biter++);
 		if(ball == NULL)
 			continue;
-		for(int cmpt2 = 0; cmpt2 < Cases.GetSize(); cmpt2++)
+		std::list<CaseEntity*>::iterator Citer(Cases.begin());
+		while(Citer != Cases.end())
 		{
-			CaseEntity *Case = Cases[cmpt2];
+			CaseEntity *Case = *(Citer++);
 			if(Case == NULL)
 				continue;
 //          if(NewtonBodyFindContact(ball, Case) != NULL)
 //			if(DoBodiesCollide(m_world, ball->Body, Case->Body))
 			if(CheckIfBodiesCollide(ball->Body, Case->Body) != NULL)
 			{
+				int idb, idc;
+				idb = NewtonBodyGetID(ball->Body);
+				idc = NewtonBodyGetID(Case->Body);
 				Case->ApplyForceOnBall(ball);
 
-				std::cout << ball << " id " << cmpt << " and " << Case << " id " << cmpt2 << " Collides" << std::endl;
+				std::cout << ball << " id " << idb << " and " << Case << " id " << idc << " Collides" << std::endl;
 			}
 		}
 	}
@@ -1701,26 +1685,14 @@ void BallGame::AddBall(BallEntity *ball)
 {
 	if(ball == NULL)
 		return;
-	int id = NewtonBodyGetID(ball->Body), size = Balls.GetSize();
-	while(size < id)
-		Balls[size++] = NULL;
-	Balls[id] = ball;
-	size = id + 1;
-	while(size < Balls.GetSize())
-		Balls[size++] = NULL;
+	Balls.push_back(ball);
 }
 
 void BallGame::AddCase(CaseEntity *Wcase)
 {
 	if(Wcase == NULL)
 		return;
-	int id = NewtonBodyGetID(Wcase->Body), size = Cases.GetSize();
-	while(size < id)
-		Cases[size++] = NULL;
-	Cases[id] = Wcase;
-	size = id + 1;
-	while(size < Cases.GetSize())
-		Cases[size++] = NULL;
+	Cases.push_back(Wcase);
 }
 
 
@@ -1738,9 +1710,10 @@ bool BallGame::frameEnded(const Ogre::FrameEvent& fe)
 
 	if(mode == Running)
 	{
-		for(int cmpt = 0; cmpt < Balls.GetSize(); cmpt++)
+		std::list<BallEntity*>::iterator iter(Balls.begin());
+		while(iter != Balls.end())
 		{
-			BallEntity *ball = Balls[cmpt];
+			BallEntity *ball = *(iter++);
 			if(ball == NULL)
 				continue;
 			Vector3 worldPos = ball->OgreEntity->getPosition();
@@ -2738,39 +2711,81 @@ void BallGameEntity::ImportFromJson(rapidjson::Value &v, Ogre::SceneManager* mSc
 	ogreNode->attachObject(ogreEntity);
 	SetOgreNode(ogreNode);
 }
-void BallGame::RemoveBall(BallEntity *Entity)
+
+void BallGame::DeleteBall(BallEntity *Entity, std::list<BallEntity*>::iterator *iter)
 {
-	int id = NewtonBodyGetID(Entity->Body);
+	RemoveBall(Entity, iter);
 	Entity->Finalize(mSceneMgr);
-	Balls[id] = NULL;
 	delete Entity;
 }
 
-void BallGame::RemoveCase(CaseEntity *Entity)
+void BallGame::RemoveBall(BallEntity *Entity, std::list<BallEntity*>::iterator *iter)
 {
-	int id = NewtonBodyGetID(Entity->Body);
+	if(iter != NULL)
+		*iter = Balls.erase(*iter);
+	else
+	{
+		std::list<BallEntity*>::iterator it(Balls.begin());
+		while(it != Balls.end())
+		{
+			BallEntity *B = *it;
+			if(B == Entity)
+			{
+				it = Balls.erase(it);
+				break;
+			}
+			it++;
+		}
+	}
+}
+
+void BallGame::DeleteCase(CaseEntity *Entity, std::list<CaseEntity*>::iterator *iter)
+{
+	RemoveCase(Entity, iter);
 	Entity->Finalize(mSceneMgr);
-	Cases[id] = NULL;
 	delete Entity;
+}
+
+void BallGame::RemoveCase(CaseEntity *Entity, std::list<CaseEntity*>::iterator *iter)
+{
+	if(iter != NULL)
+		*iter = Cases.erase(*iter);
+	else
+	{
+		std::list<CaseEntity*>::iterator it(Cases.begin());
+		while(it != Cases.end())
+		{
+			CaseEntity *C = *it;
+			if(C == Entity)
+			{
+				it = Cases.erase(it);
+				break;
+			}
+			it++;
+		}
+	}
 }
 
 void BallGame::EmptyLevel(void)
 {
 	_StopPhysic();
-	for(int cmpt = 0; cmpt < Cases.GetSize(); cmpt++)
+	std::list<CaseEntity*>::iterator Cit(Cases.begin());
+	while(Cit != Cases.end())
 	{
-		CaseEntity *Case = Cases[cmpt];
-		if(Case == NULL)
-			continue;
-		RemoveCase(Case);
-
+		CaseEntity *Case = *Cit;
+		if(Case != NULL)
+			RemoveCase(Case, &Cit);
+		else
+			Cit++;
 	}
-	for(int cmpt = 0; cmpt < Balls.GetSize(); cmpt++)
+	std::list<BallEntity*>::iterator Bit(Balls.begin());
+	while(Bit != Balls.end())
 	{
-		BallEntity *Ball = Balls[cmpt];
-		if(Ball == NULL)
-			continue;
-		RemoveBall(Ball);
+		BallEntity *Ball = *Bit;
+		if(Ball != NULL)
+			RemoveBall(Ball, &Bit);
+		else
+			Cit++;
 	}
 }
 
@@ -2824,9 +2839,10 @@ void BallGame::ExportLevelIntoJson(String &export_str)
 	rapidjson::Document::AllocatorType& allocator = document.GetAllocator();
 	rapidjson::Value cases(rapidjson::kArrayType);
 
-	for(int cmpt = 0; cmpt < Cases.GetSize(); cmpt++)
+	std::list<CaseEntity*>::iterator Cit(Cases.begin());
+	while(Cit != Cases.end())
 	{
-		CaseEntity *Entity = Cases[cmpt];
+		CaseEntity *Entity = *(Cit++);
 		if(Entity == NULL)
 			continue;
 		rapidjson::Value JCase(rapidjson::kObjectType);
@@ -2840,9 +2856,10 @@ void BallGame::ExportLevelIntoJson(String &export_str)
 
 	rapidjson::Value balls(rapidjson::kArrayType);
 
-	for(int cmpt = 0; cmpt < Balls.GetSize(); cmpt++)
+	std::list<BallEntity*>::iterator Bit(Balls.begin());
+	while(Bit != Balls.end())
 	{
-		BallEntity *Entity = Balls[cmpt];
+		BallEntity *Entity = *(Bit++);
 		if(Entity == NULL)
 			continue;
 		rapidjson::Value JCase(rapidjson::kObjectType);
