@@ -2648,6 +2648,9 @@ void BallGameEntity::ExportToJson(rapidjson::Value &v, rapidjson::Document::Allo
 	rapidjson::Value name;
 	name.SetString(cname, allocator);
 	v.AddMember("Mesh", name, allocator);
+	const char *ogrename = (const char*)OgreEntity->getName().c_str();
+	name.SetString(ogrename, allocator);
+	v.AddMember("NodeName", name, allocator);
 	v.AddMember("PosX", InitialPos.x, allocator);
 	v.AddMember("PosY", InitialPos.y, allocator);
 	v.AddMember("PosZ", InitialPos.z, allocator);
@@ -2704,8 +2707,9 @@ void BallGameEntity::ImportFromJson(rapidjson::Value &v, Ogre::SceneManager* mSc
 	InitialOrientation.w = v["OrientationW"].GetFloat();
 
 	SceneNode* ogreNode;
+	const char *nodename = v["NodeName"].GetString();
 	if(parent == NULL)
-		ogreNode = mSceneMgr->getRootSceneNode()->createChildSceneNode(InitialPos);
+		ogreNode = mSceneMgr->getRootSceneNode()->createChildSceneNode(nodename, InitialPos);
 	else
 		ogreNode = (SceneNode*)parent->createChild(InitialPos);
 	ogreNode->attachObject(ogreEntity);
