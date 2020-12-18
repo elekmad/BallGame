@@ -800,12 +800,12 @@ void BallGame::DeleteElement(void)
 		return;
 	if(UnderEditBall != NULL)
 	{
-		RemoveBall(UnderEditBall);
+		DeleteBall(UnderEditBall);
 		EditBall(NULL);
 	}
 	else if(UnderEditCase != NULL)
 	{
-		RemoveCase(UnderEditCase);
+		DeleteCase(UnderEditCase);
 		EditCase(NULL);
 	}
 }
@@ -2774,19 +2774,21 @@ void BallGame::EmptyLevel(void)
 	{
 		CaseEntity *Case = *Cit;
 		if(Case != NULL)
-			RemoveCase(Case, &Cit);
+			DeleteCase(Case, &Cit);
 		else
 			Cit++;
 	}
+	assert(Cases.empty());
 	std::list<BallEntity*>::iterator Bit(Balls.begin());
 	while(Bit != Balls.end())
 	{
 		BallEntity *Ball = *Bit;
 		if(Ball != NULL)
-			RemoveBall(Ball, &Bit);
+			DeleteBall(Ball, &Bit);
 		else
 			Cit++;
 	}
+	assert(Balls.empty());
 }
 
 void BallGame::ChangeLevel(void)
