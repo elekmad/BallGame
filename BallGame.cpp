@@ -65,7 +65,7 @@ void BallGame::BodySerialization (NewtonBody* const body, void* const bodyUserDa
 	BallGameEntity *Entity = (BallGameEntity*)NewtonBodyGetUserData(body);
 
 	const char* const bodyIndentification = Entity->OgreEntity->getName().c_str();
-	std::cout << "Entity (" << Entity << "/" << body << ") name :" << bodyIndentification << std::endl;
+	std::cout << "Serialize Entity (" << Entity << "/" << body << ") name :" << bodyIndentification << std::endl;
 	int size = (strlen (bodyIndentification) + 3) & -4;
 	serializeCallback (serializeHandle, &size, sizeof (size));
 	serializeCallback (serializeHandle, bodyIndentification, size);
@@ -81,6 +81,7 @@ void BallGame::BodyDeserialization (NewtonBody* const body, void* const bodyUser
 	deserializecallback (serializeHandle, bodyIndentification, size);
 
 	BallGameEntity *Entity = Game->GetEntity(bodyIndentification);
+	std::cout << "Deserialize Entity (" << Entity << "/" << body << ") name :" << bodyIndentification << std::endl;
 
 	NewtonBodySetUserData (body, Entity);
 	Entity->SetNewtonBody(body);
@@ -148,17 +149,22 @@ void BallGame::DeserializedPhysicScene(const String* const name)
 	}
 	NewtonDestroyAllBodies(m_world);
 	NewtonMaterialDestroyAllGroupID(m_world);
-	NewtonDeserializeFromFile(m_world, name->c_str(), BodyDeserialization, this);
+	String state_filename(LEVELS_FOLDER);
+	state_filename += *name;
+	state_filename += "." STATES_EXTENSION;
+	NewtonDeserializeFromFile(m_world, state_filename.c_str(), BodyDeserialization, this);
 	_StartPhysic();
 }
 
 
 bool BallGame::SaveStatePushBCallback(const CEGUI::EventArgs &e)
 {
-	String state_name = Level;
+	String state_filename(LEVELS_FOLDER), state_name = Level;
 	state_name += "-";
 	state_name += std::to_string(ChooseStateToLoadB->getItemCount());
-	SerializedPhysicScene(&state_name);
+	state_filename += state_name;
+	state_filename += "." STATES_EXTENSION;
+	SerializedPhysicScene(&state_filename);
 	ChooseStateToLoadB->addItem(new CEGUI::ListboxTextItem(state_name));
 	ChooseStateToLoadB->setSize(CEGUI::USize(CEGUI::UDim(0, 150), CEGUI::UDim(0, 40 * (ChooseStateToLoadB->getItemCount() + 1))));
 	return true;
@@ -196,7 +202,8 @@ BallGameEntity::BallGameEntity()
 void BallGameEntity::Finalize(Ogre::SceneManager* mSceneMgr)
 {
 	NewtonDestroyBody(Body);
-	mSceneMgr->getRootSceneNode()->removeChild(OgreEntity);
+	std::cout << "Remove Ogre " << OgreEntity->getName() << std::endl;
+	mSceneMgr->getRootSceneNode()->removeAndDestroyChild(OgreEntity->getName());
 }
 
 void BallGameEntity::SetOgreNode(SceneNode *node)
@@ -277,7 +284,7 @@ BallEntity::BallEntity()
 
 void BallEntity::AddForceVector(dVector *force)
 {
-	std::cout << "Add Force {" << (*force)[0] << ", " << (*force)[1] << ", " << (*force)[2] << "} On ball" << std::endl;
+//	std::cout << "Add Force {" << (*force)[0] << ", " << (*force)[1] << ", " << (*force)[2] << "} On ball" << std::endl;
 	Forces.Append(force);
 }
 
@@ -1174,7 +1181,7 @@ void BallGame::SetupGUI(void)
     ChooseLevelComboB = (CEGUI::Combobox*)wmgr.createWindow("OgreTray/Combobox");
     glob_t glob_result;
 	memset(&glob_result, 0, sizeof(glob_result));
-	glob("Levels/*.json", 0, NULL, &glob_result);
+	glob(LEVELS_FOLDER"*.json", 0, NULL, &glob_result);
 	for(size_t i = 0; i < glob_result.gl_pathc; ++i)
 	{
 		String globname(glob_result.gl_pathv[i]), filename;
@@ -1675,7 +1682,7 @@ void BallGame::CheckforCollides(void)
 				idc = NewtonBodyGetID(Case->Body);
 				Case->ApplyForceOnBall(ball);
 
-				std::cout << ball << " id " << idb << " and " << Case << " id " << idc << " Collides" << std::endl;
+//				std::cout << ball << " id " << idb << " and " << Case << " id " << idc << " Collides" << std::endl;
 			}
 		}
 	}
@@ -2535,9 +2542,9 @@ bool BallGame::SaveLevelPushBCallback(const CEGUI::EventArgs &e)
 	String export_str;
 	ExportLevelIntoJson(export_str);
 	std::ofstream myfile;
-	String Filename("Levels/");
+	String Filename(LEVELS_FOLDER);
 	Filename += Level;
-	Filename += ".json";
+	Filename += "." LEVELS_EXTENSION;
 	myfile.open (Filename.c_str());
 	myfile << export_str;
 	myfile.close();
@@ -2795,6 +2802,28 @@ void BallGame::EmptyLevel(void)
 	assert(Balls.empty());
 }
 
+void BallGame::LoadStatesList(void)
+{
+	ChooseStateToLoadB->resetList();
+	String globfilter(LEVELS_FOLDER);
+	globfilter += Level;
+	globfilter += "*." STATES_EXTENSION;
+    glob_t glob_result;
+	memset(&glob_result, 0, sizeof(glob_result));
+	glob(globfilter.c_str(), 0, NULL, &glob_result);
+	for(size_t i = 0; i < glob_result.gl_pathc; ++i)
+	{
+		String globname(glob_result.gl_pathv[i]), filename;
+		size_t slashpos = globname.find_last_of('/'), dotpos = globname.find_last_of('.');
+		filename = globname.substr(slashpos + 1, dotpos - (slashpos + 1));
+		ChooseStateToLoadB->addItem(new CEGUI::ListboxTextItem(filename));
+        if(ChooseStateToLoadB->getText().empty() == true)
+        	ChooseStateToLoadB->setText(filename);
+	}
+	globfree(&glob_result);
+	ChooseStateToLoadB->setSize(CEGUI::USize(CEGUI::UDim(0, 150), CEGUI::UDim(0, 40 * (ChooseStateToLoadB->getItemCount() + 1))));
+}
+
 void BallGame::ChangeLevel(void)
 {
 	if(mode == Editing)
@@ -2803,15 +2832,16 @@ void BallGame::ChangeLevel(void)
 		_StopPhysic();
 	EmptyLevel();
 	ImportLevelFromJson();
+	LoadStatesList();
 }
 
 void BallGame::ImportLevelFromJson(Node *parent)
 {
 	std::ifstream myfile;
 	std::stringstream buffer;
-	String Filename("Levels/");
+	String Filename(LEVELS_FOLDER);
 	Filename += Level;
-	Filename += ".json";
+	Filename += "." LEVELS_EXTENSION;
 	myfile.open (Filename.c_str());
 	buffer << myfile.rdbuf();
 	myfile.close();

@@ -34,10 +34,9 @@
 #include <CEGUI/CEGUI.h>
 #include <CEGUI/RendererModules/Ogre/Renderer.h>
 
-#define WORLD_LENGTH 20
-//#define WORLD_LENGTH 1
-//#define WORLD_DEPTH 20
-#define WORLD_DEPTH 1
+#define LEVELS_FOLDER "./Levels/"
+#define LEVELS_EXTENSION "json"
+#define STATES_EXTENSION "state"
 
 using namespace Ogre;
 using namespace OgreBites;
@@ -207,6 +206,7 @@ class BallGame : public BaseApplication
     void RemoveCase(CaseEntity *Entity, std::list<CaseEntity*>::iterator *iter = NULL);
     void DeleteBall(BallEntity *Entity, std::list<BallEntity*>::iterator *iter = NULL);
     void RemoveBall(BallEntity *Entity, std::list<BallEntity*>::iterator *iter = NULL);
+    void LoadStatesList(void);
     void EmptyLevel(void);//Clean all BallGame, Newton and Ogre entities to start with new level.
     void ChangeLevel(void);
     void ImportLevelFromJson(Node *parent = NULL);
