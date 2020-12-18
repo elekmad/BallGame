@@ -350,8 +350,11 @@ class BallGame : public BaseApplication
     CEGUI::PushButton *SaveStatePushB;
     bool SaveStatePushBCallback(const CEGUI::EventArgs &e);
     CEGUI::Combobox *ChooseStateToLoadB;
+    bool ChooseStateToLoadBCallback(const CEGUI::EventArgs &e);
     CEGUI::PushButton *LoadStatePushB;
     bool LoadStatePushBCallback(const CEGUI::EventArgs &e);
+    CEGUI::PushButton *DelStatePushB;
+    bool DelStatePushBCallback(const CEGUI::EventArgs &e);
 
     //Add new elements Buttons & Callbacks
     CEGUI::Titlebar *AddElementTitleBanner;

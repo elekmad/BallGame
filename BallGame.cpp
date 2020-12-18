@@ -181,6 +181,35 @@ bool BallGame::LoadStatePushBCallback(const CEGUI::EventArgs &e)
 	return true;
 }
 
+bool BallGame::DelStatePushBCallback(const CEGUI::EventArgs &e)
+{
+	CEGUI::ListboxItem *item = ChooseStateToLoadB->getSelectedItem();
+	if(item == NULL)
+		return true;
+	String state_filename(LEVELS_FOLDER);
+	state_filename += item->getText().c_str();
+	state_filename += "." STATES_EXTENSION;
+	unlink(state_filename.c_str());
+	ChooseStateToLoadB->setItemSelectState(item, false);
+	ChooseStateToLoadB->removeItem(item);
+	return true;
+}
+
+bool BallGame::ChooseStateToLoadBCallback(const CEGUI::EventArgs &e)
+{
+	if(ChooseStateToLoadB->getSelectedItem() != NULL)
+	{
+		LoadStatePushB->setEnabled(true);
+		DelStatePushB->setEnabled(true);
+	}
+	else
+	{
+		LoadStatePushB->setEnabled(false);
+		DelStatePushB->setEnabled(false);
+	}
+	return true;
+}
+
 BallGameEntity::BallGameEntity(const dMatrix& matrix) :// m_matrix(matrix),
 	m_curPosition (matrix.m_posit),
 	m_nextPosition (matrix.m_posit),
@@ -1099,6 +1128,7 @@ bool BallGame::StatesModePushBCallback(const CEGUI::EventArgs &e)
 		StatesBanner->setVisible(true);
 		ChooseStateToLoadB->setVisible(true);
 		LoadStatePushB->setVisible(true);
+		DelStatePushB->setVisible(true);
 		SaveStatePushB->setVisible(true);
 	}
 	else
@@ -1106,6 +1136,7 @@ bool BallGame::StatesModePushBCallback(const CEGUI::EventArgs &e)
 		StatesBanner->setVisible(false);
 		ChooseStateToLoadB->setVisible(false);
 		LoadStatePushB->setVisible(false);
+		DelStatePushB->setVisible(false);
 		SaveStatePushB->setVisible(false);
 	}
 	return true;
@@ -1275,6 +1306,10 @@ void BallGame::SetupGUI(void)
     ChooseStateToLoadB->setVisible(false);
 
     MainLayout->addChild(ChooseStateToLoadB);
+    ChooseStateToLoadB->subscribeEvent(CEGUI::Combobox::EventListSelectionAccepted,
+    		CEGUI::Event::Subscriber(&BallGame::ChooseStateToLoadBCallback, this));
+    ChooseStateToLoadB->subscribeEvent(CEGUI::Combobox::EventListContentsChanged,
+    		CEGUI::Event::Subscriber(&BallGame::ChooseStateToLoadBCallback, this));
     SetWindowsPosNearToOther(ChooseStateToLoadB, StatesBanner, 0, 1);
 
     LoadStatePushB = (CEGUI::PushButton*)wmgr.createWindow("OgreTray/Button");
@@ -1289,6 +1324,18 @@ void BallGame::SetupGUI(void)
     		CEGUI::Event::Subscriber(&BallGame::LoadStatePushBCallback, this));
     SetWindowsPosNearToOther(LoadStatePushB, StatesBanner, 0, 2);
 
+    DelStatePushB = (CEGUI::PushButton*)wmgr.createWindow("OgreTray/Button");
+    DelStatePushB->setText("Delete");
+    DelStatePushB->setSize(CEGUI::USize(CEGUI::UDim(0, 150), CEGUI::UDim(0, 30)));
+    DelStatePushB->setVerticalAlignment(CEGUI::VA_TOP);
+    DelStatePushB->setHorizontalAlignment(CEGUI::HA_RIGHT);
+    DelStatePushB->setVisible(false);
+
+    MainLayout->addChild(DelStatePushB);
+    DelStatePushB->subscribeEvent(CEGUI::PushButton::EventClicked,
+    		CEGUI::Event::Subscriber(&BallGame::DelStatePushBCallback, this));
+    SetWindowsPosNearToOther(DelStatePushB, LoadStatePushB, 0, 1);
+
     SaveStatePushB = (CEGUI::PushButton*)wmgr.createWindow("OgreTray/Button");
     SaveStatePushB->setText("Save");
     SaveStatePushB->setSize(CEGUI::USize(CEGUI::UDim(0, 150), CEGUI::UDim(0, 30)));
@@ -1299,7 +1346,7 @@ void BallGame::SetupGUI(void)
     MainLayout->addChild(SaveStatePushB);
     SaveStatePushB->subscribeEvent(CEGUI::PushButton::EventClicked,
     		CEGUI::Event::Subscriber(&BallGame::SaveStatePushBCallback, this));
-    SetWindowsPosNearToOther(SaveStatePushB, LoadStatePushB, 0, 1);
+    SetWindowsPosNearToOther(SaveStatePushB, DelStatePushB, 0, 1);
 
     //Now LevelNameBanner exist, we can call SetLevel !
     String default_level = ChooseLevelComboB->getText().c_str();
