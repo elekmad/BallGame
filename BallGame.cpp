@@ -793,6 +793,7 @@ void BallGame::SwitchEditMode(void)
 void BallGame::CreateThumbnail(String meshname)
 {
 	Entity *ogreEntity = mThumbnailSceneMgr->createEntity(meshname);
+	mThumbnailSceneMgr->getRootSceneNode()->removeAllChildren();
 	ogreThumbnailNode = mThumbnailSceneMgr->getRootSceneNode()->createChildSceneNode();
 	ogreThumbnailNode->attachObject(ogreEntity);
 	ogreThumbnailNode->scale(130, 130, 130);
@@ -804,7 +805,6 @@ bool BallGame::ChooseTypeOfElementToAddBCallback(const CEGUI::EventArgs &e)
 	String ElementType;
 	ToBePlacedEntityType = NULL;
 	ElementType = ChooseTypeOfElementToAddB->getSelectedItem()->getText().c_str();
-	mThumbnailSceneMgr->getRootSceneNode()->removeAllChildren();
 
 	std::list<class EntityType*>::iterator iter(EntityTypes.begin());
 	while(iter != EntityTypes.end())
@@ -819,13 +819,8 @@ bool BallGame::ChooseTypeOfElementToAddBCallback(const CEGUI::EventArgs &e)
 	}
 	if(ToBePlacedEntityType != NULL)
 		CreateThumbnail(ToBePlacedEntityType->MeshName);
-	if(ToBePlacedEntity != NULL)
-	{
-		mSceneMgr->getRootSceneNode()->removeChild(ToBePlacedEntity->OgreEntity);
-		delete ToBePlacedEntity;
-		ToBePlacedEntity = NULL;
-		LastPlacedEntity = NULL;
-	}
+	UnprepareNewElement();
+	LastPlacedEntity = NULL;
 	PrepareNewElement();
 	return true;
 }
@@ -985,7 +980,7 @@ inline void BallGame::UnprepareNewElement(void)
 {
 	if(ToBePlacedEntity != NULL)
 	{
-		mSceneMgr->getRootSceneNode()->removeChild(ToBePlacedEntity->OgreEntity);
+		mSceneMgr->getRootSceneNode()->removeAndDestroyChild(ToBePlacedEntity->OgreEntity->getName());
 		delete ToBePlacedEntity;
 		ToBePlacedEntity = NULL;
 	}
@@ -1029,7 +1024,10 @@ void BallGame::PrepareNewElement(void)
 	ToBePlacedEntity->InitialScale = Scale;
 	ToBePlacedEntity->InitialOrientation = Orient;
 
-	ogreNode = mSceneMgr->getRootSceneNode()->createChildSceneNode(ToBePlacedEntity->InitialPos);
+	String Name;
+	Name = "Entity-";
+	Name += std::to_string(Balls.size() + Cases.size() + 1);
+	ogreNode = mSceneMgr->getRootSceneNode()->createChildSceneNode(Name, ToBePlacedEntity->InitialPos);
 	ogreNode->attachObject(ogreEntity);
 	ogreNode->showBoundingBox(true);
 	ToBePlacedEntity->SetOgreNode(ogreNode);
@@ -1674,14 +1672,14 @@ void BallGame::SetupGame(void)
 	mSceneMgr->setAmbientLight(ColourValue(0.5, 0.5, 0.5));
 
     Light* light = mSceneMgr->createLight("MainLight");
-    SceneNode* lightNode = mSceneMgr->getRootSceneNode()->createChildSceneNode();
+    SceneNode* lightNode = mSceneMgr->getRootSceneNode()->createChildSceneNode("MainLight");
     lightNode->attachObject(light);
     lightNode->setPosition(20, 80, 50);
 
 	mThumbnailSceneMgr->setAmbientLight(ColourValue(0.5, 0.5, 0.5));
 
     light = mThumbnailSceneMgr->createLight("MainThumbnailLight");
-    lightNode = mThumbnailSceneMgr->getRootSceneNode()->createChildSceneNode();
+    lightNode = mThumbnailSceneMgr->getRootSceneNode()->createChildSceneNode("MainThumbnailLight");
     lightNode->attachObject(light);
     lightNode->setPosition(20, 80, 50);
 
