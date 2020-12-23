@@ -230,12 +230,15 @@ class BallGame : public BaseApplication
 	SceneNode *ogreThumbnailNode;
     BallGameEntity *ToBePlacedEntity;
     BallGameEntity *LastPlacedEntity;
+    BallGameEntity *ToBeDeletedEntity;
     void PlaceNewElement(void);
     void PlaceUnderEditElement(void);
     void PlaceElement(BallGameEntity *ToBePlacedEntity);
     void PrepareNewElement(void);
     inline void UnprepareNewElement(void);
     void DeleteElement(void);
+    inline void PrepareDeleteElement(BallGameEntity *Entity);
+    inline void UnprepareDeleteElement(void);
 
     //Edit Ball
     void EditBall(BallEntity *Entity);
@@ -281,6 +284,7 @@ class BallGame : public BaseApplication
     dFloat m_mainThreadPhysicsTimeAcc;
     bool m_asynchronousPhysicsUpdate;
 
+    long nb_entities;
     std::list<CaseEntity*> Cases;
     std::list<BallEntity*> Balls;
 

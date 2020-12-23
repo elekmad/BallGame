@@ -454,12 +454,14 @@ BallGame::BallGame() :
 	ToBePlacedEntity = NULL;
 	LastPlacedEntity = NULL;
 	ToBePlacedEntityType = NULL;
+	ToBeDeletedEntity = NULL;
 	ogreThumbnailNode = NULL;
 	PlacementMode = PlaceMove;
 	mode = Running;
 	MouseOverButton = false;
 	// create the newton world
 	SetupNewton();
+	nb_entities = 0;
 }
 
 void BallGame::SetupNewton(void)
@@ -829,15 +831,21 @@ void BallGame::DeleteElement(void)
 {
 	if(PlacementMode != Delete)
 		return;
-	if(UnderEditBall != NULL)
+	if(ToBeDeletedEntity != NULL)
 	{
-		DeleteBall(UnderEditBall);
-		EditBall(NULL);
-	}
-	else if(UnderEditCase != NULL)
-	{
-		DeleteCase(UnderEditCase);
-		EditCase(NULL);
+		std::cout << "Delete Entity : " << ToBeDeletedEntity->OgreEntity->getName() << std::endl;
+		if(ToBeDeletedEntity->OgreEntity == LastHighligted)
+			LastHighligted = NULL;
+		switch(ToBeDeletedEntity->type)
+		{
+		case Ball :
+			DeleteBall((BallEntity*)ToBeDeletedEntity);
+			break;
+		case Case :
+			DeleteCase((CaseEntity*)ToBeDeletedEntity);
+			break;
+		}
+		ToBeDeletedEntity = NULL;
 	}
 }
 
@@ -867,6 +875,7 @@ bool BallGame::PlaceNewElementBCallback(const CEGUI::EventArgs &e)
 	ScaleElementB->setVisible(true);
 	SetMoveNewElement();
 	PrepareNewElement();
+	UnprepareDeleteElement();
 	return true;
 }
 
@@ -880,6 +889,7 @@ bool BallGame::EditElementBCallback(const CEGUI::EventArgs &e)
 	ScaleElementB->setVisible(true);
 	SetMoveElement();
 	UnprepareNewElement();
+	UnprepareDeleteElement();
 	return true;
 }
 
@@ -986,6 +996,28 @@ inline void BallGame::UnprepareNewElement(void)
 	}
 }
 
+inline void BallGame::UnprepareDeleteElement(void)
+{
+	if(ToBeDeletedEntity != NULL)
+	{
+		if(ToBeDeletedEntity->OgreEntity != LastHighligted)
+			ToBeDeletedEntity->OgreEntity->showBoundingBox(false);
+		ToBeDeletedEntity = NULL;
+	}
+}
+
+inline void BallGame::PrepareDeleteElement(BallGameEntity *Entity)
+{
+	if(ToBeDeletedEntity != NULL)
+		ToBeDeletedEntity->OgreEntity->showBoundingBox(false);
+	ToBeDeletedEntity = Entity;
+	if(ToBeDeletedEntity != NULL)
+	{
+		std::cout << "Prepared to be deleted Entity : " << ToBeDeletedEntity->OgreEntity->getName() << std::endl;
+		ToBeDeletedEntity->OgreEntity->showBoundingBox(true);
+	}
+}
+
 void BallGame::PrepareNewElement(void)
 {
 	Entity *ogreEntity;
@@ -1026,7 +1058,8 @@ void BallGame::PrepareNewElement(void)
 
 	String Name;
 	Name = "Entity-";
-	Name += std::to_string(Balls.size() + Cases.size() + 1);
+	Name += std::to_string(nb_entities);
+	std::cout << "New Entity prepared : " << Name << std::endl;
 	ogreNode = mSceneMgr->getRootSceneNode()->createChildSceneNode(Name, ToBePlacedEntity->InitialPos);
 	ogreNode->attachObject(ogreEntity);
 	ogreNode->showBoundingBox(true);
@@ -1738,6 +1771,7 @@ void BallGame::AddBall(BallEntity *ball)
 	if(ball == NULL)
 		return;
 	Balls.push_back(ball);
+	nb_entities++;
 }
 
 void BallGame::AddCase(CaseEntity *Wcase)
@@ -1745,6 +1779,7 @@ void BallGame::AddCase(CaseEntity *Wcase)
 	if(Wcase == NULL)
 		return;
 	Cases.push_back(Wcase);
+	nb_entities++;
 }
 
 
@@ -1839,7 +1874,8 @@ bool BallGame::mouseMoved(const OIS::MouseEvent &arg)
 		{
 			if((UnderEditCase == NULL || UnderEditCase->OgreEntity != LastHighligted)
 					&& (UnderEditBall == NULL || UnderEditBall->OgreEntity != LastHighligted)
-					&& (ToBePlacedEntity == NULL || ToBePlacedEntity->OgreEntity != LastHighligted))
+					&& (ToBePlacedEntity == NULL || ToBePlacedEntity->OgreEntity != LastHighligted)
+					&& (ToBeDeletedEntity == NULL || ToBeDeletedEntity->OgreEntity != LastHighligted))
 				LastHighligted->showBoundingBox(false);
 			LastHighligted = NULL;
 		}
@@ -2125,24 +2161,41 @@ bool BallGame::mousePressed( const OIS::MouseEvent &arg, OIS::MouseButtonID id )
     //BaseApplication::mousePressed(arg, id);
     if(mode == Editing && MouseOverButton == false)
     {
-    	if(LastHighligted != NULL && (ToBePlacedEntity == NULL || LastHighligted != ToBePlacedEntity->OgreEntity))
+    	switch(PlacementMode)
     	{
-			//Case Entity ?
-    		std::cout << "Edit by Mouse Pressed" << std::endl;
-    		BallGameEntity *Entity = Ogre::any_cast<BallGameEntity*>(((Ogre::Entity*)LastHighligted->getAttachedObject(0))->getUserObjectBindings().getUserAny());
-    		switch(Entity->type)
+    	case PlaceMove :
+    	case PlaceRotate :
+    	case PlaceScale :
+    		break;
+    	case Delete :
+    		if(LastHighligted != NULL)
     		{
-    		case Case :
-					std::cout << "Edit Case by Mouse Pressed" << std::endl;
-					EditBall(NULL);//Hide Ball Editing buttons;
-					EditCase((CaseEntity*)Entity);
-					break;
-    		case Ball :
-					std::cout << "Edit Ball by Mouse Pressed" << std::endl;
-					EditCase(NULL);//Hide Case Editing buttons;
-					EditBall((BallEntity*)Entity);
-					break;
+    			BallGameEntity *Entity = Ogre::any_cast<BallGameEntity*>(((Ogre::Entity*)LastHighligted->getAttachedObject(0))->getUserObjectBindings().getUserAny());
+    			PrepareDeleteElement(Entity);
     		}
+    		break;
+    	case EditMove :
+    	case EditRotate :
+    	case EditScale :
+			{
+				//Case Entity ?
+				std::cout << "Edit by Mouse Pressed" << std::endl;
+				BallGameEntity *Entity = Ogre::any_cast<BallGameEntity*>(((Ogre::Entity*)LastHighligted->getAttachedObject(0))->getUserObjectBindings().getUserAny());
+				switch(Entity->type)
+				{
+				case Case :
+						std::cout << "Edit Case by Mouse Pressed" << std::endl;
+						EditBall(NULL);//Hide Ball Editing buttons;
+						EditCase((CaseEntity*)Entity);
+						break;
+				case Ball :
+						std::cout << "Edit Ball by Mouse Pressed" << std::endl;
+						EditCase(NULL);//Hide Case Editing buttons;
+						EditBall((BallEntity*)Entity);
+						break;
+				}
+			}
+    		break;
     	}
     }
     return true;
