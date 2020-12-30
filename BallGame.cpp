@@ -79,6 +79,7 @@ void BallGame::BodyDeserialization (NewtonBody* const body, void* const bodyUser
 
 	deserializecallback (serializeHandle, &size, sizeof (size));
 	deserializecallback (serializeHandle, bodyIndentification, size);
+	bodyIndentification[size] = 0;
 
 	BallGameEntity *Entity = Game->GetEntity(bodyIndentification);
 	std::cout << "Deserialize Entity (" << Entity << "/" << body << ") name :" << bodyIndentification << std::endl;
@@ -1435,6 +1436,10 @@ void BallGame::SetupGUI(void)
 
     ChooseTypeOfElementToAddB->subscribeEvent(CEGUI::Combobox::EventListSelectionAccepted,
     		CEGUI::Event::Subscriber(&BallGame::ChooseTypeOfElementToAddBCallback, this));
+    ChooseTypeOfElementToAddB->subscribeEvent(CEGUI::Combobox::EventMouseEntersArea,
+			CEGUI::Event::Subscriber(&BallGame::EnteringArea, this));
+    ChooseTypeOfElementToAddB->subscribeEvent(CEGUI::Combobox::EventMouseLeavesArea,
+			CEGUI::Event::Subscriber(&BallGame::LeavingArea, this));
 
     MainLayout->addChild(ChooseTypeOfElementToAddB);
 
@@ -1456,6 +1461,10 @@ void BallGame::SetupGUI(void)
 
     PlaceNewElementB->subscribeEvent(CEGUI::PushButton::EventClicked,
 			CEGUI::Event::Subscriber(&BallGame::PlaceNewElementBCallback, this));
+    PlaceNewElementB->subscribeEvent(CEGUI::PushButton::EventMouseEntersArea,
+			CEGUI::Event::Subscriber(&BallGame::EnteringArea, this));
+    PlaceNewElementB->subscribeEvent(CEGUI::PushButton::EventMouseLeavesArea,
+			CEGUI::Event::Subscriber(&BallGame::LeavingArea, this));
 
     MainLayout->addChild(PlaceNewElementB);
 
@@ -1468,6 +1477,10 @@ void BallGame::SetupGUI(void)
 
     EditElementB->subscribeEvent(CEGUI::PushButton::EventClicked,
 			CEGUI::Event::Subscriber(&BallGame::EditElementBCallback, this));
+    EditElementB->subscribeEvent(CEGUI::PushButton::EventMouseEntersArea,
+			CEGUI::Event::Subscriber(&BallGame::EnteringArea, this));
+    EditElementB->subscribeEvent(CEGUI::PushButton::EventMouseLeavesArea,
+			CEGUI::Event::Subscriber(&BallGame::LeavingArea, this));
 
     MainLayout->addChild(EditElementB);
 
@@ -1480,6 +1493,10 @@ void BallGame::SetupGUI(void)
 
     DeleteElementB->subscribeEvent(CEGUI::PushButton::EventClicked,
 			CEGUI::Event::Subscriber(&BallGame::DeleteElementBCallback, this));
+    DeleteElementB->subscribeEvent(CEGUI::PushButton::EventMouseEntersArea,
+			CEGUI::Event::Subscriber(&BallGame::EnteringArea, this));
+    DeleteElementB->subscribeEvent(CEGUI::PushButton::EventMouseLeavesArea,
+			CEGUI::Event::Subscriber(&BallGame::LeavingArea, this));
 
     MainLayout->addChild(DeleteElementB);
 
@@ -1494,6 +1511,10 @@ void BallGame::SetupGUI(void)
 
     MoveElementB->subscribeEvent(CEGUI::PushButton::EventClicked,
 			CEGUI::Event::Subscriber(&BallGame::MoveElementBCallback, this));
+    MoveElementB->subscribeEvent(CEGUI::PushButton::EventMouseEntersArea,
+			CEGUI::Event::Subscriber(&BallGame::EnteringArea, this));
+    MoveElementB->subscribeEvent(CEGUI::PushButton::EventMouseLeavesArea,
+			CEGUI::Event::Subscriber(&BallGame::LeavingArea, this));
 
     MainLayout->addChild(MoveElementB);
 
@@ -1508,6 +1529,10 @@ void BallGame::SetupGUI(void)
 
     RotateElementB->subscribeEvent(CEGUI::PushButton::EventClicked,
 			CEGUI::Event::Subscriber(&BallGame::RotateElementBCallback, this));
+    RotateElementB->subscribeEvent(CEGUI::PushButton::EventMouseEntersArea,
+			CEGUI::Event::Subscriber(&BallGame::EnteringArea, this));
+    RotateElementB->subscribeEvent(CEGUI::PushButton::EventMouseLeavesArea,
+			CEGUI::Event::Subscriber(&BallGame::LeavingArea, this));
 
     MainLayout->addChild(RotateElementB);
 
@@ -1522,6 +1547,10 @@ void BallGame::SetupGUI(void)
 
     ScaleElementB->subscribeEvent(CEGUI::PushButton::EventClicked,
 			CEGUI::Event::Subscriber(&BallGame::ScaleElementBCallback, this));
+    ScaleElementB->subscribeEvent(CEGUI::PushButton::EventMouseEntersArea,
+			CEGUI::Event::Subscriber(&BallGame::EnteringArea, this));
+    ScaleElementB->subscribeEvent(CEGUI::PushButton::EventMouseLeavesArea,
+			CEGUI::Event::Subscriber(&BallGame::LeavingArea, this));
 
     MainLayout->addChild(ScaleElementB);
 
