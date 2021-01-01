@@ -107,6 +107,7 @@ class BallGameEntity
     void SetOgreNode(SceneNode *node);
     void SetNewtonBody(NewtonBody *body);
     dMatrix *PrepareNewtonBody(dVector &NewtonBodyLocation, dVector &NewtonBodySize);
+    void DisplaySelectedBox(bool display);
 	protected:
     enum BallGameEntityType type;
 	//mutable dMatrix m_matrix;			// interpolated matrix
@@ -353,7 +354,7 @@ class BallGame : public BaseApplication
     void SetupGame(void);
 
     //Mouse picking
-	Ogre::SceneNode *LastHighligted;
+	BallGameEntity *LastHighligted;
     //////////////////////////////////////////////////
 
 
