@@ -88,6 +88,7 @@ using namespace OgreBites;
     _a < _b ? _a : _b; })
 
 class BallGame;
+class GroupEntity;
 enum BallGameEntityType
 {
 	Case,
@@ -99,12 +100,13 @@ class BallGameEntity
 	BallGameEntity(const dMatrix& matrix);
 	BallGameEntity();
 	~BallGameEntity(){}
-	void Finalize(Ogre::SceneManager* mSceneMgr);
+	void Finalize(void);
     static void TransformCallback(const NewtonBody* body, const dFloat* matrix, int threadIndex);
     void ExportToJson(rapidjson::Value &v, rapidjson::Document::AllocatorType& allocator);
     void ImportFromJson(rapidjson::Value &v, Ogre::SceneManager* mSceneMgr, Node *parent = NULL);
     void SetOgreNode(SceneNode *node);
     void SetNewtonBody(NewtonBody *body);
+    dMatrix *PrepareNewtonBody(dVector &NewtonBodyLocation, dVector &NewtonBodySize);
 	protected:
     enum BallGameEntityType type;
 	//mutable dMatrix m_matrix;			// interpolated matrix
@@ -114,6 +116,7 @@ class BallGameEntity
 	dQuaternion m_nextRotation;         // rotation at the current physics simulation step
 	SceneNode *OgreEntity;
 	NewtonBody *Body;
+	GroupEntity *Group;
 	Ogre::Vector3 InitialPos;
 	Ogre::Vector3 InitialScale;
 	Ogre::Quaternion InitialOrientation;
@@ -123,6 +126,7 @@ class BallGameEntity
 
 
 	friend class BallGame;
+	friend class GroupEntity;
 };
 
 class BallEntity : public BallGameEntity
@@ -136,6 +140,7 @@ class BallEntity : public BallGameEntity
     void ImportFromJson(rapidjson::Value &v, Ogre::SceneManager* mSceneMgr, Node *parent = NULL);
 	dVector *GetForceVector();
 	void CleanupForces(void);
+    void CreateNewtonBody(NewtonWorld *m_world);
 	protected:
 	dList<dVector*> Forces;
 	float InitialMass;
@@ -162,6 +167,7 @@ class CaseEntity : public BallGameEntity
 	void ApplyForceOnBall(BallEntity *ball);
     void ExportToJson(rapidjson::Value &v, rapidjson::Document::AllocatorType& allocator);
     void ImportFromJson(rapidjson::Value &v, Ogre::SceneManager* mSceneMgr, Node *parent = NULL);
+    void CreateNewtonBody(NewtonWorld *m_world);
 	protected:
 	dArray<NewtonBody*> BallsUnderCollide;
 
@@ -170,6 +176,24 @@ class CaseEntity : public BallGameEntity
 
 	friend class BallGame;
 	friend class BallEntity;
+};
+
+class GroupEntity
+{
+	public:
+	GroupEntity(String &name, Ogre::SceneManager* mSceneMgr);
+	~GroupEntity(){};
+	void Finalize(void);
+	void AddChild(BallGameEntity* child);
+	bool DelChild(BallGameEntity* child);
+	void ComputeChilds(void);
+	void FillListWithChilds(std::list<BallGameEntity*> &list);
+	private:
+	SceneNode *OgreEntity;
+	std::list<BallGameEntity*> childs;
+
+	friend class BallGame;
+	friend class BallGameEntity;
 };
 
 class BallGame : public BaseApplication
@@ -206,6 +230,8 @@ class BallGame : public BaseApplication
     void RemoveCase(CaseEntity *Entity, std::list<CaseEntity*>::iterator *iter = NULL);
     void DeleteBall(BallEntity *Entity, std::list<BallEntity*>::iterator *iter = NULL);
     void RemoveBall(BallEntity *Entity, std::list<BallEntity*>::iterator *iter = NULL);
+    void DeleteGroup(GroupEntity *Entity, std::list<GroupEntity*>::iterator *iter = NULL);
+    void RemoveGroup(GroupEntity *Entity, std::list<GroupEntity*>::iterator *iter = NULL);
     void LoadStatesList(void);
     void EmptyLevel(void);//Clean all BallGame, Newton and Ogre entities to start with new level.
     void ChangeLevel(void);
@@ -240,6 +266,20 @@ class BallGame : public BaseApplication
     inline void PrepareDeleteElement(BallGameEntity *Entity);
     inline void UnprepareDeleteElement(void);
 
+    //Edit Entities
+    bool MultiSelectionMode;
+    void MoveEntity(BallGameEntity *Entity, float x, float y, float z);
+    void MoveNode(Node *node, float x, float y, float z);
+    void MoveEntities(float x, float y, float z);
+    void RotateNode(Node *node, float x, float y, float z);
+    void RotateEntity(BallGameEntity *Entity, float x, float y, float z);
+    void RotateEntities(float x, float y, float z);
+    void ScaleNode(Node *node, float x, float y, float z);
+    void ScaleEntity(BallGameEntity *Entity, float x, float y, float z);
+    void ScaleEntities(float x, float y, float z);
+    void MultiSelectionSetEmpty(void);
+    bool ManageMultiSelectionSet(BallGameEntity *entity);
+    std::list<class BallGameEntity*> UnderEditEntites;
     //Edit Ball
     void EditBall(BallEntity *Entity);
     BallEntity *UnderEditBall;
@@ -287,11 +327,13 @@ class BallGame : public BaseApplication
     long nb_entities;
     std::list<CaseEntity*> Cases;
     std::list<BallEntity*> Balls;
+    std::list<GroupEntity*> Groups;
 
 
     void CheckforCollides(void);
     void AddCase(CaseEntity *Entity);
     void AddBall(BallEntity *Entity);
+    void AddGroup(GroupEntity *Entity);
 
     /////////////////////////////////////////////////
 
@@ -382,6 +424,8 @@ class BallGame : public BaseApplication
     bool ScaleElementBCallback(const CEGUI::EventArgs &e);
     void SetScaleNewElement(void);
     void SetScaleElement(void);
+    CEGUI::ToggleButton *GroupElementsB;
+    bool GroupElementsBCallback(const CEGUI::EventArgs &e);
 
 
     //Edit Ball Buttons & Callbacks
