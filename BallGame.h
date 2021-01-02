@@ -365,6 +365,8 @@ class BallGame : public BaseApplication
     void SetupGUI(void);
     bool EnteringArea(const CEGUI::EventArgs &e);
     bool LeavingArea(const CEGUI::EventArgs &e);
+    template<typename T> T*CreateNewGUIComponent(std::string &TypeName, std::string &Name = "");
+    template<typename T> T*CreateNewGUIComponent(const char *TypeName, const char *Name = "");
 
     CEGUI::OgreRenderer* mRenderer;
     CEGUI::Window *ThumbnailWindow;

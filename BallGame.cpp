@@ -732,12 +732,14 @@ void BallGame::UpdatePhysics(dFloat timestep)
 
 bool BallGame::EnteringArea(const CEGUI::EventArgs &event)
 {
+//	std::cout << "Enter Button Area" << std::endl;
 	MouseOverButton = true;
 	return true;
 }
 
 bool BallGame::LeavingArea(const CEGUI::EventArgs &event)
 {
+//	std::cout << "Leave Button Area" << std::endl;
 	MouseOverButton = false;
 	return true;
 }
@@ -1396,6 +1398,23 @@ inline void SetWindowsPosNearToOther(CEGUI::Window *self, CEGUI::Window *other, 
 	self->setPosition(pos);
 }
 
+template<typename T> T* BallGame::CreateNewGUIComponent(std::string &TypeName, std::string &Name)
+{
+    return CreateNewGUIComponent<T>(TypeName.c_str(), Name.c_str());
+}
+
+template<typename T> T* BallGame::CreateNewGUIComponent(const char *TypeName, const char *Name)
+{
+    CEGUI::WindowManager &wmgr = CEGUI::WindowManager::getSingleton();
+	T* ret = (T*)wmgr.createWindow(TypeName, Name);
+    ret->subscribeEvent(T::EventMouseEntersArea,
+			CEGUI::Event::Subscriber(&BallGame::EnteringArea, this));
+    ret->subscribeEvent(T::EventMouseLeavesArea,
+			CEGUI::Event::Subscriber(&BallGame::LeavingArea, this));
+    ret->setVisible(false);
+    return ret;
+}
+
 void BallGame::SetupGUI(void)
 {
 	mRenderer = &CEGUI::OgreRenderer::bootstrapSystem();
@@ -1419,20 +1438,18 @@ void BallGame::SetupGUI(void)
     MainLayout = static_cast<CEGUI::LayoutContainer*>(wmgr.createWindow("VerticalLayoutContainer"));
     sheet->addChild(MainLayout);
 
-    StopPhysicPushB = (CEGUI::PushButton*)wmgr.createWindow("OgreTray/Button");
+    StopPhysicPushB = CreateNewGUIComponent<CEGUI::PushButton>("OgreTray/Button");
     StopPhysicPushB->setText("Start/Stop Physic");
     StopPhysicPushB->setSize(CEGUI::USize(CEGUI::UDim(0, 150), CEGUI::UDim(0, 30)));
-    StopPhysicPushB->setVisible(false);
 
     MainLayout->addChild(StopPhysicPushB);
 
     StopPhysicPushB->subscribeEvent(CEGUI::PushButton::EventClicked,
     		CEGUI::Event::Subscriber(&BallGame::StopPhysicPushBCallback, this));
 
-    EditModePushB = (CEGUI::PushButton*)wmgr.createWindow("OgreTray/Button");
+    EditModePushB = CreateNewGUIComponent<CEGUI::PushButton>("OgreTray/Button");
     EditModePushB->setText("Edit");
     EditModePushB->setSize(CEGUI::USize(CEGUI::UDim(0, 75), CEGUI::UDim(0, 30)));
-    EditModePushB->setVisible(false);
 
     MainLayout->addChild(EditModePushB);
 
@@ -1441,10 +1458,9 @@ void BallGame::SetupGUI(void)
 
     SetWindowsPosNearToOther(EditModePushB, StopPhysicPushB, 0, 1);
 
-    StatesModePushB = (CEGUI::PushButton*)wmgr.createWindow("OgreTray/Button");
+    StatesModePushB = CreateNewGUIComponent<CEGUI::PushButton>("OgreTray/Button");
     StatesModePushB->setText("States");
     StatesModePushB->setSize(CEGUI::USize(CEGUI::UDim(0, 75), CEGUI::UDim(0, 30)));
-    StatesModePushB->setVisible(false);
 
     MainLayout->addChild(StatesModePushB);
 
@@ -1453,7 +1469,7 @@ void BallGame::SetupGUI(void)
 
     SetWindowsPosNearToOther(StatesModePushB, EditModePushB, 1, 0);
 
-    ChooseLevelComboB = (CEGUI::Combobox*)wmgr.createWindow("OgreTray/Combobox");
+    ChooseLevelComboB = CreateNewGUIComponent<CEGUI::Combobox>("OgreTray/Combobox");
     glob_t glob_result;
 	memset(&glob_result, 0, sizeof(glob_result));
 	glob(LEVELS_FOLDER"*.json", 0, NULL, &glob_result);
@@ -1468,7 +1484,6 @@ void BallGame::SetupGUI(void)
 	}
 	globfree(&glob_result);
     ChooseLevelComboB->setSize(CEGUI::USize(CEGUI::UDim(0, 150), CEGUI::UDim(0, 40 * (ChooseLevelComboB->getItemCount() + 1))));
-    ChooseLevelComboB->setVisible(false);
 
     MainLayout->addChild(ChooseLevelComboB);
 
@@ -1477,10 +1492,9 @@ void BallGame::SetupGUI(void)
 
     SetWindowsPosNearToOther(ChooseLevelComboB, EditModePushB, 0, 1);
 
-    NewLevelEditB = (CEGUI::Editbox*)wmgr.createWindow("OgreTray/Editbox");
+    NewLevelEditB = CreateNewGUIComponent<CEGUI::Editbox>("OgreTray/Editbox");
     NewLevelEditB->setText("NewLevel");
     NewLevelEditB->setSize(CEGUI::USize(CEGUI::UDim(0, 90), CEGUI::UDim(0, 30)));
-    NewLevelEditB->setVisible(false);
 
     MainLayout->addChild(NewLevelEditB);
 
@@ -1489,10 +1503,9 @@ void BallGame::SetupGUI(void)
 
     SetWindowsPosNearToOther(NewLevelEditB, EditModePushB, 0, 2);// Be Carefull, Combobox size is size with combo expanded !
 
-    NewLevelCreateB = (CEGUI::PushButton*)wmgr.createWindow("OgreTray/Button");
+    NewLevelCreateB = CreateNewGUIComponent<CEGUI::PushButton>("OgreTray/Button");
     NewLevelCreateB->setText("Create");
     NewLevelCreateB->setSize(CEGUI::USize(CEGUI::UDim(0, 60), CEGUI::UDim(0, 30)));
-    NewLevelCreateB->setVisible(false);
 
     MainLayout->addChild(NewLevelCreateB);
 
@@ -1501,10 +1514,9 @@ void BallGame::SetupGUI(void)
 
     SetWindowsPosNearToOther(NewLevelCreateB, NewLevelEditB, 1, 0);
 
-    SaveLevelPushB = (CEGUI::PushButton*)wmgr.createWindow("OgreTray/Button");
+    SaveLevelPushB = CreateNewGUIComponent<CEGUI::PushButton>("OgreTray/Button");
     SaveLevelPushB->setText("Save");
     SaveLevelPushB->setSize(CEGUI::USize(CEGUI::UDim(0, 150), CEGUI::UDim(0, 30)));
-    SaveLevelPushB->setVisible(false);
 
     MainLayout->addChild(SaveLevelPushB);
 
@@ -1513,11 +1525,10 @@ void BallGame::SetupGUI(void)
 
     SetWindowsPosNearToOther(SaveLevelPushB, NewLevelEditB, 0, 1);
 
-    QuitPushB = (CEGUI::PushButton*)wmgr.createWindow("OgreTray/Button");
+    QuitPushB = CreateNewGUIComponent<CEGUI::PushButton>("OgreTray/Button");
     QuitPushB->setText("Quit");
     QuitPushB->setTooltipText("Quit");
     QuitPushB->setSize(CEGUI::USize(CEGUI::UDim(0, 150), CEGUI::UDim(0, 30)));
-    QuitPushB->setVisible(false);
 
     MainLayout->addChild(QuitPushB);
 
@@ -1526,7 +1537,7 @@ void BallGame::SetupGUI(void)
 
     SetWindowsPosNearToOther(QuitPushB, SaveLevelPushB, 0, 1);
 
-    LevelNameBanner = (CEGUI::Titlebar*)wmgr.createWindow("OgreTray/Titlebar");
+    LevelNameBanner = CreateNewGUIComponent<CEGUI::Titlebar>("OgreTray/Titlebar");
     LevelNameBanner->setText("Level");
     LevelNameBanner->setSize(CEGUI::USize(CEGUI::UDim(0, 150), CEGUI::UDim(0, 30)));
     LevelNameBanner->setVerticalAlignment(CEGUI::VA_TOP);
@@ -1534,20 +1545,18 @@ void BallGame::SetupGUI(void)
 
     MainLayout->addChild(LevelNameBanner);
 
-    StatesBanner = (CEGUI::Titlebar*)wmgr.createWindow("OgreTray/Titlebar");
+    StatesBanner = CreateNewGUIComponent<CEGUI::Titlebar>("OgreTray/Titlebar");
     StatesBanner->setText("States");
     StatesBanner->setSize(CEGUI::USize(CEGUI::UDim(0, 150), CEGUI::UDim(0, 30)));
     StatesBanner->setVerticalAlignment(CEGUI::VA_TOP);
     StatesBanner->setHorizontalAlignment(CEGUI::HA_RIGHT);
-    StatesBanner->setVisible(false);
 
     MainLayout->addChild(StatesBanner);
 
-    ChooseStateToLoadB = (CEGUI::Combobox*)wmgr.createWindow("OgreTray/Combobox");
+    ChooseStateToLoadB = CreateNewGUIComponent<CEGUI::Combobox>("OgreTray/Combobox");
     ChooseStateToLoadB->setSize(CEGUI::USize(CEGUI::UDim(0, 150), CEGUI::UDim(0, 30)));
     ChooseStateToLoadB->setVerticalAlignment(CEGUI::VA_TOP);
     ChooseStateToLoadB->setHorizontalAlignment(CEGUI::HA_RIGHT);
-    ChooseStateToLoadB->setVisible(false);
 
     MainLayout->addChild(ChooseStateToLoadB);
     ChooseStateToLoadB->subscribeEvent(CEGUI::Combobox::EventListSelectionAccepted,
@@ -1556,36 +1565,33 @@ void BallGame::SetupGUI(void)
     		CEGUI::Event::Subscriber(&BallGame::ChooseStateToLoadBCallback, this));
     SetWindowsPosNearToOther(ChooseStateToLoadB, StatesBanner, 0, 1);
 
-    LoadStatePushB = (CEGUI::PushButton*)wmgr.createWindow("OgreTray/Button");
+    LoadStatePushB = CreateNewGUIComponent<CEGUI::PushButton>("OgreTray/Button");
     LoadStatePushB->setText("Load");
     LoadStatePushB->setSize(CEGUI::USize(CEGUI::UDim(0, 150), CEGUI::UDim(0, 30)));
     LoadStatePushB->setVerticalAlignment(CEGUI::VA_TOP);
     LoadStatePushB->setHorizontalAlignment(CEGUI::HA_RIGHT);
-    LoadStatePushB->setVisible(false);
 
     MainLayout->addChild(LoadStatePushB);
     LoadStatePushB->subscribeEvent(CEGUI::PushButton::EventClicked,
     		CEGUI::Event::Subscriber(&BallGame::LoadStatePushBCallback, this));
     SetWindowsPosNearToOther(LoadStatePushB, StatesBanner, 0, 2);
 
-    DelStatePushB = (CEGUI::PushButton*)wmgr.createWindow("OgreTray/Button");
+    DelStatePushB = CreateNewGUIComponent<CEGUI::PushButton>("OgreTray/Button");
     DelStatePushB->setText("Delete");
     DelStatePushB->setSize(CEGUI::USize(CEGUI::UDim(0, 150), CEGUI::UDim(0, 30)));
     DelStatePushB->setVerticalAlignment(CEGUI::VA_TOP);
     DelStatePushB->setHorizontalAlignment(CEGUI::HA_RIGHT);
-    DelStatePushB->setVisible(false);
 
     MainLayout->addChild(DelStatePushB);
     DelStatePushB->subscribeEvent(CEGUI::PushButton::EventClicked,
     		CEGUI::Event::Subscriber(&BallGame::DelStatePushBCallback, this));
     SetWindowsPosNearToOther(DelStatePushB, LoadStatePushB, 0, 1);
 
-    SaveStatePushB = (CEGUI::PushButton*)wmgr.createWindow("OgreTray/Button");
+    SaveStatePushB = CreateNewGUIComponent<CEGUI::PushButton>("OgreTray/Button");
     SaveStatePushB->setText("Save");
     SaveStatePushB->setSize(CEGUI::USize(CEGUI::UDim(0, 150), CEGUI::UDim(0, 30)));
     SaveStatePushB->setVerticalAlignment(CEGUI::VA_TOP);
     SaveStatePushB->setHorizontalAlignment(CEGUI::HA_RIGHT);
-    SaveStatePushB->setVisible(false);
 
     MainLayout->addChild(SaveStatePushB);
     SaveStatePushB->subscribeEvent(CEGUI::PushButton::EventClicked,
@@ -1599,19 +1605,18 @@ void BallGame::SetupGUI(void)
 
     //Edit GUI
 
-    EditingModeTitleBanner = (CEGUI::Titlebar*)wmgr.createWindow("OgreTray/Title");
+    EditingModeTitleBanner = CreateNewGUIComponent<CEGUI::Titlebar>("OgreTray/Title");
     EditingModeTitleBanner->setText("Edit Mode");
     EditingModeTitleBanner->setSize(CEGUI::USize(CEGUI::UDim(0, 150), CEGUI::UDim(0, 30)));
     EditingModeTitleBanner->setVerticalAlignment(CEGUI::VA_TOP);
     EditingModeTitleBanner->setHorizontalAlignment(CEGUI::HA_CENTRE);
-    EditingModeTitleBanner->setVisible(false);
 
     MainLayout->addChild(EditingModeTitleBanner);
 
     SetWindowsPosNearToOther(EditingModeTitleBanner, EditingModeTitleBanner, 0, 1);
 
     // Add new Element GUI
-    AddElementTitleBanner = (CEGUI::Titlebar*)wmgr.createWindow("OgreTray/Titlebar");
+    AddElementTitleBanner = CreateNewGUIComponent<CEGUI::Titlebar>("OgreTray/Titlebar");
     AddElementTitleBanner->setText("Add");
     AddElementTitleBanner->setSize(CEGUI::USize(CEGUI::UDim(0, 150), CEGUI::UDim(0, 30)));
     AddElementTitleBanner->setVerticalAlignment(CEGUI::VA_TOP);
@@ -1619,12 +1624,11 @@ void BallGame::SetupGUI(void)
     CEGUI::UVector2 pos = AddElementTitleBanner->getPosition();
     pos.d_y = CEGUI::UDim(0, (mWindow->getHeight() / 2) - 120);
     AddElementTitleBanner->setPosition(pos);
-    AddElementTitleBanner->setVisible(false);
 
     MainLayout->addChild(AddElementTitleBanner);
 
 
-    ChooseTypeOfElementToAddB = (CEGUI::Combobox*)wmgr.createWindow("OgreTray/Combobox");
+    ChooseTypeOfElementToAddB = CreateNewGUIComponent<CEGUI::Combobox>("OgreTray/Combobox");
 	std::list<class EntityType*>::iterator iter(EntityTypes.begin());
 	while(iter != EntityTypes.end())
 	{
@@ -1644,142 +1648,101 @@ void BallGame::SetupGUI(void)
     ChooseTypeOfElementToAddB->setSize(CEGUI::USize(CEGUI::UDim(0, 150), CEGUI::UDim(0, 40 * (ChooseLevelComboB->getItemCount() + 1))));
     ChooseTypeOfElementToAddB->setVerticalAlignment(CEGUI::VA_TOP);
     ChooseTypeOfElementToAddB->setHorizontalAlignment(CEGUI::HA_RIGHT);
-    ChooseTypeOfElementToAddB->setVisible(false);
 
     ChooseTypeOfElementToAddB->subscribeEvent(CEGUI::Combobox::EventListSelectionAccepted,
     		CEGUI::Event::Subscriber(&BallGame::ChooseTypeOfElementToAddBCallback, this));
-    ChooseTypeOfElementToAddB->subscribeEvent(CEGUI::Combobox::EventMouseEntersArea,
-			CEGUI::Event::Subscriber(&BallGame::EnteringArea, this));
-    ChooseTypeOfElementToAddB->subscribeEvent(CEGUI::Combobox::EventMouseLeavesArea,
-			CEGUI::Event::Subscriber(&BallGame::LeavingArea, this));
 
     MainLayout->addChild(ChooseTypeOfElementToAddB);
 
-    ThumbnailWindow = CEGUI::WindowManager::getSingleton().createWindow("OgreTray/StaticImage", "RTTWindow");
+    ThumbnailWindow = CreateNewGUIComponent<CEGUI::Window>("OgreTray/StaticImage", "RTTWindow");
     ThumbnailWindow->setSize(CEGUI::USize(CEGUI::UDim(0, 150),
  						   CEGUI::UDim(0, 150)));
     ThumbnailWindow->setVerticalAlignment(CEGUI::VA_TOP);
     ThumbnailWindow->setHorizontalAlignment(CEGUI::HA_RIGHT);
-    ThumbnailWindow->setVisible(false);
 
     sheet->addChild(ThumbnailWindow);
 
-    PlaceNewElementB = (CEGUI::PushButton*)wmgr.createWindow("OgreTray/Button");
+    PlaceNewElementB = CreateNewGUIComponent<CEGUI::PushButton>("OgreTray/Button");
     PlaceNewElementB->setText("Place");
     PlaceNewElementB->setSize(CEGUI::USize(CEGUI::UDim(0, 75), CEGUI::UDim(0, 30)));
     PlaceNewElementB->setVerticalAlignment(CEGUI::VA_TOP);
     PlaceNewElementB->setHorizontalAlignment(CEGUI::HA_RIGHT);
-    PlaceNewElementB->setVisible(false);
 
     PlaceNewElementB->subscribeEvent(CEGUI::PushButton::EventClicked,
 			CEGUI::Event::Subscriber(&BallGame::PlaceNewElementBCallback, this));
-    PlaceNewElementB->subscribeEvent(CEGUI::PushButton::EventMouseEntersArea,
-			CEGUI::Event::Subscriber(&BallGame::EnteringArea, this));
-    PlaceNewElementB->subscribeEvent(CEGUI::PushButton::EventMouseLeavesArea,
-			CEGUI::Event::Subscriber(&BallGame::LeavingArea, this));
 
     MainLayout->addChild(PlaceNewElementB);
 
-    EditElementB = (CEGUI::PushButton*)wmgr.createWindow("OgreTray/Button");
+    EditElementB = CreateNewGUIComponent<CEGUI::PushButton>("OgreTray/Button");
     EditElementB->setText("Edit");
     EditElementB->setSize(CEGUI::USize(CEGUI::UDim(0, 75), CEGUI::UDim(0, 30)));
     EditElementB->setVerticalAlignment(CEGUI::VA_TOP);
     EditElementB->setHorizontalAlignment(CEGUI::HA_RIGHT);
-    EditElementB->setVisible(false);
 
     EditElementB->subscribeEvent(CEGUI::PushButton::EventClicked,
 			CEGUI::Event::Subscriber(&BallGame::EditElementBCallback, this));
-    EditElementB->subscribeEvent(CEGUI::PushButton::EventMouseEntersArea,
-			CEGUI::Event::Subscriber(&BallGame::EnteringArea, this));
-    EditElementB->subscribeEvent(CEGUI::PushButton::EventMouseLeavesArea,
-			CEGUI::Event::Subscriber(&BallGame::LeavingArea, this));
 
     MainLayout->addChild(EditElementB);
 
-    DeleteElementB = (CEGUI::PushButton*)wmgr.createWindow("OgreTray/Button");
+    DeleteElementB = CreateNewGUIComponent<CEGUI::PushButton>("OgreTray/Button");
     DeleteElementB->setText("Delete");
     DeleteElementB->setSize(CEGUI::USize(CEGUI::UDim(0, 150), CEGUI::UDim(0, 30)));
     DeleteElementB->setVerticalAlignment(CEGUI::VA_TOP);
     DeleteElementB->setHorizontalAlignment(CEGUI::HA_RIGHT);
-    DeleteElementB->setVisible(false);
 
     DeleteElementB->subscribeEvent(CEGUI::PushButton::EventClicked,
 			CEGUI::Event::Subscriber(&BallGame::DeleteElementBCallback, this));
-    DeleteElementB->subscribeEvent(CEGUI::PushButton::EventMouseEntersArea,
-			CEGUI::Event::Subscriber(&BallGame::EnteringArea, this));
-    DeleteElementB->subscribeEvent(CEGUI::PushButton::EventMouseLeavesArea,
-			CEGUI::Event::Subscriber(&BallGame::LeavingArea, this));
 
     MainLayout->addChild(DeleteElementB);
 
 
-    MoveElementB = (CEGUI::PushButton*)wmgr.createWindow("OgreTray/Button");
+    MoveElementB = CreateNewGUIComponent<CEGUI::PushButton>("OgreTray/Button");
     MoveElementB->setText("M");
     MoveElementB->setTooltipText("Move Element. Press M to enter this mode.");
     MoveElementB->setSize(CEGUI::USize(CEGUI::UDim(0, 50), CEGUI::UDim(0, 30)));
     MoveElementB->setVerticalAlignment(CEGUI::VA_TOP);
     MoveElementB->setHorizontalAlignment(CEGUI::HA_RIGHT);
-    MoveElementB->setVisible(false);
 
     MoveElementB->subscribeEvent(CEGUI::PushButton::EventClicked,
 			CEGUI::Event::Subscriber(&BallGame::MoveElementBCallback, this));
-    MoveElementB->subscribeEvent(CEGUI::PushButton::EventMouseEntersArea,
-			CEGUI::Event::Subscriber(&BallGame::EnteringArea, this));
-    MoveElementB->subscribeEvent(CEGUI::PushButton::EventMouseLeavesArea,
-			CEGUI::Event::Subscriber(&BallGame::LeavingArea, this));
 
     MainLayout->addChild(MoveElementB);
 
 
-    RotateElementB = (CEGUI::PushButton*)wmgr.createWindow("OgreTray/Button");
+    RotateElementB = CreateNewGUIComponent<CEGUI::PushButton>("OgreTray/Button");
     RotateElementB->setText("R");
     RotateElementB->setTooltipText("Rotate Element. Press R to enter this mode.");
     RotateElementB->setSize(CEGUI::USize(CEGUI::UDim(0, 50), CEGUI::UDim(0, 30)));
     RotateElementB->setVerticalAlignment(CEGUI::VA_TOP);
     RotateElementB->setHorizontalAlignment(CEGUI::HA_RIGHT);
-    RotateElementB->setVisible(false);
 
     RotateElementB->subscribeEvent(CEGUI::PushButton::EventClicked,
 			CEGUI::Event::Subscriber(&BallGame::RotateElementBCallback, this));
-    RotateElementB->subscribeEvent(CEGUI::PushButton::EventMouseEntersArea,
-			CEGUI::Event::Subscriber(&BallGame::EnteringArea, this));
-    RotateElementB->subscribeEvent(CEGUI::PushButton::EventMouseLeavesArea,
-			CEGUI::Event::Subscriber(&BallGame::LeavingArea, this));
 
     MainLayout->addChild(RotateElementB);
 
 
-    ScaleElementB = (CEGUI::PushButton*)wmgr.createWindow("OgreTray/Button");
+    ScaleElementB = CreateNewGUIComponent<CEGUI::PushButton>("OgreTray/Button");
     ScaleElementB->setText("S");
     ScaleElementB->setTooltipText("Scale Element. Press S to enter this mode.");
     ScaleElementB->setSize(CEGUI::USize(CEGUI::UDim(0, 50), CEGUI::UDim(0, 30)));
     ScaleElementB->setVerticalAlignment(CEGUI::VA_TOP);
     ScaleElementB->setHorizontalAlignment(CEGUI::HA_RIGHT);
-    ScaleElementB->setVisible(false);
 
     ScaleElementB->subscribeEvent(CEGUI::PushButton::EventClicked,
 			CEGUI::Event::Subscriber(&BallGame::ScaleElementBCallback, this));
-    ScaleElementB->subscribeEvent(CEGUI::PushButton::EventMouseEntersArea,
-			CEGUI::Event::Subscriber(&BallGame::EnteringArea, this));
-    ScaleElementB->subscribeEvent(CEGUI::PushButton::EventMouseLeavesArea,
-			CEGUI::Event::Subscriber(&BallGame::LeavingArea, this));
 
     MainLayout->addChild(ScaleElementB);
 
 
-    GroupElementsB = (CEGUI::ToggleButton*)wmgr.createWindow("OgreTray/Checkbox");
+    GroupElementsB = CreateNewGUIComponent<CEGUI::ToggleButton>("OgreTray/Checkbox");
     GroupElementsB->setText("Grouped");
     GroupElementsB->setSize(CEGUI::USize(CEGUI::UDim(0, 150), CEGUI::UDim(0, 30)));
     GroupElementsB->setVerticalAlignment(CEGUI::VA_TOP);
     GroupElementsB->setHorizontalAlignment(CEGUI::HA_RIGHT);
-    GroupElementsB->setVisible(false);
 
     GroupElementsB->subscribeEvent(CEGUI::ToggleButton::EventSelectStateChanged,
 			CEGUI::Event::Subscriber(&BallGame::GroupElementsBCallback, this));
-    GroupElementsB->subscribeEvent(CEGUI::ToggleButton::EventMouseEntersArea,
-			CEGUI::Event::Subscriber(&BallGame::EnteringArea, this));
-    GroupElementsB->subscribeEvent(CEGUI::ToggleButton::EventMouseLeavesArea,
-			CEGUI::Event::Subscriber(&BallGame::LeavingArea, this));
 
     MainLayout->addChild(GroupElementsB);
 
@@ -1796,130 +1759,90 @@ void BallGame::SetupGUI(void)
 
     // Edit Case GUI
 
-    CaseHasForceToggleB = (CEGUI::ToggleButton*)wmgr.createWindow("OgreTray/Checkbox");
+    CaseHasForceToggleB = CreateNewGUIComponent<CEGUI::ToggleButton>("OgreTray/Checkbox");
     CaseHasForceToggleB->setText("Has Force");
     CaseHasForceToggleB->setSelected(false);
     CaseHasForceToggleB->setSize(CEGUI::USize(CEGUI::UDim(0, 200), CEGUI::UDim(0, 30)));
     CaseHasForceToggleB->setVerticalAlignment(CEGUI::VA_BOTTOM);
     CaseHasForceToggleB->setHorizontalAlignment(CEGUI::HA_CENTRE);
-    CaseHasForceToggleB->setVisible(false);
 
     CaseHasForceToggleB->subscribeEvent(CEGUI::ToggleButton::EventSelectStateChanged,
 			CEGUI::Event::Subscriber(&BallGame::ToggleForceCallback, this));
-    CaseHasForceToggleB->subscribeEvent(CEGUI::ToggleButton::EventMouseEntersArea,
-			CEGUI::Event::Subscriber(&BallGame::EnteringArea, this));
-    CaseHasForceToggleB->subscribeEvent(CEGUI::ToggleButton::EventMouseLeavesArea,
-			CEGUI::Event::Subscriber(&BallGame::LeavingArea, this));
 
     MainLayout->addChild(CaseHasForceToggleB);
 
-    CaseForceValueEditB = (CEGUI::Editbox*)wmgr.createWindow("OgreTray/Editbox");
+    CaseForceValueEditB = CreateNewGUIComponent<CEGUI::Editbox>("OgreTray/Editbox");
     CaseForceValueEditB->setSize(CEGUI::USize(CEGUI::UDim(0, 50), CEGUI::UDim(0, 30)));
     CaseForceValueEditB->setVerticalAlignment(CEGUI::VA_BOTTOM);
     CaseForceValueEditB->setHorizontalAlignment(CEGUI::HA_CENTRE);
     String numRegex("^(\\-?[0-9]*(\\.[0-9]*)?)?");
     CaseForceValueEditB->setValidationString(numRegex);
-    CaseForceValueEditB->setVisible(false);
 
     CaseForceValueEditB->subscribeEvent(CEGUI::Editbox::EventTextAccepted,
 			CEGUI::Event::Subscriber(&BallGame::CaseForceValueEditBCallback, this));
     CaseForceValueEditB->subscribeEvent(CEGUI::Editbox::EventMouseLeavesArea,
 			CEGUI::Event::Subscriber(&BallGame::CaseForceValueEditBCallback, this));
-    CaseForceValueEditB->subscribeEvent(CEGUI::Editbox::EventMouseEntersArea,
-			CEGUI::Event::Subscriber(&BallGame::EnteringArea, this));
-    CaseForceValueEditB->subscribeEvent(CEGUI::Editbox::EventMouseLeavesArea,
-			CEGUI::Event::Subscriber(&BallGame::LeavingArea, this));
 
     MainLayout->addChild(CaseForceValueEditB);
 
-    CaseHasForceDirectionToggleB = (CEGUI::ToggleButton*)wmgr.createWindow("OgreTray/Checkbox");
+    CaseHasForceDirectionToggleB = CreateNewGUIComponent<CEGUI::ToggleButton>("OgreTray/Checkbox");
     CaseHasForceDirectionToggleB->setText("Has Force Directed");
     CaseHasForceDirectionToggleB->setSelected(false);
     CaseHasForceDirectionToggleB->setSize(CEGUI::USize(CEGUI::UDim(0, 200), CEGUI::UDim(0, 30)));
     CaseHasForceDirectionToggleB->setVerticalAlignment(CEGUI::VA_BOTTOM);
     CaseHasForceDirectionToggleB->setHorizontalAlignment(CEGUI::HA_CENTRE);
-    CaseHasForceDirectionToggleB->setVisible(false);
 
 	CaseHasForceDirectionToggleB->subscribeEvent(CEGUI::ToggleButton::EventSelectStateChanged,
 			CEGUI::Event::Subscriber(&BallGame::ToggleForceDirectedCallback, this));
-	CaseHasForceDirectionToggleB->subscribeEvent(CEGUI::ToggleButton::EventMouseEntersArea,
-			CEGUI::Event::Subscriber(&BallGame::EnteringArea, this));
-	CaseHasForceDirectionToggleB->subscribeEvent(CEGUI::ToggleButton::EventMouseLeavesArea,
-			CEGUI::Event::Subscriber(&BallGame::LeavingArea, this));
 
     MainLayout->addChild(CaseHasForceDirectionToggleB);
 
-    CaseForceDirectionXValueEditB = (CEGUI::Editbox*)wmgr.createWindow("OgreTray/Editbox");
+    CaseForceDirectionXValueEditB = CreateNewGUIComponent<CEGUI::Editbox>("OgreTray/Editbox");
     CaseForceDirectionXValueEditB->setSize(CEGUI::USize(CEGUI::UDim(0, 50), CEGUI::UDim(0, 30)));
     CaseForceDirectionXValueEditB->setVerticalAlignment(CEGUI::VA_BOTTOM);
     CaseForceDirectionXValueEditB->setHorizontalAlignment(CEGUI::HA_CENTRE);
     CaseForceDirectionXValueEditB->setValidationString(numRegex);
-    CaseForceDirectionXValueEditB->setVisible(false);
 
-    CaseForceDirectionXValueEditB->subscribeEvent(CEGUI::Editbox::EventMouseEntersArea,
-			CEGUI::Event::Subscriber(&BallGame::EnteringArea, this));
-    CaseForceDirectionXValueEditB->subscribeEvent(CEGUI::Editbox::EventMouseLeavesArea,
-			CEGUI::Event::Subscriber(&BallGame::LeavingArea, this));
 
     MainLayout->addChild(CaseForceDirectionXValueEditB);
 
-    CaseForceDirectionYValueEditB = (CEGUI::Editbox*)wmgr.createWindow("OgreTray/Editbox");
+    CaseForceDirectionYValueEditB = CreateNewGUIComponent<CEGUI::Editbox>("OgreTray/Editbox");
     CaseForceDirectionYValueEditB->setSize(CEGUI::USize(CEGUI::UDim(0, 50), CEGUI::UDim(0, 30)));
     CaseForceDirectionYValueEditB->setVerticalAlignment(CEGUI::VA_BOTTOM);
     CaseForceDirectionYValueEditB->setHorizontalAlignment(CEGUI::HA_CENTRE);
     CaseForceDirectionYValueEditB->setValidationString(numRegex);
-    CaseForceDirectionYValueEditB->setVisible(false);
 
-    CaseForceDirectionYValueEditB->subscribeEvent(CEGUI::Editbox::EventMouseEntersArea,
-			CEGUI::Event::Subscriber(&BallGame::EnteringArea, this));
-    CaseForceDirectionYValueEditB->subscribeEvent(CEGUI::Editbox::EventMouseLeavesArea,
-			CEGUI::Event::Subscriber(&BallGame::LeavingArea, this));
 
     MainLayout->addChild(CaseForceDirectionYValueEditB);
 
-    CaseForceDirectionZValueEditB = (CEGUI::Editbox*)wmgr.createWindow("OgreTray/Editbox");
+    CaseForceDirectionZValueEditB = CreateNewGUIComponent<CEGUI::Editbox>("OgreTray/Editbox");
     CaseForceDirectionZValueEditB->setSize(CEGUI::USize(CEGUI::UDim(0, 50), CEGUI::UDim(0, 30)));
     CaseForceDirectionZValueEditB->setVerticalAlignment(CEGUI::VA_BOTTOM);
     CaseForceDirectionZValueEditB->setHorizontalAlignment(CEGUI::HA_CENTRE);
     CaseForceDirectionZValueEditB->setValidationString(numRegex);
-    CaseForceDirectionZValueEditB->setVisible(false);
 
-    CaseForceDirectionZValueEditB->subscribeEvent(CEGUI::Editbox::EventMouseEntersArea,
-			CEGUI::Event::Subscriber(&BallGame::EnteringArea, this));
-    CaseForceDirectionZValueEditB->subscribeEvent(CEGUI::Editbox::EventMouseLeavesArea,
-			CEGUI::Event::Subscriber(&BallGame::LeavingArea, this));
 
     MainLayout->addChild(CaseForceDirectionZValueEditB);
 
-    NormalizeCaseForceDirectionPushB = (CEGUI::PushButton*)wmgr.createWindow("OgreTray/Button");
+    NormalizeCaseForceDirectionPushB = CreateNewGUIComponent<CEGUI::PushButton>("OgreTray/Button");
     NormalizeCaseForceDirectionPushB->setText("Norm");
     NormalizeCaseForceDirectionPushB->setSize(CEGUI::USize(CEGUI::UDim(0, 50), CEGUI::UDim(0, 30)));
     NormalizeCaseForceDirectionPushB->setVerticalAlignment(CEGUI::VA_BOTTOM);
     NormalizeCaseForceDirectionPushB->setHorizontalAlignment(CEGUI::HA_CENTRE);
-    NormalizeCaseForceDirectionPushB->setVisible(false);
     NormalizeCaseForceDirectionPushB->subscribeEvent(CEGUI::PushButton::EventClicked,
     		CEGUI::Event::Subscriber(&BallGame::NormalizeCaseForceDirectionPushBCallback, this));
 
-    NormalizeCaseForceDirectionPushB->subscribeEvent(CEGUI::PushButton::EventMouseEntersArea,
-			CEGUI::Event::Subscriber(&BallGame::EnteringArea, this));
-    NormalizeCaseForceDirectionPushB->subscribeEvent(CEGUI::PushButton::EventMouseLeavesArea,
-			CEGUI::Event::Subscriber(&BallGame::LeavingArea, this));
 
     MainLayout->addChild(NormalizeCaseForceDirectionPushB);
 
-    ApplyForceChangesToCasePushB = (CEGUI::PushButton*)wmgr.createWindow("OgreTray/Button");
+    ApplyForceChangesToCasePushB = CreateNewGUIComponent<CEGUI::PushButton>("OgreTray/Button");
     ApplyForceChangesToCasePushB->setText("Apply");
     ApplyForceChangesToCasePushB->setSize(CEGUI::USize(CEGUI::UDim(0, 100), CEGUI::UDim(0, 30)));
     ApplyForceChangesToCasePushB->setVerticalAlignment(CEGUI::VA_BOTTOM);
     ApplyForceChangesToCasePushB->setHorizontalAlignment(CEGUI::HA_CENTRE);
-    ApplyForceChangesToCasePushB->setVisible(false);
 
     ApplyForceChangesToCasePushB->subscribeEvent(CEGUI::PushButton::EventClicked,
     		CEGUI::Event::Subscriber(&BallGame::ApplyForceChangesToCasePushBCallback, this));
-    ApplyForceChangesToCasePushB->subscribeEvent(CEGUI::PushButton::EventMouseEntersArea,
-			CEGUI::Event::Subscriber(&BallGame::EnteringArea, this));
-    ApplyForceChangesToCasePushB->subscribeEvent(CEGUI::PushButton::EventMouseLeavesArea,
-			CEGUI::Event::Subscriber(&BallGame::LeavingArea, this));
 
     MainLayout->addChild(ApplyForceChangesToCasePushB);
 
@@ -1933,20 +1856,18 @@ void BallGame::SetupGUI(void)
 
     // Edit Ball GUI
 
-    BallMassValueEditB = (CEGUI::Editbox*)wmgr.createWindow("OgreTray/Editbox");
+    BallMassValueEditB = CreateNewGUIComponent<CEGUI::Editbox>("OgreTray/Editbox");
     BallMassValueEditB->setSize(CEGUI::USize(CEGUI::UDim(0, 50), CEGUI::UDim(0, 30)));
     BallMassValueEditB->setVerticalAlignment(CEGUI::VA_BOTTOM);
     BallMassValueEditB->setHorizontalAlignment(CEGUI::HA_CENTRE);
-    BallMassValueEditB->setVisible(false);
 
     MainLayout->addChild(BallMassValueEditB);
 
-    ApplyMassChangesToBallPushB = (CEGUI::PushButton*)wmgr.createWindow("OgreTray/Button");
+    ApplyMassChangesToBallPushB = CreateNewGUIComponent<CEGUI::PushButton>("OgreTray/Button");
     ApplyMassChangesToBallPushB->setText("Apply");
     ApplyMassChangesToBallPushB->setSize(CEGUI::USize(CEGUI::UDim(0, 100), CEGUI::UDim(0, 30)));
     ApplyMassChangesToBallPushB->setVerticalAlignment(CEGUI::VA_BOTTOM);
     ApplyMassChangesToBallPushB->setHorizontalAlignment(CEGUI::HA_CENTRE);
-    ApplyMassChangesToBallPushB->setVisible(false);
     ApplyMassChangesToBallPushB->subscribeEvent(CEGUI::PushButton::EventClicked,
     		CEGUI::Event::Subscriber(&BallGame::ApplyMassChangesToBallPushBCallback, this));
 
