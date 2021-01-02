@@ -2070,7 +2070,7 @@ bool BallGame::frameEnded(const Ogre::FrameEvent& fe)
 			BallEntity *ball = *(iter++);
 			if(ball == NULL)
 				continue;
-			Vector3 worldPos = ball->OgreEntity->getPosition();
+			Vector3 worldPos = ball->OgreEntity->_getDerivedPosition();
 			Vector3 hcsPosition = mCamera->getProjectionMatrix() * mCamera->getViewMatrix() * worldPos;
 #define ECART 0.25
 //#define ECART 0.8
