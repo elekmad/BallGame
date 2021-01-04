@@ -1449,7 +1449,7 @@ void BallGame::SetupGUI(void)
 		String globname(glob_result.gl_pathv[i]), filename;
 		size_t slashpos = globname.find_last_of('/'), dotpos = globname.find_last_of('.');
 		filename = globname.substr(slashpos + 1, dotpos - (slashpos + 1));
-		ChooseLevelComboB->addItem(new CEGUI::ListboxTextItem(filename));
+		ChooseLevelComboB->addItem(new CEGUI::ListboxTextItem((CEGUI::utf8*)filename.c_str()));
         if(ChooseLevelComboB->getText().empty() == true)
         	ChooseLevelComboB->setText(filename);
 	}
@@ -1513,6 +1513,7 @@ void BallGame::SetupGUI(void)
     LevelNameBanner->setSize(CEGUI::USize(CEGUI::UDim(0, 150), CEGUI::UDim(0, 30)));
     LevelNameBanner->setVerticalAlignment(CEGUI::VA_TOP);
     LevelNameBanner->setHorizontalAlignment(CEGUI::HA_CENTRE);
+    LevelNameBanner->setVisible(true);
 
     MainLayout->addChild(LevelNameBanner);
 
@@ -2997,7 +2998,7 @@ bool BallGame::ChooseLevelComboBCallback(const CEGUI::EventArgs &e)
 void BallGame::SetLevel(String &level_name)
 {
 	Level = level_name;
-	LevelNameBanner->setText(Level);
+	LevelNameBanner->setText((CEGUI::utf8*)Level.c_str());
 }
 
 void BallEntity::ExportToJson(rapidjson::Value &v, rapidjson::Document::AllocatorType& allocator)
