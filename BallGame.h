@@ -108,6 +108,21 @@ class BallGameEntity
     void SetNewtonBody(NewtonBody *body);
     dMatrix *PrepareNewtonBody(dVector &NewtonBodyLocation, dVector &NewtonBodySize);
     void DisplaySelectedBox(bool display);
+    const Ogre::Vector3 &GetRelaticePosition(void) { return OgreEntity->getPosition(); }
+    const Ogre::Vector3 &GetAbsolutePosition(void) { return OgreEntity->_getDerivedPosition(); }
+    void SetRelaticePosition(const Ogre::Vector3 &NewPosition) { OgreEntity->setPosition(NewPosition); }
+    void SetAbsolutePosition(const Ogre::Vector3 &NewPosition) { OgreEntity->_setDerivedPosition(NewPosition); }
+    const Ogre::Quaternion &GetRelaticeOrientation(void) { return OgreEntity->getOrientation(); }
+    const Ogre::Quaternion &GetAbsoluteOrientation(void) { return OgreEntity->_getDerivedOrientation(); }
+    void SetRelaticeOrientation(const Ogre::Quaternion &NewOrient) { OgreEntity->setOrientation(NewOrient); }
+    void SetAbsoluteOrientation(const Ogre::Quaternion &NewOrient) { OgreEntity->_setDerivedOrientation(NewOrient); }
+    const Ogre::Vector3 &GetRelaticeScale(void) { return OgreEntity->getScale(); }
+    const Ogre::Vector3 &GetAbsoluteScale(void) { return OgreEntity->_getDerivedScale(); }
+    void SetRelaticeScale(const Ogre::Vector3 &NewScale) { OgreEntity->setScale(NewScale); }
+    const Ogre::String &GetName(void) { return OgreEntity->getName(); }
+    void Move(float x, float y, float z);
+    void Rotate(float x, float y, float z);
+    void Scale(float x, float y, float z);
 	protected:
     enum BallGameEntityType type;
 	//mutable dMatrix m_matrix;			// interpolated matrix
@@ -189,6 +204,9 @@ class GroupEntity
 	bool DelChild(BallGameEntity* child);
 	void ComputeChilds(void);
 	void FillListWithChilds(std::list<BallGameEntity*> &list);
+    void Move(float x, float y, float z);
+    void Rotate(float x, float y, float z);
+    void Scale(float x, float y, float z);
 	private:
 	SceneNode *OgreEntity;
 	std::list<BallGameEntity*> childs;
@@ -270,12 +288,9 @@ class BallGame : public BaseApplication
     //Edit Entities
     bool MultiSelectionMode;
     void MoveEntity(BallGameEntity *Entity, float x, float y, float z);
-    void MoveNode(Node *node, float x, float y, float z);
     void MoveEntities(float x, float y, float z);
-    void RotateNode(Node *node, float x, float y, float z);
     void RotateEntity(BallGameEntity *Entity, float x, float y, float z);
     void RotateEntities(float x, float y, float z);
-    void ScaleNode(Node *node, float x, float y, float z);
     void ScaleEntity(BallGameEntity *Entity, float x, float y, float z);
     void ScaleEntities(float x, float y, float z);
     void MultiSelectionSetEmpty(void);

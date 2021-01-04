@@ -72,7 +72,7 @@ void BallGame::BodySerialization (NewtonBody* const body, void* const bodyUserDa
 {
 	BallGameEntity *Entity = (BallGameEntity*)NewtonBodyGetUserData(body);
 
-	const char* const bodyIndentification = Entity->OgreEntity->getName().c_str();
+	const char* const bodyIndentification = Entity->GetName().c_str();
 	std::cout << "Serialize Entity (" << Entity << "/" << body << ") name :" << bodyIndentification << std::endl;
 	int size = (strlen (bodyIndentification) + 3) & -4;
 	serializeCallback (serializeHandle, &size, sizeof (size));
@@ -593,11 +593,11 @@ bool GroupEntity::DelChild(BallGameEntity* child)
 {
 	std::cout << "Child " << child << " Removed from Group" << std::endl;
 	child->Group = NULL;
-	Quaternion ChildOrientation = child->OgreEntity->_getDerivedOrientation();
+	Quaternion ChildOrientation = child->GetAbsoluteOrientation();
 	child->OgreEntity->setOrientation(ChildOrientation);
-	Vector3 ChildPosition = child->OgreEntity->_getDerivedPosition();
+	Vector3 ChildPosition = child->GetAbsolutePosition();
 	child->OgreEntity->setPosition(ChildPosition);
-	Vector3 ChildScale = child->OgreEntity->_getDerivedScale();
+	Vector3 ChildScale = child->GetAbsoluteScale();
 	child->OgreEntity->setScale(ChildScale);
 	std::list<BallGameEntity*>::iterator iter(childs.begin());
 	while(iter != childs.end())
@@ -1991,7 +1991,7 @@ bool BallGame::frameEnded(const Ogre::FrameEvent& fe)
 			BallEntity *ball = *(iter++);
 			if(ball == NULL)
 				continue;
-			Vector3 worldPos = ball->OgreEntity->_getDerivedPosition();
+			Vector3 worldPos = ball->GetAbsolutePosition();
 			Vector3 hcsPosition = mCamera->getProjectionMatrix() * mCamera->getViewMatrix() * worldPos;
 #define ECART 0.25
 //#define ECART 0.8
@@ -2534,7 +2534,7 @@ bool BallGame::mouseReleased( const OIS::MouseEvent &arg, OIS::MouseButtonID id 
     return true;
 }
 
-void BallGame::MoveNode(Node *node, float x, float y, float z)
+inline void MoveNode(Node *node, float x, float y, float z)
 {
 	Vector3 pos = node->getPosition();
 	pos.x += x;
@@ -2543,12 +2543,22 @@ void BallGame::MoveNode(Node *node, float x, float y, float z)
 	node->setPosition(pos);
 }
 
-void BallGame::MoveEntity(BallGameEntity *Entity, float x, float y, float z)
+void BallGameEntity::Move(float x, float y, float z)
 {
-	MoveNode(Entity->OgreEntity, x, y, z);
+	MoveNode(OgreEntity, x, y, z);
 }
 
-void BallGame::ScaleNode(Node *node, float x, float y, float z)
+void GroupEntity::Move(float x, float y, float z)
+{
+	MoveNode(OgreEntity, x, y, z);
+}
+
+void BallGame::MoveEntity(BallGameEntity *Entity, float x, float y, float z)
+{
+	Entity->Move(x, y, z);
+}
+
+inline void ScaleNode(Node *node, float x, float y, float z)
 {
 	std::cout << "Scale Node " << node << " by " << x << ", " << y << ", " << z << std::endl;
 	Vector3 sc = node->getScale();
@@ -2563,22 +2573,42 @@ void BallGame::ScaleNode(Node *node, float x, float y, float z)
 	std::cout << "=> DerivatedScale = " << dsc.x << ", " << dsc.y << ", " << dsc.z << std::endl;
 }
 
+void BallGameEntity::Scale(float x, float y, float z)
+{
+	ScaleNode(OgreEntity, x, y, z);
+}
+
+void GroupEntity::Scale(float x, float y, float z)
+{
+	ScaleNode(OgreEntity, x, y, z);
+}
+
 void BallGame::ScaleEntity(BallGameEntity *Entity, float x, float y, float z)
 {
 	std::cout << "Scale Entity " << Entity << std::endl;
-	ScaleNode(Entity->OgreEntity, x, y, z);
+	Entity->Scale(x, y, z);
 }
 
-void BallGame::RotateNode(Node *node, float x, float y, float z)
+inline void RotateNode(Node *node, float x, float y, float z)
 {
 	node->pitch(Degree(x));
 	node->roll(Degree(z));
 	node->yaw(Degree(y));
 }
 
+void BallGameEntity::Rotate(float x, float y, float z)
+{
+	RotateNode(OgreEntity, x, y, z);
+}
+
+void GroupEntity::Rotate(float x, float y, float z)
+{
+	RotateNode(OgreEntity, x, y, z);
+}
+
 void BallGame::RotateEntity(BallGameEntity *Entity, float x, float y, float z)
 {
-	RotateNode(Entity->OgreEntity, x, y, z);
+	Entity->Rotate(x, y, z);
 }
 
 void BallGame::MoveEntities(float x, float y, float z)
@@ -2619,7 +2649,7 @@ void BallGame::MoveEntities(float x, float y, float z)
 		GroupEntity *grp = *(iterG++);
 		if(grp == NULL)
 			continue;
-		MoveNode(grp->OgreEntity, x, y, z);
+		grp->Move(x, y, z);
 	}
 }
 
@@ -2661,7 +2691,7 @@ void BallGame::RotateEntities(float x, float y, float z)
 		GroupEntity *grp = *(iterG++);
 		if(grp == NULL)
 			continue;
-		RotateNode(grp->OgreEntity, x, y, z);
+		grp->Rotate(x, y, z);
 	}
 }
 
@@ -2704,7 +2734,7 @@ void BallGame::ScaleEntities(float x, float y, float z)
 		if(grp == NULL)
 			continue;
 		std::cout << "Scale Group " << grp << std::endl;
-		ScaleNode(grp->OgreEntity, x, y, z);
+		grp->Scale(x, y, z);
 	}
 }
 
