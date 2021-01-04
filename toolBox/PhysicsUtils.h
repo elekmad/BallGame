@@ -70,7 +70,8 @@ NewtonMesh* CreateCollisionTreeDoubleFaces (NewtonWorld* world, NewtonCollision*
 
 void GetContactOnBody (NewtonBody* const body);
 void HandlecollisionPoints (NewtonJoint* const contactjoint);
-NewtonJoint* CheckIfBodiesCollide (NewtonBody* const body0, NewtonBody* const body1);
+bool CheckIfEntitiesCollide(const BallGameEntity *const Entity1, const BallGameEntity * const Entity2);
+NewtonJoint* CheckIfBodiesCollide (const NewtonBody* const body0, const NewtonBody* const body1);
 
 dCustomJoint* FindJoint(const NewtonBody* const body0, const NewtonBody* const body1);
 dVector FindFloor (const NewtonWorld* world, const dVector& origin, dFloat dist, dVector* const normal = NULL);

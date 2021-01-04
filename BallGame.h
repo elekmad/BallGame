@@ -66,37 +66,19 @@ using namespace OgreBites;
 #  include "OgreStaticPluginLoader.h"
 #endif
 
-#define Normalize2(a, b) \
-	({ typeof(a) __a = (a); \
-	typeof(b) __b = (b); \
-	sqrt(__a * __a + __b * __b);})
-
-#define Normalize3(a, b, c) \
-		({ typeof(a) __a = (a); \
-		typeof(b) __b = (b); \
-		typeof(c) __c = (c); \
-		sqrt(__a * __a + __b * __b + __c * __c);})
-
-#define max2(a,b) \
-  ({ typeof (a) _a = (a); \
-      typeof (b) _b = (b); \
-    _a > _b ? _a : _b; })
-
-#define min2(a,b) \
-  ({ typeof (a) _a = (a); \
-      typeof (b) _b = (b); \
-    _a < _b ? _a : _b; })
-
 class BallGame;
 class GroupEntity;
+
 enum BallGameEntityType
 {
 	Case,
 	Ball
 };
+
 class BallGameEntity
 {
-	public:
+	public :
+
 	BallGameEntity(const dMatrix& matrix);
 	BallGameEntity();
 	~BallGameEntity(){}
@@ -104,26 +86,38 @@ class BallGameEntity
     static void TransformCallback(const NewtonBody* body, const dFloat* matrix, int threadIndex);
     void ExportToJson(rapidjson::Value &v, rapidjson::Document::AllocatorType& allocator);
     void ImportFromJson(rapidjson::Value &v, Ogre::SceneManager* mSceneMgr, Node *parent = NULL);
-    void SetOgreNode(SceneNode *node);
-    void SetNewtonBody(NewtonBody *body);
+    void setOgreNode(SceneNode *node);
+    void setNewtonBody(NewtonBody *body);
+    const NewtonBody *getNewtonBody(void) const { return Body; }
     dMatrix *PrepareNewtonBody(dVector &NewtonBodyLocation, dVector &NewtonBodySize);
     void DisplaySelectedBox(bool display);
-    const Ogre::Vector3 &GetRelaticePosition(void) { return OgreEntity->getPosition(); }
-    const Ogre::Vector3 &GetAbsolutePosition(void) { return OgreEntity->_getDerivedPosition(); }
-    void SetRelaticePosition(const Ogre::Vector3 &NewPosition) { OgreEntity->setPosition(NewPosition); }
-    void SetAbsolutePosition(const Ogre::Vector3 &NewPosition) { OgreEntity->_setDerivedPosition(NewPosition); }
-    const Ogre::Quaternion &GetRelaticeOrientation(void) { return OgreEntity->getOrientation(); }
-    const Ogre::Quaternion &GetAbsoluteOrientation(void) { return OgreEntity->_getDerivedOrientation(); }
-    void SetRelaticeOrientation(const Ogre::Quaternion &NewOrient) { OgreEntity->setOrientation(NewOrient); }
-    void SetAbsoluteOrientation(const Ogre::Quaternion &NewOrient) { OgreEntity->_setDerivedOrientation(NewOrient); }
-    const Ogre::Vector3 &GetRelaticeScale(void) { return OgreEntity->getScale(); }
-    const Ogre::Vector3 &GetAbsoluteScale(void) { return OgreEntity->_getDerivedScale(); }
-    void SetRelaticeScale(const Ogre::Vector3 &NewScale) { OgreEntity->setScale(NewScale); }
-    const Ogre::String &GetName(void) { return OgreEntity->getName(); }
+    const Ogre::Vector3 &getInitialPosition(void) const { return InitialPos; }
+    const Ogre::Vector3 &getRelaticePosition(void) const { return OgreEntity->getPosition(); }
+    const Ogre::Vector3 &getAbsolutePosition(void) const { return OgreEntity->_getDerivedPosition(); }
+    void setInitialPosition(const Ogre::Vector3 &NewPosition) { InitialPos = NewPosition; }
+    void setRelaticePosition(const Ogre::Vector3 &NewPosition) { OgreEntity->setPosition(NewPosition); }
+    void setAbsolutePosition(const Ogre::Vector3 &NewPosition) { OgreEntity->_setDerivedPosition(NewPosition); }
+    const Ogre::Quaternion &getInitialOrientation(void) const { return InitialOrientation; }
+    const Ogre::Quaternion &getRelaticeOrientation(void) const { return OgreEntity->getOrientation(); }
+    const Ogre::Quaternion &getAbsoluteOrientation(void) const { return OgreEntity->_getDerivedOrientation(); }
+    void setInitialOrientation(const Ogre::Quaternion &NewOrient) { InitialOrientation = NewOrient; }
+    void setRelaticeOrientation(const Ogre::Quaternion &NewOrient) { OgreEntity->setOrientation(NewOrient); }
+    void setAbsoluteOrientation(const Ogre::Quaternion &NewOrient) { OgreEntity->_setDerivedOrientation(NewOrient); }
+    const Ogre::Vector3 &getInitialScale(void) const { return InitialScale; }
+    const Ogre::Vector3 &getRelaticeScale(void) const { return OgreEntity->getScale(); }
+    const Ogre::Vector3 &getAbsoluteScale(void) const { return OgreEntity->_getDerivedScale(); }
+    void setInitialScale(const Ogre::Vector3 &NewScale) { InitialScale = NewScale; }
+    void setRelaticeScale(const Ogre::Vector3 &NewScale) { OgreEntity->setScale(NewScale); }
+    const Ogre::String &getName(void) const { return OgreEntity->getName(); }
     void Move(float x, float y, float z);
     void Rotate(float x, float y, float z);
     void Scale(float x, float y, float z);
-	protected:
+    void getVelocity(dFloat *Velocity) { NewtonBodyGetVelocity(Body, Velocity); }
+    enum BallGameEntityType getType(void) { return type; }
+    GroupEntity *getGroup(void) { return Group; }
+
+	protected :
+
     enum BallGameEntityType type;
 	//mutable dMatrix m_matrix;			// interpolated matrix
 	dVector m_curPosition;				// position one physics simulation step in the future
@@ -139,15 +133,13 @@ class BallGameEntity
 
     void SetMatrixUsafe(const dQuaternion& rotation, const dVector& position);
 
-
-
-	friend class BallGame;
 	friend class GroupEntity;
 };
 
 class BallEntity : public BallGameEntity
 {
-	public:
+	public :
+
 	BallEntity(const dMatrix& matrix);
 	BallEntity();
 	void CreateFromJson(rapidjson::Value &v, Ogre::SceneManager* mSceneMgr, NewtonWorld *m_world, Node *parent = NULL);
@@ -157,17 +149,21 @@ class BallEntity : public BallGameEntity
 	dVector *GetForceVector();
 	void CleanupForces(void);
     void CreateNewtonBody(NewtonWorld *m_world);
-	protected:
+    dFloat getMass(void);
+    void setMass(dFloat newMass);
+    float getInitialMass(void) { return InitialMass; }
+    void setInitialMass(float newInitialMass) { InitialMass = newInitialMass; }
+
+	protected :
+
 	dList<dVector*> Forces;
 	float InitialMass;
-
-	friend class BallGame;
-	friend class CaseEntity;
 };
 
 class CaseEntity : public BallGameEntity
 {
-	public:
+	public :
+
 	enum CaseType
 	{
 		typeBox = 0,
@@ -184,19 +180,21 @@ class CaseEntity : public BallGameEntity
     void ExportToJson(rapidjson::Value &v, rapidjson::Document::AllocatorType& allocator);
     void ImportFromJson(rapidjson::Value &v, Ogre::SceneManager* mSceneMgr, Node *parent = NULL);
     void CreateNewtonBody(NewtonWorld *m_world);
-	protected:
+    float getForce(void) { return force_to_apply; }
+    const dVector *getForceDirection(void) { return force_direction; }
+
+	protected :
+
 	dArray<NewtonBody*> BallsUnderCollide;
 
 	float force_to_apply;
 	dVector *force_direction;
-
-	friend class BallGame;
-	friend class BallEntity;
 };
 
 class GroupEntity
 {
-	public:
+	public :
+
 	GroupEntity(String &name, Ogre::SceneManager* mSceneMgr);
 	~GroupEntity(){};
 	void Finalize(void);
@@ -207,12 +205,11 @@ class GroupEntity
     void Move(float x, float y, float z);
     void Rotate(float x, float y, float z);
     void Scale(float x, float y, float z);
-	private:
+
+	private :
+
 	SceneNode *OgreEntity;
 	std::list<BallGameEntity*> childs;
-
-	friend class BallGame;
-	friend class BallGameEntity;
 };
 
 class BallGame : public BaseApplication
@@ -223,9 +220,11 @@ class BallGame : public BaseApplication
     ~BallGame();
 
     private :
+
     class EntityType
 	{
 	public :
+
     	EntityType(){ InitialMass = 0.0; Type= Case; }
     	~EntityType(){}
 		String Name;
@@ -287,11 +286,8 @@ class BallGame : public BaseApplication
 
     //Edit Entities
     bool MultiSelectionMode;
-    void MoveEntity(BallGameEntity *Entity, float x, float y, float z);
     void MoveEntities(float x, float y, float z);
-    void RotateEntity(BallGameEntity *Entity, float x, float y, float z);
     void RotateEntities(float x, float y, float z);
-    void ScaleEntity(BallGameEntity *Entity, float x, float y, float z);
     void ScaleEntities(float x, float y, float z);
     void MultiSelectionSetEmpty(void);
     bool ManageMultiSelectionSet(BallGameEntity *entity);
@@ -461,14 +457,8 @@ class BallGame : public BaseApplication
     bool ToggleForceCallback(const CEGUI::EventArgs &e);
     bool ToggleForceDirectedCallback(const CEGUI::EventArgs &event);
     CEGUI::Editbox *CaseForceDirectionXValueEditB;
-    inline void CaseForceDirectionXValueEditBSetText(float value);
-    inline void CaseForceDirectionXValueEditBSetText(double value);
     CEGUI::Editbox *CaseForceDirectionYValueEditB;
-    inline void CaseForceDirectionYValueEditBSetText(float value);
-    inline void CaseForceDirectionYValueEditBSetText(double value);
     CEGUI::Editbox *CaseForceDirectionZValueEditB;
-    inline void CaseForceDirectionZValueEditBSetText(float value);
-    inline void CaseForceDirectionZValueEditBSetText(double value);
     CEGUI::PushButton *NormalizeCaseForceDirectionPushB;
     bool NormalizeCaseForceDirectionPushBCallback(const CEGUI::EventArgs &e);
     CEGUI::PushButton *ApplyForceChangesToCasePushB;

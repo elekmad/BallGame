@@ -555,7 +555,13 @@ NewtonMesh* CreateCollisionTreeDoubleFaces (NewtonWorld* world, NewtonCollision*
 #endif
 
 // return the collision joint, if the body collide
-NewtonJoint* CheckIfBodiesCollide (NewtonBody* const body0, NewtonBody* const body1)
+
+bool CheckIfEntitiesCollide(const BallGameEntity *const Entity1, const BallGameEntity * const Entity2)
+{
+	return CheckIfBodiesCollide(Entity1->getNewtonBody(), Entity2->getNewtonBody()) == NULL ? false : true;
+}
+
+NewtonJoint* CheckIfBodiesCollide (const NewtonBody* const body0, const NewtonBody* const body1)
 {
 	for (NewtonJoint* joint = NewtonBodyGetFirstContactJoint (body0); joint; joint = NewtonBodyGetNextContactJoint (body0, joint)) {
 		if ((NewtonJointGetBody0(joint) == body1) || (NewtonJointGetBody1(joint) == body1)) {
