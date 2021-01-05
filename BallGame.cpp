@@ -2087,6 +2087,9 @@ bool BallGame::mouseMoved(const OIS::MouseEvent &arg)
     context.injectMouseMove(arg.state.X.rel, arg.state.Y.rel);
     //BaseApplication::mouseMoved(arg);
 
+    if(MouseOverButton == true)
+    	return true;
+
 	Real x, y;
 	CEGUI::Vector2f mpos = CEGUI::System::getSingleton().getDefaultGUIContext().getMouseCursor().getPosition();
 	// Will Mouse has not hit top left corner, there is a gap between OIS and CEGUI mouse coordinates. CEGUI is more reliable
