@@ -29,6 +29,16 @@ inline double Normalize(double v1, double v2, double v3)
 	return sqrt(v1 * v2 + v2 * v2 + v3 * v3);
 }
 
+static int OnBodyAABBOverlap(const NewtonJoint* const contactJoint, dFloat timestep, int threadIndex)
+{
+	return 1;
+}
+
+static int OnSubShapeAABBOverlapTest (const NewtonJoint* const contact, dFloat timestep, const NewtonBody* const body0, const void* const collsionNode0, const NewtonBody* const body1, const void* const collsionNode1, int threadIndex)
+{
+	return 1;
+}
+
 void EquilibrateAABBAroundOrigin(Node *node)
 {
 	Vector3 min(NAN, NAN, NAN), max(NAN, NAN, NAN);
@@ -444,36 +454,45 @@ void CaseEntity::SetForceToApply(float force, dVector *direction)
 	force_direction = direction;
 }
 
-/*
-void CaseEntity::AddBallColliding(NewtonBody *ball)
+
+void CaseEntity::AddBallColliding(BallEntity *ball)
 {
 	if(ball == NULL)
 		return;
-	int id = NewtonBodyGetID(ball), size = BallsUnderCollide.GetSize();
-	while(size < id)
-		BallsUnderCollide[size++] = NULL;
-	BallsUnderCollide[id] = ball;
-	size = id + 1;
-	while(size < BallsUnderCollide.GetSize())
-		BallsUnderCollide[size++] = NULL;
+	if(CheckIfAlreadyColliding(ball) == false)
+		BallsUnderCollide.push_back(ball);
 }
 
-bool CaseEntity::CheckIfAlreadyColliding(NewtonBody *ball)
+bool CaseEntity::CheckIfAlreadyColliding(BallEntity *ToCheck)
 {
 	bool ret = false;
-	if(ball == NULL)
+	if(ToCheck == NULL)
 		return ret;
-	int id = NewtonBodyGetID(ball);
-	if(id < BallsUnderCollide.GetSize())
+	std::list<BallEntity*>::iterator iter(BallsUnderCollide.begin());
+	while(iter != BallsUnderCollide.end())
 	{
-		if(BallsUnderCollide[id] == ball)
-			ret = true;
+		BallEntity *Ball = *(iter++);
+		if(Ball == ToCheck)
+			return true;
 	}
 	return ret;
 }
-*/
+
+void CaseEntity::ApplyForceOnCollidingBalls(void)
+{
+	std::list<BallEntity*>::iterator iter(BallsUnderCollide.begin());
+	while(iter != BallsUnderCollide.end())
+	{
+		BallEntity *Ball = *iter;
+		if(Ball != NULL)
+			ApplyForceOnBall(Ball);
+		iter = BallsUnderCollide.erase(iter);
+	}
+}
+
 void CaseEntity::ApplyForceOnBall(BallEntity *ball)
 {
+//	std::cout << "Case " << this << " apply force on ball " << ball << std::endl;
 	if(!isnanf(force_to_apply))
 	{
 		if(force_direction != NULL)
@@ -587,6 +606,11 @@ void BallGame::SetupNewton(void)
 	// register contact creation destruction callbacks
 	//NewtonWorldSetCreateDestroyContactCallback(m_world, OnCreateContact, OnDestroyContact);
 	NewtonLoadPlugins(m_world, "newtonPlugins");
+
+
+	int defaultMaterialID = NewtonMaterialGetDefaultGroupID (m_world);
+	NewtonMaterialSetCollisionCallback (m_world, defaultMaterialID, defaultMaterialID, OnBodyAABBOverlap, OnContactCollision);
+	NewtonMaterialSetCompoundCollisionCallback(m_world, defaultMaterialID, defaultMaterialID, OnSubShapeAABBOverlapTest);
 }
 
 GroupEntity::GroupEntity(String &name, Ogre::SceneManager* mSceneMgr)
@@ -1889,32 +1913,76 @@ void BallGame::SetupGame(void)
 //    _StopPhysic();
 }
 
+void BallGame::OnContactCollision (const NewtonJoint* contactJoint, dFloat timestep, int threadIndex)
+{
+	NewtonBody *body0 = NewtonJointGetBody0(contactJoint);
+	NewtonBody *body1 = NewtonJointGetBody1(contactJoint);
+	BallGame *Game = (BallGame*)NewtonWorldGetUserData(NewtonBodyGetWorld(body0));
+	BallGameEntity *Entity0 = (BallGameEntity*)NewtonBodyGetUserData(body0);
+	BallGameEntity *Entity1 = (BallGameEntity*)NewtonBodyGetUserData(body1);
+	BallEntity *BallToCheck = NULL;
+	CaseEntity *CaseToCheck = NULL;
+	switch(Entity0->getType())
+	{
+	case Ball :
+//		std::cout << "Ball " << Entity0 << " Colliding with ";
+		BallToCheck = (BallEntity*)Entity0;
+		break;
+	case Case :
+//		std::cout << "Case " << Entity0 << " Colliding with ";
+		CaseToCheck = (CaseEntity*)Entity0;
+		break;
+	}
+	switch(Entity1->getType())
+	{
+	case Ball :
+//		std::cout << "Ball " << Entity1 << std::endl;
+		BallToCheck = (BallEntity*)Entity1;
+		break;
+	case Case :
+//		std::cout << "Case " << Entity1 << std::endl;
+		CaseToCheck = (CaseEntity*)Entity1;
+		break;
+	}
+	if(BallToCheck != NULL && CaseToCheck != NULL)
+	{
+		CaseToCheck->AddBallColliding(BallToCheck);
+		Game->AddCaseColliding(CaseToCheck);
+	}
+}
+
+void BallGame::AddCaseColliding(CaseEntity *ToAdd)
+{
+	if(ToAdd == NULL)
+		return;
+	if(CheckIfAlreadyColliding(ToAdd) == false)
+		CasesUnderCollide.push_back(ToAdd);
+}
+
+bool BallGame::CheckIfAlreadyColliding(CaseEntity *ToCheck)
+{
+	bool ret = false;
+	if(ToCheck == NULL)
+		return ret;
+	std::list<CaseEntity*>::iterator iter(CasesUnderCollide.begin());
+	while(iter != CasesUnderCollide.end())
+	{
+		CaseEntity *Case = *(iter++);
+		if(Case == ToCheck)
+			return true;
+	}
+	return ret;
+}
+
 void BallGame::CheckforCollides(void)
 {
-	std::list<BallEntity*>::iterator Biter(Balls.begin());
-	while(Biter != Balls.end())
+	std::list<CaseEntity*>::iterator iter(CasesUnderCollide.begin());
+	while(iter != CasesUnderCollide.end())
 	{
-		BallEntity *ball = *(Biter++);
-		if(ball == NULL)
-			continue;
-		std::list<CaseEntity*>::iterator Citer(Cases.begin());
-		while(Citer != Cases.end())
-		{
-			CaseEntity *Case = *(Citer++);
-			if(Case == NULL)
-				continue;
-//          if(NewtonBodyFindContact(ball, Case) != NULL)
-//			if(DoBodiesCollide(m_world, ball->Body, Case->Body))
-			if(CheckIfEntitiesCollide(ball, Case) == true)
-			{
-//				int idb, idc;
-//				idb = NewtonBodyGetID(ball->Body);
-//				idc = NewtonBodyGetID(Case->Body);
-				Case->ApplyForceOnBall(ball);
-
-//				std::cout << ball << " id " << idb << " and " << Case << " id " << idc << " Collides" << std::endl;
-			}
-		}
+		CaseEntity *Case = *iter;
+		if(Case != NULL)
+			Case->ApplyForceOnCollidingBalls();
+		iter = CasesUnderCollide.erase(iter);
 	}
 }
 

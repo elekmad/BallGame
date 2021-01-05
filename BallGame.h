@@ -182,10 +182,14 @@ class CaseEntity : public BallGameEntity
     void CreateNewtonBody(NewtonWorld *m_world);
     float getForce(void) { return force_to_apply; }
     const dVector *getForceDirection(void) { return force_direction; }
+    void AddBallColliding(BallEntity *ball);
+	void ApplyForceOnCollidingBalls(void);
 
 	protected :
 
-	dArray<NewtonBody*> BallsUnderCollide;
+    bool CheckIfAlreadyColliding(BallEntity *ball);
+
+	std::list<BallEntity*> BallsUnderCollide;
 
 	float force_to_apply;
 	dVector *force_direction;
@@ -317,6 +321,7 @@ class BallGame : public BaseApplication
 
     NewtonWorld* m_world;
     static void PostUpdateCallback(const NewtonWorld* const world, dFloat timestep);
+    static void OnContactCollision (const NewtonJoint* contactJoint, dFloat timestep, int threadIndex);
     void UpdatePhysics(dFloat timestep);
 
     private :
@@ -328,6 +333,8 @@ class BallGame : public BaseApplication
     void SerializedPhysicScene(const String* const name);
     void DeserializedPhysicScene(const String* const name);
     BallGameEntity *GetEntity(char *name);
+    bool CheckIfAlreadyColliding(CaseEntity *ToCheck);
+    void AddCaseColliding(CaseEntity *ToAdd);
 
     bool m_suspendPhysicsUpdate;
     unsigned64 m_microsecunds;
@@ -340,6 +347,7 @@ class BallGame : public BaseApplication
     std::list<CaseEntity*> Cases;
     std::list<BallEntity*> Balls;
     std::list<GroupEntity*> Groups;
+	std::list<CaseEntity*> CasesUnderCollide;
 
 
     void CheckforCollides(void);
