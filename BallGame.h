@@ -465,10 +465,14 @@ class BallGame : public BaseApplication
     bool ToggleForceCallback(const CEGUI::EventArgs &e);
     bool ToggleForceDirectedCallback(const CEGUI::EventArgs &event);
     CEGUI::Editbox *CaseForceDirectionXValueEditB;
+    bool CaseForceDirectionXValueEditBMouseWheelCallback(const CEGUI::EventArgs &event);
     CEGUI::Editbox *CaseForceDirectionYValueEditB;
+    bool CaseForceDirectionYValueEditBMouseWheelCallback(const CEGUI::EventArgs &event);
     CEGUI::Editbox *CaseForceDirectionZValueEditB;
+    bool CaseForceDirectionZValueEditBMouseWheelCallback(const CEGUI::EventArgs &event);
     CEGUI::PushButton *NormalizeCaseForceDirectionPushB;
     bool NormalizeCaseForceDirectionPushBCallback(const CEGUI::EventArgs &e);
+    void NormalizeForceDirection(void);
     CEGUI::PushButton *ApplyForceChangesToCasePushB;
     bool ApplyForceChangesToCasePushBCallback(const CEGUI::EventArgs &event);
 

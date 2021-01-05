@@ -19,14 +19,30 @@
 //Put BallGame.h in last because of Xlib defines (True False Bool None) which must be undef
 #include "BallGame.h"
 
+inline CEGUI::String toCEGUIString(double val)
+{
+	char buff[64];
+	snprintf(buff, sizeof(buff), "%.4f", val);
+
+	return CEGUI::String(buff);
+}
+
+inline CEGUI::String toCEGUIString(float val)
+{
+	char buff[64];
+	snprintf(buff, sizeof(buff), "%.4f", val);
+
+	return CEGUI::String(buff);
+}
+
 inline float Normalize(float v1, float v2, float v3)
 {
-	return sqrtf(v1 * v2 + v2 * v2 + v3 * v3);
+	return sqrtf(v1 * v1 + v2 * v2 + v3 * v3);
 }
 
 inline double Normalize(double v1, double v2, double v3)
 {
-	return sqrt(v1 * v2 + v2 * v2 + v3 * v3);
+	return sqrt(v1 * v1 + v2 * v2 + v3 * v3);
 }
 
 static int OnBodyAABBOverlap(const NewtonJoint* const contactJoint, dFloat timestep, int threadIndex)
@@ -850,7 +866,55 @@ bool BallGame::CaseForceValueEditBCallback(const CEGUI::EventArgs &event)
 	return true;
 }
 
-bool BallGame::NormalizeCaseForceDirectionPushBCallback(const CEGUI::EventArgs &e)
+bool BallGame::CaseForceDirectionXValueEditBMouseWheelCallback(const CEGUI::EventArgs &e)
+{
+	CEGUI::MouseEventArgs &event = (CEGUI::MouseEventArgs &)e;
+
+	std::cout << "Mouse Wheel " << event.wheelChange << std::endl;
+	double force = CEGUI::PropertyHelper<double>::fromString(CaseForceDirectionXValueEditB->getText());
+	if(isnan(force) == false)
+	{
+		force += 0.1 * event.wheelChange / 120.0;
+		std::cout << " = force " << force << std::endl;
+		CaseForceDirectionXValueEditB->setText(toCEGUIString(force));
+		NormalizeForceDirection();
+	}
+	return true;
+}
+
+bool BallGame::CaseForceDirectionYValueEditBMouseWheelCallback(const CEGUI::EventArgs &e)
+{
+	CEGUI::MouseEventArgs &event = (CEGUI::MouseEventArgs &)e;
+
+	std::cout << "Mouse Wheel " << event.wheelChange << std::endl;
+	double force = CEGUI::PropertyHelper<double>::fromString(CaseForceDirectionYValueEditB->getText());
+	if(isnan(force) == false)
+	{
+		force += 0.1 * event.wheelChange / 120.0;
+		std::cout << " = force " << force << std::endl;
+		CaseForceDirectionYValueEditB->setText(toCEGUIString(force));
+		NormalizeForceDirection();
+	}
+	return true;
+}
+
+bool BallGame::CaseForceDirectionZValueEditBMouseWheelCallback(const CEGUI::EventArgs &e)
+{
+	CEGUI::MouseEventArgs &event = (CEGUI::MouseEventArgs &)e;
+
+	std::cout << "Mouse Wheel " << event.wheelChange << std::endl;
+	double force = CEGUI::PropertyHelper<double>::fromString(CaseForceDirectionZValueEditB->getText());
+	if(isnan(force) == false)
+	{
+		force += 0.1 * event.wheelChange / 120.0;
+		std::cout << " = force " << force << std::endl;
+		CaseForceDirectionZValueEditB->setText(toCEGUIString(force));
+		NormalizeForceDirection();
+	}
+	return true;
+}
+
+void BallGame::NormalizeForceDirection(void)
 {
 	double direction_x, direction_y, direction_z, direction;
 	direction_x = CEGUI::PropertyHelper<double>::fromString(CaseForceDirectionXValueEditB->getText());
@@ -858,12 +922,21 @@ bool BallGame::NormalizeCaseForceDirectionPushBCallback(const CEGUI::EventArgs &
 	direction_z = CEGUI::PropertyHelper<double>::fromString(CaseForceDirectionZValueEditB->getText());
 
 	direction = Normalize(direction_x, direction_y, direction_z);
+	std::cout << "Before Normalization : " << direction << ", " << direction_x << ", " << direction_y << ", " << direction_z << std::endl;
+	direction_x /= direction;
+	direction_y /= direction;
+	direction_z /= direction;
+	std::cout << "After Normalization : " << direction << ", " << direction_x << ", " << direction_y << ", " << direction_z << std::endl;
 
-	CaseForceDirectionXValueEditB->setText(CEGUI::PropertyHelper<double>::toString(direction_x / direction));
-	CaseForceDirectionYValueEditB->setText(CEGUI::PropertyHelper<double>::toString(direction_y / direction));
-	CaseForceDirectionZValueEditB->setText(CEGUI::PropertyHelper<double>::toString(direction_z / direction));
+	CaseForceDirectionXValueEditB->setText(toCEGUIString(direction_x));
+	CaseForceDirectionYValueEditB->setText(toCEGUIString(direction_y));
+	CaseForceDirectionZValueEditB->setText(toCEGUIString(direction_z));
+}
 
-    return true;
+bool BallGame::NormalizeCaseForceDirectionPushBCallback(const CEGUI::EventArgs &e)
+{
+	NormalizeForceDirection();
+	return true;
 }
 
 bool BallGame::QuitPushBCallback(const CEGUI::EventArgs &e)
@@ -1799,6 +1872,9 @@ void BallGame::SetupGUI(void)
     CaseForceDirectionXValueEditB->setHorizontalAlignment(CEGUI::HA_CENTRE);
     CaseForceDirectionXValueEditB->setValidationString(numRegex);
 
+    CaseForceDirectionXValueEditB->subscribeEvent(CEGUI::Editbox::EventMouseWheel,
+			CEGUI::Event::Subscriber(&BallGame::CaseForceDirectionXValueEditBMouseWheelCallback, this));
+
 
     MainLayout->addChild(CaseForceDirectionXValueEditB);
 
@@ -1808,6 +1884,9 @@ void BallGame::SetupGUI(void)
     CaseForceDirectionYValueEditB->setHorizontalAlignment(CEGUI::HA_CENTRE);
     CaseForceDirectionYValueEditB->setValidationString(numRegex);
 
+    CaseForceDirectionYValueEditB->subscribeEvent(CEGUI::Editbox::EventMouseWheel,
+			CEGUI::Event::Subscriber(&BallGame::CaseForceDirectionYValueEditBMouseWheelCallback, this));
+
 
     MainLayout->addChild(CaseForceDirectionYValueEditB);
 
@@ -1816,6 +1895,9 @@ void BallGame::SetupGUI(void)
     CaseForceDirectionZValueEditB->setVerticalAlignment(CEGUI::VA_BOTTOM);
     CaseForceDirectionZValueEditB->setHorizontalAlignment(CEGUI::HA_CENTRE);
     CaseForceDirectionZValueEditB->setValidationString(numRegex);
+
+    CaseForceDirectionZValueEditB->subscribeEvent(CEGUI::Editbox::EventMouseWheel,
+			CEGUI::Event::Subscriber(&BallGame::CaseForceDirectionZValueEditBMouseWheelCallback, this));
 
 
     MainLayout->addChild(CaseForceDirectionZValueEditB);
@@ -2085,6 +2167,8 @@ bool BallGame::mouseMoved(const OIS::MouseEvent &arg)
 {
     CEGUI::GUIContext& context = CEGUI::System::getSingleton().getDefaultGUIContext();
     context.injectMouseMove(arg.state.X.rel, arg.state.Y.rel);
+	if(arg.state.Z.rel != 0)
+		context.injectMouseWheelChange(arg.state.Z.rel);
     //BaseApplication::mouseMoved(arg);
 
     if(MouseOverButton == true)
@@ -2269,7 +2353,7 @@ void BallGame::UpdateEditButtons(void)
 		std::cout << "Base Force is present"<< std::endl;
 		CaseHasForceToggleB->setSelected(true);
 		CaseHasForceDirectionToggleB->setDisabled(false);
-		CaseForceValueEditB->setText(CEGUI::PropertyHelper<float>::toString(UnderEditCaseForce));
+		CaseForceValueEditB->setText(toCEGUIString(UnderEditCaseForce));
 		CaseForceValueEditB->setDisabled(false);
 
 		if(force_directed == false)
@@ -2292,9 +2376,9 @@ void BallGame::UpdateEditButtons(void)
 			CaseForceDirectionXValueEditB->setDisabled(false);
 			CaseForceDirectionYValueEditB->setDisabled(false);
 			CaseForceDirectionZValueEditB->setDisabled(false);
-			CaseForceDirectionXValueEditB->setText(CEGUI::PropertyHelper<float>::toString(force_direction.m_x));
-			CaseForceDirectionYValueEditB->setText(CEGUI::PropertyHelper<float>::toString(force_direction.m_y));
-			CaseForceDirectionZValueEditB->setText(CEGUI::PropertyHelper<float>::toString(force_direction.m_z));
+			CaseForceDirectionXValueEditB->setText(toCEGUIString(force_direction.m_x));
+			CaseForceDirectionYValueEditB->setText(toCEGUIString(force_direction.m_y));
+			CaseForceDirectionZValueEditB->setText(toCEGUIString(force_direction.m_z));
 			NormalizeCaseForceDirectionPushB->setDisabled(false);
 		}
 	}
@@ -2383,7 +2467,7 @@ void BallGame::EditBall(BallEntity *Entity)
 		UnderEditBallMass = UnderEditBall->getMass();
 		BallMassValueEditB->setVisible(true);
 		BallMassValueEditB->setDisabled(false);
-		BallMassValueEditB->setText(CEGUI::PropertyHelper<float>::toString(UnderEditBallMass));
+		BallMassValueEditB->setText(toCEGUIString(UnderEditBallMass));
 		ApplyMassChangesToBallPushB->setVisible(true);
 		ApplyMassChangesToBallPushB->setDisabled(false);
 	}
@@ -2773,19 +2857,22 @@ bool BallGame::keyPressed(const OIS::KeyEvent &arg)
     {
     case OIS::KeyCode::KC_LCONTROL :
     case OIS::KeyCode::KC_RCONTROL :
-    	if(PlacementMode == EditMove || PlacementMode == EditRotate || PlacementMode == EditScale || PlacementMode == Delete)
+    	if(MouseOverButton == false)
     	{
-    		BallGameEntity *UnderEditEntity = NULL;
-    		MultiSelectionMode = true;
-    		std::cout << "Activate Multi selection mode" << std::endl;
-    		if(UnderEditBall != NULL)
-    			UnderEditEntity = (BallGameEntity*)UnderEditBall;
-    		if(UnderEditCase != NULL)
-    			UnderEditEntity = (BallGameEntity*)UnderEditCase;
-    		EditBall(NULL);
-    		EditCase(NULL);
-    		if(UnderEditEntity != NULL)
-    			ManageMultiSelectionSet(UnderEditEntity);
+			if(PlacementMode == EditMove || PlacementMode == EditRotate || PlacementMode == EditScale || PlacementMode == Delete)
+			{
+				BallGameEntity *UnderEditEntity = NULL;
+				MultiSelectionMode = true;
+				std::cout << "Activate Multi selection mode" << std::endl;
+				if(UnderEditBall != NULL)
+					UnderEditEntity = (BallGameEntity*)UnderEditBall;
+				if(UnderEditCase != NULL)
+					UnderEditEntity = (BallGameEntity*)UnderEditCase;
+				EditBall(NULL);
+				EditCase(NULL);
+				if(UnderEditEntity != NULL)
+					ManageMultiSelectionSet(UnderEditEntity);
+			}
     	}
     	break;
     case OIS::KeyCode::KC_ESCAPE :
@@ -2813,163 +2900,181 @@ bool BallGame::keyPressed(const OIS::KeyEvent &arg)
 		}
 	    break;
 	case OIS::KeyCode::KC_UP:
-		switch(PlacementMode)
-		{
-		case PlaceMove :
-			if(ToBePlacedEntity != NULL)
-				ToBePlacedEntity->Move(0, 10, 0);
-			break;
-		case EditMove :
-			MoveEntities(0, 10, 0);
-			break;
-		case PlaceRotate :
-			if(ToBePlacedEntity != NULL)
-				ToBePlacedEntity->Rotate(0, 10, 0);
-			break;
-		case EditRotate :
-			RotateEntities(0, 10, 0);
-			break;
-		case PlaceScale :
-			if(ToBePlacedEntity != NULL)
-				ToBePlacedEntity->Scale(0, 10, 0);
-			break;
-		case EditScale :
-			ScaleEntities(0, 10, 0);
-			break;
+    	if(MouseOverButton == false)
+    	{
+			switch(PlacementMode)
+			{
+			case PlaceMove :
+				if(ToBePlacedEntity != NULL)
+					ToBePlacedEntity->Move(0, 10, 0);
+				break;
+			case EditMove :
+				MoveEntities(0, 10, 0);
+				break;
+			case PlaceRotate :
+				if(ToBePlacedEntity != NULL)
+					ToBePlacedEntity->Rotate(0, 10, 0);
+				break;
+			case EditRotate :
+				RotateEntities(0, 10, 0);
+				break;
+			case PlaceScale :
+				if(ToBePlacedEntity != NULL)
+					ToBePlacedEntity->Scale(0, 10, 0);
+				break;
+			case EditScale :
+				ScaleEntities(0, 10, 0);
+				break;
+			}
 		}
 	    break;
 	case OIS::KeyCode::KC_DOWN:
-		switch(PlacementMode)
-		{
-		case PlaceMove :
-			if(ToBePlacedEntity != NULL)
-				ToBePlacedEntity->Move(0, -10, 0);
-			break;
-		case EditMove :
-			MoveEntities(0, -10, 0);
-			break;
-		case PlaceRotate :
-			if(ToBePlacedEntity != NULL)
-				ToBePlacedEntity->Rotate(0, -10, 0);
-			break;
-		case EditRotate :
-			RotateEntities(0, -10, 0);
-			break;
-		case PlaceScale :
-			if(ToBePlacedEntity != NULL)
-				ToBePlacedEntity->Scale(0, -10, 0);
-			break;
-		case EditScale :
-			ScaleEntities(0, -10, 0);
-			break;
+    	if(MouseOverButton == false)
+    	{
+			switch(PlacementMode)
+			{
+			case PlaceMove :
+				if(ToBePlacedEntity != NULL)
+					ToBePlacedEntity->Move(0, -10, 0);
+				break;
+			case EditMove :
+				MoveEntities(0, -10, 0);
+				break;
+			case PlaceRotate :
+				if(ToBePlacedEntity != NULL)
+					ToBePlacedEntity->Rotate(0, -10, 0);
+				break;
+			case EditRotate :
+				RotateEntities(0, -10, 0);
+				break;
+			case PlaceScale :
+				if(ToBePlacedEntity != NULL)
+					ToBePlacedEntity->Scale(0, -10, 0);
+				break;
+			case EditScale :
+				ScaleEntities(0, -10, 0);
+				break;
+			}
 		}
 	    break;
 	case OIS::KeyCode::KC_RIGHT:
-		switch(PlacementMode)
-		{
-		case PlaceMove :
-			if(ToBePlacedEntity != NULL)
-				ToBePlacedEntity->Move(10, 0, 0);
-			break;
-		case EditMove :
-			MoveEntities(10, 0, 0);
-			break;
-		case PlaceRotate :
-			if(ToBePlacedEntity != NULL)
-				ToBePlacedEntity->Rotate(10, 0, 0);
-			break;
-		case EditRotate :
-			RotateEntities(10, 0, 0);
-			break;
-		case PlaceScale :
-			if(ToBePlacedEntity != NULL)
-				ToBePlacedEntity->Scale(10, 0, 0);
-			break;
-		case EditScale :
-			ScaleEntities(10, 0, 0);
-			break;
+    	if(MouseOverButton == false)
+    	{
+			switch(PlacementMode)
+			{
+			case PlaceMove :
+				if(ToBePlacedEntity != NULL)
+					ToBePlacedEntity->Move(10, 0, 0);
+				break;
+			case EditMove :
+				MoveEntities(10, 0, 0);
+				break;
+			case PlaceRotate :
+				if(ToBePlacedEntity != NULL)
+					ToBePlacedEntity->Rotate(10, 0, 0);
+				break;
+			case EditRotate :
+				RotateEntities(10, 0, 0);
+				break;
+			case PlaceScale :
+				if(ToBePlacedEntity != NULL)
+					ToBePlacedEntity->Scale(10, 0, 0);
+				break;
+			case EditScale :
+				ScaleEntities(10, 0, 0);
+				break;
+			}
 		}
 	    break;
 	case OIS::KeyCode::KC_LEFT:
-		switch(PlacementMode)
-		{
-		case PlaceMove :
-			if(ToBePlacedEntity != NULL)
-				ToBePlacedEntity->Move(-10, 0, 0);
-			break;
-		case EditMove :
-			MoveEntities(-10, 0, 0);
-			break;
-		case PlaceRotate :
-			if(ToBePlacedEntity != NULL)
-				ToBePlacedEntity->Rotate(-10, 0, 0);
-			break;
-		case EditRotate :
-			RotateEntities(-10, 0, 0);
-			break;
-		case PlaceScale :
-			if(ToBePlacedEntity != NULL)
-				ToBePlacedEntity->Scale(-10, 0, 0);
-			break;
-		case EditScale :
-			ScaleEntities(-10, 0, 0);
-			break;
+    	if(MouseOverButton == false)
+    	{
+			switch(PlacementMode)
+			{
+			case PlaceMove :
+				if(ToBePlacedEntity != NULL)
+					ToBePlacedEntity->Move(-10, 0, 0);
+				break;
+			case EditMove :
+				MoveEntities(-10, 0, 0);
+				break;
+			case PlaceRotate :
+				if(ToBePlacedEntity != NULL)
+					ToBePlacedEntity->Rotate(-10, 0, 0);
+				break;
+			case EditRotate :
+				RotateEntities(-10, 0, 0);
+				break;
+			case PlaceScale :
+				if(ToBePlacedEntity != NULL)
+					ToBePlacedEntity->Scale(-10, 0, 0);
+				break;
+			case EditScale :
+				ScaleEntities(-10, 0, 0);
+				break;
+			}
 		}
 	    break;
 	case OIS::KeyCode::KC_PGUP:
-		switch(PlacementMode)
-		{
-		case PlaceMove :
-			if(ToBePlacedEntity != NULL)
-				ToBePlacedEntity->Move(0, 0, 10);
-			break;
-		case EditMove :
-			MoveEntities(0, 0, 10);
-			break;
-		case PlaceRotate :
-			if(ToBePlacedEntity != NULL)
-				ToBePlacedEntity->Rotate(0, 0, 10);
-			break;
-		case EditRotate :
-			RotateEntities(0, 0, 10);
-			break;
-		case PlaceScale :
-			if(ToBePlacedEntity != NULL)
-				ToBePlacedEntity->Scale(0, 0, 10);
-			break;
-		case EditScale :
-			ScaleEntities(0, 0, 10);
-			break;
+    	if(MouseOverButton == false)
+    	{
+			switch(PlacementMode)
+			{
+			case PlaceMove :
+				if(ToBePlacedEntity != NULL)
+					ToBePlacedEntity->Move(0, 0, 10);
+				break;
+			case EditMove :
+				MoveEntities(0, 0, 10);
+				break;
+			case PlaceRotate :
+				if(ToBePlacedEntity != NULL)
+					ToBePlacedEntity->Rotate(0, 0, 10);
+				break;
+			case EditRotate :
+				RotateEntities(0, 0, 10);
+				break;
+			case PlaceScale :
+				if(ToBePlacedEntity != NULL)
+					ToBePlacedEntity->Scale(0, 0, 10);
+				break;
+			case EditScale :
+				ScaleEntities(0, 0, 10);
+				break;
+			}
 		}
 	    break;
 	case OIS::KeyCode::KC_PGDOWN:
-		switch(PlacementMode)
-		{
-		case PlaceMove :
-			if(ToBePlacedEntity != NULL)
-				ToBePlacedEntity->Move(0, 0, -10);
-			break;
-		case EditMove :
-			MoveEntities(0, 0, -10);
-			break;
-		case PlaceRotate :
-			if(ToBePlacedEntity != NULL)
-				ToBePlacedEntity->Rotate(0, 0, -10);
-			break;
-		case EditRotate :
-			RotateEntities(0, 0, -10);
-			break;
-		case PlaceScale :
-			if(ToBePlacedEntity != NULL)
-				ToBePlacedEntity->Scale(0, 0, -10);
-			break;
-		case EditScale :
-			ScaleEntities(0, 0, -10);
-			break;
+    	if(MouseOverButton == false)
+    	{
+			switch(PlacementMode)
+			{
+			case PlaceMove :
+				if(ToBePlacedEntity != NULL)
+					ToBePlacedEntity->Move(0, 0, -10);
+				break;
+			case EditMove :
+				MoveEntities(0, 0, -10);
+				break;
+			case PlaceRotate :
+				if(ToBePlacedEntity != NULL)
+					ToBePlacedEntity->Rotate(0, 0, -10);
+				break;
+			case EditRotate :
+				RotateEntities(0, 0, -10);
+				break;
+			case PlaceScale :
+				if(ToBePlacedEntity != NULL)
+					ToBePlacedEntity->Scale(0, 0, -10);
+				break;
+			case EditScale :
+				ScaleEntities(0, 0, -10);
+				break;
+			}
 		}
 	    break;
 	case OIS::KeyCode::KC_SPACE:
-		if(mode == Editing)
+		if(mode == Editing && MouseOverButton == false)
 		{
 			switch(PlacementMode)
 			{
@@ -2987,7 +3092,7 @@ bool BallGame::keyPressed(const OIS::KeyEvent &arg)
 		}
 		break;
 	case OIS::KeyCode::KC_DELETE:
-		if(mode == Editing)
+		if(mode == Editing && MouseOverButton == false)
 			DeleteElement();
 		break;
 	case OIS::KeyCode::KC_M:
