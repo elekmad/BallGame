@@ -92,22 +92,22 @@ class BallGameEntity
     dMatrix *PrepareNewtonBody(dVector &NewtonBodyLocation, dVector &NewtonBodySize);
     void DisplaySelectedBox(bool display);
     const Ogre::Vector3 &getInitialPosition(void) const { return InitialPos; }
-    const Ogre::Vector3 &getRelaticePosition(void) const { return OgreEntity->getPosition(); }
+    const Ogre::Vector3 &getRelativePosition(void) const { return OgreEntity->getPosition(); }
     const Ogre::Vector3 &getAbsolutePosition(void) const { return OgreEntity->_getDerivedPosition(); }
     void setInitialPosition(const Ogre::Vector3 &NewPosition) { InitialPos = NewPosition; }
-    void setRelaticePosition(const Ogre::Vector3 &NewPosition) { OgreEntity->setPosition(NewPosition); }
+    void setRelativePosition(const Ogre::Vector3 &NewPosition) { OgreEntity->setPosition(NewPosition); }
     void setAbsolutePosition(const Ogre::Vector3 &NewPosition) { OgreEntity->_setDerivedPosition(NewPosition); }
     const Ogre::Quaternion &getInitialOrientation(void) const { return InitialOrientation; }
-    const Ogre::Quaternion &getRelaticeOrientation(void) const { return OgreEntity->getOrientation(); }
+    const Ogre::Quaternion &getRelativeOrientation(void) const { return OgreEntity->getOrientation(); }
     const Ogre::Quaternion &getAbsoluteOrientation(void) const { return OgreEntity->_getDerivedOrientation(); }
     void setInitialOrientation(const Ogre::Quaternion &NewOrient) { InitialOrientation = NewOrient; }
-    void setRelaticeOrientation(const Ogre::Quaternion &NewOrient) { OgreEntity->setOrientation(NewOrient); }
+    void setRelativeOrientation(const Ogre::Quaternion &NewOrient) { OgreEntity->setOrientation(NewOrient); }
     void setAbsoluteOrientation(const Ogre::Quaternion &NewOrient) { OgreEntity->_setDerivedOrientation(NewOrient); }
     const Ogre::Vector3 &getInitialScale(void) const { return InitialScale; }
-    const Ogre::Vector3 &getRelaticeScale(void) const { return OgreEntity->getScale(); }
+    const Ogre::Vector3 &getRelativeScale(void) const { return OgreEntity->getScale(); }
     const Ogre::Vector3 &getAbsoluteScale(void) const { return OgreEntity->_getDerivedScale(); }
     void setInitialScale(const Ogre::Vector3 &NewScale) { InitialScale = NewScale; }
-    void setRelaticeScale(const Ogre::Vector3 &NewScale) { OgreEntity->setScale(NewScale); }
+    void setRelativeScale(const Ogre::Vector3 &NewScale) { OgreEntity->setScale(NewScale); }
     const Ogre::String &getName(void) const { return OgreEntity->getName(); }
     void Move(float x, float y, float z);
     void Rotate(float x, float y, float z);
