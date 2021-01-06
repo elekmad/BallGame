@@ -110,8 +110,10 @@ class BallGameEntity
     void setRelativeScale(const Ogre::Vector3 &NewScale) { OgreEntity->setScale(NewScale); }
     const Ogre::String &getName(void) const { return OgreEntity->getName(); }
     void Move(float x, float y, float z);
+    void Move(Vector3 &);
     void Rotate(float x, float y, float z);
     void Scale(float x, float y, float z);
+    void Scale(Vector3 &);
     void getVelocity(dFloat *Velocity) { NewtonBodyGetVelocity(Body, Velocity); }
     enum BallGameEntityType getType(void) { return type; }
     GroupEntity *getGroup(void) { return Group; }
