@@ -24,7 +24,10 @@ This source file is part of the
 BaseApplication::BaseApplication(void)
 	: mRoot(0),
 	mCamera(0),
+	mThumbnailCamera(0),
 	mSceneMgr(0),
+	mThumbnailSceneMgr(0),
+	rThumbnailtex(0),
 	mWindow(0),
 	mResourcesCfg(Ogre::StringUtil::BLANK),
 	mPluginsCfg(Ogre::StringUtil::BLANK),
