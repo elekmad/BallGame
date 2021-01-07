@@ -9,6 +9,7 @@
 # freely.
 
 cmake_minimum_required(VERSION 3.4.0)
+set (CMAKE_CXX_STANDARD 11)
 add_definitions(-D_POSIX_VER_64)
 add_definitions(-ggdb3)
 
