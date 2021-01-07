@@ -263,7 +263,8 @@ class BallGame : public BaseApplication
     void ImportLevelFromJson(Node *parent = NULL);
 
     String Level;
-    void SetLevel(String &level_name);
+    String LevelFilename;
+    void SetLevel(String &level_name, String &levelFilename);
 
     //Place New Element
     enum PlacementModes
@@ -419,6 +420,7 @@ class BallGame : public BaseApplication
     CEGUI::Titlebar *LevelNameBanner;
     CEGUI::Titlebar *StatesBanner;
     CEGUI::PushButton *SaveStatePushB;
+    void SetupStatesButtons(void);
     bool SaveStatePushBCallback(const CEGUI::EventArgs &e);
     CEGUI::Combobox *ChooseStateToLoadB;
     bool ChooseStateToLoadBCallback(const CEGUI::EventArgs &e);

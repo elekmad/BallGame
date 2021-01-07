@@ -40,6 +40,20 @@ inline CEGUI::String toCEGUIString(float val)
 	return CEGUI::String(buff);
 }
 
+void inline BuildLevelFilename(String &levelname, String &LevelFilename)
+{
+	LevelFilename = LEVELS_FOLDER;
+	LevelFilename += levelname;
+	LevelFilename += "." LEVELS_EXTENSION;
+}
+
+void inline BuildLevelStatsFilename(String &levelname, String &LevelFilename)
+{
+	LevelFilename = LEVELS_FOLDER;
+	LevelFilename += levelname;
+	LevelFilename += "." STATES_EXTENSION;
+}
+
 inline float Normalize(float v1, float v2, float v3)
 {
 	return sqrtf(v1 * v1 + v2 * v2 + v3 * v3);
@@ -198,24 +212,22 @@ void BallGame::DeserializedPhysicScene(const String* const name)
 		Entity->CleanupForces();
 	}
 	NewtonDestroyAllBodies(m_world);
-	NewtonMaterialDestroyAllGroupID(m_world);
-	String state_filename(LEVELS_FOLDER);
-	state_filename += *name;
-	state_filename += "." STATES_EXTENSION;
-	NewtonDeserializeFromFile(m_world, state_filename.c_str(), BodyDeserialization, this);
+	NewtonDeserializeFromFile(m_world, name->c_str(), BodyDeserialization, this);
 	_StartPhysic();
 }
 
 
 bool BallGame::SaveStatePushBCallback(const CEGUI::EventArgs &e)
 {
-	String state_filename(LEVELS_FOLDER), state_name = Level;
+	String *state_filename, state_name = Level;
 	state_name += "-";
 	state_name += std::to_string(ChooseStateToLoadB->getItemCount());
-	state_filename += state_name;
-	state_filename += "." STATES_EXTENSION;
-	SerializedPhysicScene(&state_filename);
-	ChooseStateToLoadB->addItem(new CEGUI::ListboxTextItem(state_name));
+	state_filename = new String;
+	BuildLevelStatsFilename(state_name, *state_filename);
+	SerializedPhysicScene(state_filename);
+	CEGUI::ListboxTextItem *item = (CEGUI::ListboxTextItem*)new CEGUI::ListboxTextItem(state_name);
+	item->setUserData(state_filename);
+	ChooseStateToLoadB->addItem(item);
 	ChooseStateToLoadB->setSize(CEGUI::USize(CEGUI::UDim(0, 150), CEGUI::UDim(0, 40 * (ChooseStateToLoadB->getItemCount() + 1))));
 	return true;
 }
@@ -225,9 +237,9 @@ bool BallGame::LoadStatePushBCallback(const CEGUI::EventArgs &e)
 	CEGUI::ListboxItem *item = ChooseStateToLoadB->getSelectedItem();
 	if(item == NULL)
 		return true;
-	String state_name = item->getText().c_str();
-	if(state_name.empty() == false)
-		DeserializedPhysicScene(&state_name);
+	String *state_filename = (String*)item->getUserData();
+	if(state_filename != NULL && state_filename->empty() == false)
+		DeserializedPhysicScene(state_filename);
 	return true;
 }
 
@@ -236,10 +248,8 @@ bool BallGame::DelStatePushBCallback(const CEGUI::EventArgs &e)
 	CEGUI::ListboxItem *item = ChooseStateToLoadB->getSelectedItem();
 	if(item == NULL)
 		return true;
-	String state_filename(LEVELS_FOLDER);
-	state_filename += item->getText().c_str();
-	state_filename += "." STATES_EXTENSION;
-	unlink(state_filename.c_str());
+	String *state_filename = (String*)item->getUserData();
+	unlink(state_filename->c_str());
 	ChooseStateToLoadB->setItemSelectState(item, false);
 	ChooseStateToLoadB->removeItem(item);
 	return true;
@@ -247,6 +257,13 @@ bool BallGame::DelStatePushBCallback(const CEGUI::EventArgs &e)
 
 bool BallGame::ChooseStateToLoadBCallback(const CEGUI::EventArgs &e)
 {
+	SetupStatesButtons();
+	return true;
+}
+
+void BallGame::SetupStatesButtons(void)
+{
+	LOG << "Change selected state" << std::endl;
 	if(ChooseStateToLoadB->getSelectedItem() != NULL)
 	{
 		LoadStatePushB->setEnabled(true);
@@ -257,7 +274,6 @@ bool BallGame::ChooseStateToLoadBCallback(const CEGUI::EventArgs &e)
 		LoadStatePushB->setEnabled(false);
 		DelStatePushB->setEnabled(false);
 	}
-	return true;
 }
 
 BallGameEntity::BallGameEntity(const dMatrix& matrix) :// m_matrix(matrix),
@@ -1547,16 +1563,23 @@ void BallGame::SetupGUI(void)
 
     ChooseLevelComboB = CreateNewGUIComponent<CEGUI::Combobox>("OgreTray/Combobox");
     glob_t glob_result;
+    CEGUI::ListboxTextItem *actuallevel = NULL;
 	memset(&glob_result, 0, sizeof(glob_result));
 	glob(LEVELS_FOLDER"*.json", 0, NULL, &glob_result);
 	for(size_t i = 0; i < glob_result.gl_pathc; ++i)
 	{
-		String globname(glob_result.gl_pathv[i]), filename;
-		size_t slashpos = globname.find_last_of('/'), dotpos = globname.find_last_of('.');
-		filename = globname.substr(slashpos + 1, dotpos - (slashpos + 1));
-		ChooseLevelComboB->addItem(new CEGUI::ListboxTextItem((CEGUI::utf8*)filename.c_str()));
+		String *globname, filename;
+		globname = new String(glob_result.gl_pathv[i]);
+		size_t slashpos = globname->find_last_of('/'), dotpos = globname->find_last_of('.');
+		filename = globname->substr(slashpos + 1, dotpos - (slashpos + 1));
+		CEGUI::ListboxTextItem *item = new CEGUI::ListboxTextItem((CEGUI::utf8*)filename.c_str());
+		item->setUserData(globname);
+		ChooseLevelComboB->addItem(item);
         if(ChooseLevelComboB->getText().empty() == true)
+        {
         	ChooseLevelComboB->setText(filename);
+        	actuallevel = item;
+        }
 	}
 	globfree(&glob_result);
     ChooseLevelComboB->setSize(CEGUI::USize(CEGUI::UDim(0, 150), CEGUI::UDim(0, 40 * (ChooseLevelComboB->getItemCount() + 1))));
@@ -1636,7 +1659,7 @@ void BallGame::SetupGUI(void)
     ChooseStateToLoadB->setHorizontalAlignment(CEGUI::HA_RIGHT);
 
     MainLayout->addChild(ChooseStateToLoadB);
-    ChooseStateToLoadB->subscribeEvent(CEGUI::Combobox::EventListSelectionAccepted,
+    ChooseStateToLoadB->subscribeEvent(CEGUI::Combobox::EventListSelectionChanged,
     		CEGUI::Event::Subscriber(&BallGame::ChooseStateToLoadBCallback, this));
     ChooseStateToLoadB->subscribeEvent(CEGUI::Combobox::EventListContentsChanged,
     		CEGUI::Event::Subscriber(&BallGame::ChooseStateToLoadBCallback, this));
@@ -1676,8 +1699,9 @@ void BallGame::SetupGUI(void)
     SetWindowsPosNearToOther(SaveStatePushB, DelStatePushB, 0, 1);
 
     //Now LevelNameBanner exist, we can call SetLevel !
-    String default_level = ChooseLevelComboB->getText().c_str();
-    SetLevel(default_level);
+    String levelname(actuallevel->getText().c_str());
+    String *levelfilename = (String*)actuallevel->getUserData();
+    SetLevel(levelname, *levelfilename);
 
 
     //Edit GUI
@@ -3182,8 +3206,10 @@ bool BallGame::NewLevelCreateBCallback(const CEGUI::EventArgs &e)
 {
 	EmptyLevel();
 	String level;
+	String Filename;
+	BuildLevelFilename(level, Filename);
 	level = NewLevelEditB->getText().c_str();
-	SetLevel(level);
+	SetLevel(level, Filename);
 	if(mode == Running)
 		SwitchEditMode();
 	return true;
@@ -3194,10 +3220,7 @@ bool BallGame::SaveLevelPushBCallback(const CEGUI::EventArgs &e)
 	String export_str;
 	ExportLevelIntoJson(export_str);
 	std::ofstream myfile;
-	String Filename(LEVELS_FOLDER);
-	Filename += Level;
-	Filename += "." LEVELS_EXTENSION;
-	myfile.open (Filename.c_str());
+	myfile.open (LevelFilename.c_str());
 	myfile << export_str;
 	myfile.close();
 	return true;
@@ -3205,16 +3228,17 @@ bool BallGame::SaveLevelPushBCallback(const CEGUI::EventArgs &e)
 
 bool BallGame::ChooseLevelComboBCallback(const CEGUI::EventArgs &e)
 {
-	String level;
-	level = ChooseLevelComboB->getSelectedItem()->getText().c_str();
-	SetLevel(level);
+	CEGUI::ListboxTextItem *item = (CEGUI::ListboxTextItem*)ChooseLevelComboB->getSelectedItem();
+	String level(item->getText().c_str()), *filename = (String*)item->getUserData();
+	SetLevel(level, *filename);
 	ChangeLevel();
 	return true;
 }
 
-void BallGame::SetLevel(String &level_name)
+void BallGame::SetLevel(String &level_name, String &levelFilename)
 {
 	Level = level_name;
+	LevelFilename = levelFilename;
 	LevelNameBanner->setText((CEGUI::utf8*)Level.c_str());
 }
 
@@ -3484,24 +3508,35 @@ void BallGame::EmptyLevel(void)
 
 void BallGame::LoadStatesList(void)
 {
+	LOG << "Load selected state list" << std::endl;
+	ChooseStateToLoadB->setMutedState(true);
 	ChooseStateToLoadB->resetList();
+	SetupStatesButtons();
 	String globfilter(LEVELS_FOLDER);
 	globfilter += Level;
 	globfilter += "*." STATES_EXTENSION;
     glob_t glob_result;
 	memset(&glob_result, 0, sizeof(glob_result));
 	glob(globfilter.c_str(), 0, NULL, &glob_result);
+	CEGUI::ListboxTextItem *Selecteditem = NULL;
 	for(size_t i = 0; i < glob_result.gl_pathc; ++i)
 	{
-		String globname(glob_result.gl_pathv[i]), filename;
-		size_t slashpos = globname.find_last_of('/'), dotpos = globname.find_last_of('.');
-		filename = globname.substr(slashpos + 1, dotpos - (slashpos + 1));
-		ChooseStateToLoadB->addItem(new CEGUI::ListboxTextItem(filename));
-        if(ChooseStateToLoadB->getText().empty() == true)
-        	ChooseStateToLoadB->setText(filename);
+		String *globname, filename;
+		globname = new String(glob_result.gl_pathv[i]);
+		size_t slashpos = globname->find_last_of('/'), dotpos = globname->find_last_of('.');
+		filename = globname->substr(slashpos + 1, dotpos - (slashpos + 1));
+		CEGUI::ListboxTextItem *item = new CEGUI::ListboxTextItem(filename);
+		item->setUserData(globname);
+		ChooseStateToLoadB->addItem(item);
+		if(Selecteditem == NULL)
+        	Selecteditem = item;
 	}
 	globfree(&glob_result);
 	ChooseStateToLoadB->setSize(CEGUI::USize(CEGUI::UDim(0, 150), CEGUI::UDim(0, 40 * (ChooseStateToLoadB->getItemCount() + 1))));
+	ChooseStateToLoadB->setMutedState(false);
+	LOG << "Set default selected item" << std::endl;
+	if(Selecteditem != NULL)
+		ChooseStateToLoadB->setItemSelectState((CEGUI::ListboxItem*)Selecteditem, true);
 }
 
 void BallGame::ChangeLevel(void)
@@ -3519,10 +3554,7 @@ void BallGame::ImportLevelFromJson(Node *parent)
 {
 	std::ifstream myfile;
 	std::stringstream buffer;
-	String Filename(LEVELS_FOLDER);
-	Filename += Level;
-	Filename += "." LEVELS_EXTENSION;
-	myfile.open (Filename.c_str());
+	myfile.open (LevelFilename.c_str());
 	buffer << myfile.rdbuf();
 	myfile.close();
 	rapidjson::Document in;
