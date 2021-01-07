@@ -3537,6 +3537,8 @@ void BallGame::LoadStatesList(void)
 	LOG << "Set default selected item" << std::endl;
 	if(Selecteditem != NULL)
 		ChooseStateToLoadB->setItemSelectState((CEGUI::ListboxItem*)Selecteditem, true);
+	else
+		ChooseStateToLoadB->setText("");
 }
 
 void BallGame::ChangeLevel(void)
