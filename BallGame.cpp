@@ -431,7 +431,9 @@ void BallEntity::CreateNewtonBody(NewtonWorld *m_world)
 	dMatrix *bodymatrix = PrepareNewtonBody(NewtonBodyLocation, NewtonBodySize);
 
 	LOG << "Place a Ball" << std::endl;
-	newtonBody = WorldAddBall(m_world, ((BallEntity*)this)->InitialMass, NewtonBodySize, 0, *bodymatrix);
+
+	int defaultMaterialID = NewtonMaterialGetDefaultGroupID (m_world);
+	newtonBody = WorldAddBall(m_world, ((BallEntity*)this)->InitialMass, NewtonBodySize, defaultMaterialID, *bodymatrix);
 	setNewtonBody(newtonBody);
 
 	delete bodymatrix;
@@ -562,7 +564,8 @@ void CaseEntity::CreateNewtonBody(NewtonWorld *m_world)
 	const MeshPtr ptr = ogreEntity->getMesh();
 	collision_tree = ParseEntity(m_world, ptr, ogre_matrix);
 
-	newtonBody = WorldAddCase(m_world, NewtonBodySize, 0, *bodymatrix, collision_tree);
+	int defaultMaterialID = NewtonMaterialGetDefaultGroupID (m_world);
+	newtonBody = WorldAddCase(m_world, NewtonBodySize, defaultMaterialID, *bodymatrix, collision_tree);
 	setNewtonBody(newtonBody);
 }
 
@@ -3260,7 +3263,8 @@ void CaseEntity::CreateFromJson(rapidjson::Value &v, Ogre::SceneManager* mSceneM
 	const MeshPtr ptr = ogreEntity->getMesh();
 	collision_tree = ParseEntity(m_world, ptr, ogre_matrix);
 
-	newtonBody = WorldAddCase(m_world, NewtonBodySize, 0, *casematrix, collision_tree);
+	int defaultMaterialID = NewtonMaterialGetDefaultGroupID (m_world);
+	newtonBody = WorldAddCase(m_world, NewtonBodySize, defaultMaterialID, *casematrix, collision_tree);
 
 	setNewtonBody(newtonBody);
 }
@@ -3317,7 +3321,9 @@ void BallEntity::CreateFromJson(rapidjson::Value &v, Ogre::SceneManager* mSceneM
 	NewtonBody *BallBody;
 
 	dMatrix *ballmatrix = PrepareNewtonBody(NewtonBodyLocation, NewtonBodySize);
-	BallBody = WorldAddBall(m_world, InitialMass, NewtonBodySize, 0, *ballmatrix);
+
+	int defaultMaterialID = NewtonMaterialGetDefaultGroupID (m_world);
+	BallBody = WorldAddBall(m_world, InitialMass, NewtonBodySize, defaultMaterialID, *ballmatrix);
 
 	setNewtonBody(BallBody);
 }
@@ -3473,6 +3479,7 @@ void BallGame::EmptyLevel(void)
 			Git++;
 	}
 	assert(Groups.empty());
+	CasesUnderCollide.clear();
 }
 
 void BallGame::LoadStatesList(void)
