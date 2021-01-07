@@ -736,6 +736,8 @@ void GroupEntity::ComputeChilds(void)
 
 BallGame::~BallGame()
 {
+	EmptyLevel();
+	EmptyLevelsList();
 	if(m_world != NULL)
 		NewtonDestroy(m_world);
 	if(mRenderer != NULL)
@@ -746,9 +748,8 @@ BallGame::~BallGame()
 		EntityType *type = *iter;
 		if(type != NULL)
 			delete type;
-		iter++;
+		iter = EntityTypes.erase(iter);
 	}
-	EntityTypes.clear();
 }
 
 void BallGame::PostUpdateCallback(const NewtonWorld* const world, dFloat timestep)
@@ -1050,7 +1051,7 @@ void BallGame::SwitchEditMode(void)
 void BallGame::CreateThumbnail(String meshname)
 {
 	Entity *ogreEntity = mThumbnailSceneMgr->createEntity(meshname);
-	mThumbnailSceneMgr->getRootSceneNode()->removeAllChildren();
+	mThumbnailSceneMgr->getRootSceneNode()->removeAndDestroyAllChildren();
 	ogreThumbnailNode = mThumbnailSceneMgr->getRootSceneNode()->createChildSceneNode();
 	ogreThumbnailNode->attachObject(ogreEntity);
 	ogreThumbnailNode->scale(130, 130, 130);
@@ -2011,7 +2012,7 @@ void BallGame::SetupGame(void)
     mCamera->setOrientation(Ogre::Quaternion(0.835422, 0.393051, -0.238709, -0.300998));
     mThumbnailCamera->setOrientation(Ogre::Quaternion(0.835422, 0.393051, -0.238709, -0.300998));
 
-    CEGUI::Texture &guiTex = mRenderer->createTexture("textname", tex);
+    CEGUI::Texture &guiTex = mRenderer->createTexture("textname", ptex);
 
     const CEGUI::Rectf rect(CEGUI::Vector2f(0.0f, 0.0f), guiTex.getOriginalDataSize());
     CEGUI::BasicImage* image = (CEGUI::BasicImage*)( &CEGUI::ImageManager::getSingleton().create("BasicImage", "foobar"));
@@ -3504,13 +3505,38 @@ void BallGame::EmptyLevel(void)
 	}
 	assert(Groups.empty());
 	CasesUnderCollide.clear();
+	EmptyStatesList();
+}
+
+void BallGame::EmptyLevelsList(void)
+{
+	for (size_t cmpt = 0; cmpt < ChooseLevelComboB->getItemCount(); cmpt++)
+	{
+		CEGUI::ListboxTextItem *item = (CEGUI::ListboxTextItem*)ChooseLevelComboB->getListboxItemFromIndex(cmpt);
+		String *str = (String*)item->getUserData();
+		if(str != NULL)
+			delete str;
+		ChooseLevelComboB->removeItem(item);
+	}
+}
+
+void BallGame::EmptyStatesList(void)
+{
+	for (size_t cmpt = 0; cmpt < ChooseStateToLoadB->getItemCount(); cmpt++)
+	{
+		CEGUI::ListboxTextItem *item = (CEGUI::ListboxTextItem*)ChooseStateToLoadB->getListboxItemFromIndex(cmpt);
+		String *str = (String*)item->getUserData();
+		if(str != NULL)
+			delete str;
+		ChooseStateToLoadB->removeItem(item);
+	}
 }
 
 void BallGame::LoadStatesList(void)
 {
 	LOG << "Load selected state list" << std::endl;
 	ChooseStateToLoadB->setMutedState(true);
-	ChooseStateToLoadB->resetList();
+	EmptyStatesList();
 	SetupStatesButtons();
 	String globfilter(LEVELS_FOLDER);
 	globfilter += Level;

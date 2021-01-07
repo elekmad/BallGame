@@ -258,6 +258,8 @@ class BallGame : public BaseApplication
     void DeleteGroup(GroupEntity *Entity, std::list<GroupEntity*>::iterator *iter = NULL);
     void RemoveGroup(GroupEntity *Entity, std::list<GroupEntity*>::iterator *iter = NULL);
     void LoadStatesList(void);
+    void EmptyStatesList(void);
+    void EmptyLevelsList(void);
     void EmptyLevel(void);//Clean all BallGame, Newton and Ogre entities to start with new level.
     void ChangeLevel(void);
     void ImportLevelFromJson(Node *parent = NULL);

@@ -54,6 +54,13 @@ BaseApplication::~BaseApplication(void)
 	//if (mTrayMgr) delete mTrayMgr;
 	if (mCameraMan) delete mCameraMan;
 	if (mOverlaySystem) delete mOverlaySystem;
+	if (mThumbnailCamera) delete mThumbnailCamera;
+	if (mThumbnailSceneMgr)
+	{
+		mThumbnailSceneMgr->getRootSceneNode()->removeAndDestroyAllChildren();
+		delete mThumbnailSceneMgr;
+	}
+	if (rThumbnailtex) delete rThumbnailtex;
 
 	if(mWindow)
 	{
@@ -173,7 +180,7 @@ void BaseApplication::createViewports(void)
 	mCamera->setAspectRatio(
 		Ogre::Real(vp->getActualWidth()) / Ogre::Real(vp->getActualHeight()));
 
-    tex = mRoot->getTextureManager()->createManual(
+    ptex = mRoot->getTextureManager()->createManual(
         "RTT",
         Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME,
         Ogre::TEX_TYPE_2D,
@@ -182,7 +189,7 @@ void BaseApplication::createViewports(void)
         0,
         Ogre::PF_R8G8B8,
         Ogre::TU_RENDERTARGET);
-    rThumbnailtex = tex->getBuffer()->getRenderTarget();
+    rThumbnailtex = ptex->getBuffer()->getRenderTarget();
 
 
 	vp = rThumbnailtex->addViewport(mThumbnailCamera);

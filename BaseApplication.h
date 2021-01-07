@@ -106,7 +106,7 @@ protected:
 	Ogre::RenderWindow* mWindow;
 	Ogre::String mResourcesCfg;
 	Ogre::String mPluginsCfg;
-	Ogre::TexturePtr tex;
+	Ogre::TexturePtr ptex;
 	Ogre::RenderTexture *rThumbnailtex;
 	Ogre::OverlaySystem *mOverlaySystem;
  
