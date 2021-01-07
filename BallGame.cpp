@@ -731,7 +731,57 @@ void GroupEntity::ComputeChilds(void)
 		Entity->OgreEntity->getParentSceneNode()->removeChild(Entity->OgreEntity);
 		OgreEntity->addChild(Entity->OgreEntity);
 	}
+}
+
+void GroupEntity::ComputeAndEquilibrateChilds(void)
+{
+	ComputeChilds();
 	EquilibrateAABBAroundOrigin((Node*)OgreEntity);
+}
+
+void GroupEntity::ExportToJson(rapidjson::Value &v, rapidjson::Document::AllocatorType& allocator)
+{
+	rapidjson::Value name;
+	const char *ogrename = (const char*)OgreEntity->getName().c_str();
+	name.SetString(ogrename, allocator);
+	v.AddMember("NodeName", name, allocator);
+	const Vector3 &InitialPos = OgreEntity->getPosition();
+	const Vector3 &InitialScale = OgreEntity->getScale();
+	const Quaternion &InitialOrientation = OgreEntity->getOrientation();
+
+	v.AddMember("PosX", InitialPos.x, allocator);
+	v.AddMember("PosY", InitialPos.y, allocator);
+	v.AddMember("PosZ", InitialPos.z, allocator);
+	v.AddMember("ScaleX", InitialScale.x, allocator);
+	v.AddMember("ScaleY", InitialScale.y, allocator);
+	v.AddMember("ScaleZ", InitialScale.z, allocator);
+	v.AddMember("OrientationX", InitialOrientation.x, allocator);
+	v.AddMember("OrientationY", InitialOrientation.y, allocator);
+	v.AddMember("OrientationZ", InitialOrientation.z, allocator);
+	v.AddMember("OrientationW", InitialOrientation.w, allocator);
+}
+
+void GroupEntity::ImportFromJson(rapidjson::Value &v, BallGame *Game)
+{
+	Ogre::SceneManager *mSceneMgr = Game->getSceneManager();
+	Vector3 InitialPos, InitialScale;
+	Quaternion InitialOrientation;
+	InitialPos.x = v["PosX"].GetFloat();
+	InitialPos.y = v["PosY"].GetFloat();
+	InitialPos.z = v["PosZ"].GetFloat();
+	InitialScale.x = v["ScaleX"].GetFloat();
+	InitialScale.y = v["ScaleY"].GetFloat();
+	InitialScale.z = v["ScaleZ"].GetFloat();
+	InitialOrientation.x = v["OrientationX"].GetFloat();
+	InitialOrientation.y = v["OrientationY"].GetFloat();
+	InitialOrientation.z = v["OrientationZ"].GetFloat();
+	InitialOrientation.w = v["OrientationW"].GetFloat();
+
+	const char *nodename = v["NodeName"].GetString();
+	OgreEntity = mSceneMgr->getRootSceneNode()->createChildSceneNode(nodename, InitialPos);
+	OgreEntity->setPosition(InitialPos);
+	OgreEntity->setScale(InitialScale);
+	OgreEntity->setOrientation(InitialOrientation);
 }
 
 BallGame::~BallGame()
@@ -1025,6 +1075,7 @@ void BallGame::SwitchEditMode(void)
 		UnprepareDeleteElement();
 		EditBall(NULL);
 		EditCase(NULL);
+		MultiSelectionSetEmpty();
 		mode = Running;
 		EditingModeTitleBanner->setVisible(false);
 		ApplyForceChangesToCasePushB->setVisible(false);
@@ -1448,7 +1499,7 @@ bool BallGame::GroupElementsBCallback(const CEGUI::EventArgs &e)
 	}
 	if(Grp != NULL)
 	{
-		Grp->ComputeChilds();
+		Grp->ComputeAndEquilibrateChilds();
 		AddGroup(Grp);
 	}
 	return true;
@@ -3273,9 +3324,9 @@ void CaseEntity::ExportToJson(rapidjson::Value &v, rapidjson::Document::Allocato
 	}
 }
 
-void CaseEntity::CreateFromJson(rapidjson::Value &v, Ogre::SceneManager* mSceneMgr, NewtonWorld *m_world, Node *parent)
+void CaseEntity::CreateFromJson(rapidjson::Value &v, BallGame *Game, NewtonWorld *m_world, Node *parent)
 {
-	ImportFromJson(v, mSceneMgr, parent);
+	ImportFromJson(v, Game, parent);
 	dVector NewtonBodyLocation;
 	dVector NewtonBodySize;
 	NewtonBody *newtonBody;
@@ -3294,9 +3345,9 @@ void CaseEntity::CreateFromJson(rapidjson::Value &v, Ogre::SceneManager* mSceneM
 	setNewtonBody(newtonBody);
 }
 
-void CaseEntity::ImportFromJson(rapidjson::Value &v, Ogre::SceneManager* mSceneMgr, Node *parent)
+void CaseEntity::ImportFromJson(rapidjson::Value &v, BallGame *Game, Node *parent)
 {
-	BallGameEntity::ImportFromJson(v, mSceneMgr, parent);
+	BallGameEntity::ImportFromJson(v, Game, parent);
 	float force_json =  NAN;
 	dVector *direction_json = NULL;
 	type = (CaseEntity::CaseType)v["Type"].GetInt();
@@ -3326,6 +3377,15 @@ void BallGameEntity::ExportToJson(rapidjson::Value &v, rapidjson::Document::Allo
 	const char *ogrename = (const char*)OgreEntity->getName().c_str();
 	name.SetString(ogrename, allocator);
 	v.AddMember("NodeName", name, allocator);
+	if(Group != NULL)
+	{
+		rapidjson::Value gname;
+		const char *groupname = (const char*)Group->getName().c_str();
+		gname.SetString(groupname, allocator);
+		v.AddMember("GroupName", gname, allocator);
+	}
+	else
+		v.AddMember("GroupName", "", allocator);
 	v.AddMember("PosX", InitialPos.x, allocator);
 	v.AddMember("PosY", InitialPos.y, allocator);
 	v.AddMember("PosZ", InitialPos.z, allocator);
@@ -3338,9 +3398,9 @@ void BallGameEntity::ExportToJson(rapidjson::Value &v, rapidjson::Document::Allo
 	v.AddMember("OrientationW", InitialOrientation.w, allocator);
 }
 
-void BallEntity::CreateFromJson(rapidjson::Value &v, Ogre::SceneManager* mSceneMgr, NewtonWorld *m_world, Node *parent)
+void BallEntity::CreateFromJson(rapidjson::Value &v, BallGame *Game, NewtonWorld *m_world, Node *parent)
 {
-	ImportFromJson(v, mSceneMgr, parent);
+	ImportFromJson(v, Game, parent);
 	dVector NewtonBodyLocation;
 	dVector NewtonBodySize;
 	NewtonBody *BallBody;
@@ -3353,15 +3413,16 @@ void BallEntity::CreateFromJson(rapidjson::Value &v, Ogre::SceneManager* mSceneM
 	setNewtonBody(BallBody);
 }
 
-void BallEntity::ImportFromJson(rapidjson::Value &v, Ogre::SceneManager* mSceneMgr, Node *parent)
+void BallEntity::ImportFromJson(rapidjson::Value &v, BallGame *Game, Node *parent)
 {
-	BallGameEntity::ImportFromJson(v, mSceneMgr, parent);
+	BallGameEntity::ImportFromJson(v, Game, parent);
 	InitialMass = v["Mass"].GetFloat();
 }
 
-void BallGameEntity::ImportFromJson(rapidjson::Value &v, Ogre::SceneManager* mSceneMgr, Node *parent)
+void BallGameEntity::ImportFromJson(rapidjson::Value &v, BallGame *Game, Node *parent)
 {
 	const char *meshname = v["Mesh"].GetString();
+	Ogre::SceneManager *mSceneMgr = Game->getSceneManager();
 	Entity* ogreEntity = mSceneMgr->createEntity(meshname);
 	InitialPos.x = v["PosX"].GetFloat();
 	InitialPos.y = v["PosY"].GetFloat();
@@ -3382,6 +3443,16 @@ void BallGameEntity::ImportFromJson(rapidjson::Value &v, Ogre::SceneManager* mSc
 		ogreNode = (SceneNode*)parent->createChild(InitialPos);
 	ogreNode->attachObject(ogreEntity);
 	setOgreNode(ogreNode);
+	const char *Groupname = v["GroupName"].GetString();
+	if(strcmp(Groupname, "") != 0)
+	{
+		GroupEntity *Grp = Game->findGroup(Groupname);
+		if(Grp != NULL)
+		{
+			LOG << "Add Child " << nodename << " to Group " << Groupname << std::endl;
+			Grp->AddChild(this);
+		}
+	}
 }
 
 void BallGame::DeleteGroup(GroupEntity *Entity, std::list<GroupEntity*>::iterator *iter)
@@ -3409,6 +3480,21 @@ void BallGame::RemoveGroup(GroupEntity *Entity, std::list<GroupEntity*>::iterato
 			it++;
 		}
 	}
+}
+
+GroupEntity *BallGame::findGroup(const char * const name_c)
+{
+	String name(name_c);
+	std::list<GroupEntity*>::iterator it(Groups.begin());
+	while(it != Groups.end())
+	{
+		GroupEntity *B = *it;
+		if(B != NULL && B->getName() == name)
+			return B;
+			break;
+		it++;
+	}
+	return NULL;
 }
 
 void BallGame::DeleteBall(BallEntity *Entity, std::list<BallEntity*>::iterator *iter)
@@ -3587,23 +3673,42 @@ void BallGame::ImportLevelFromJson(Node *parent)
 	myfile.close();
 	rapidjson::Document in;
 	in.Parse(buffer.str().c_str());
+	int idx = 0;
+	//Parsing Groups
+	rapidjson::Value &groups = in[idx++];
+	for(int cmpt = 0; cmpt < groups.Size(); cmpt++)
+	{
+		GroupEntity *newGroup = new GroupEntity();
+		rapidjson::Value &groupjson = groups[cmpt];
+		newGroup->ImportFromJson(groupjson, this);
+		AddGroup(newGroup);
+	}
 	//Parsing Cases
-	rapidjson::Value &cases = in[0];
+	rapidjson::Value &cases = in[idx++];
 	for(int cmpt = 0; cmpt < cases.Size(); cmpt++)
 	{
 		CaseEntity *newCase = new CaseEntity();
 		rapidjson::Value &casejson = cases[cmpt];
-		newCase->CreateFromJson(casejson, mSceneMgr, m_world, parent);
+		newCase->CreateFromJson(casejson, this, m_world, parent);
 		AddCase(newCase);
 	}
 	//Parsing Balls
-	rapidjson::Value &balls = in[1];
+	rapidjson::Value &balls = in[idx++];
 	for(int cmpt = 0; cmpt < balls.Size(); cmpt++)
 	{
 		BallEntity *newBall = new BallEntity();
 		rapidjson::Value &balljson = balls[cmpt];
-		newBall->CreateFromJson(balljson, mSceneMgr, m_world, parent);
+		newBall->CreateFromJson(balljson, this, m_world, parent);
 		AddBall(newBall);
+	}
+
+	//Now we need to restore links between ogre nodes.
+	std::list<GroupEntity*>::iterator iter(Groups.begin());
+	while(iter != Groups.end())
+	{
+		GroupEntity *Grp = *(iter++);
+		if(Grp != NULL)
+			Grp->ComputeChilds();
 	}
 }
 
@@ -3613,6 +3718,22 @@ void BallGame::ExportLevelIntoJson(String &export_str)
 	document.SetArray();
 
 	rapidjson::Document::AllocatorType& allocator = document.GetAllocator();
+	rapidjson::Value groups(rapidjson::kArrayType);
+
+	std::list<GroupEntity*>::iterator Git(Groups.begin());
+	while(Git != Groups.end())
+	{
+		GroupEntity *Entity = *(Git++);
+		if(Entity == NULL)
+			continue;
+		rapidjson::Value JGroup(rapidjson::kObjectType);
+		Entity->ExportToJson(JGroup, allocator);
+
+		groups.PushBack(JGroup, allocator);
+	}
+
+	document.PushBack(groups, allocator);
+
 	rapidjson::Value cases(rapidjson::kArrayType);
 
 	std::list<CaseEntity*>::iterator Cit(Cases.begin());
@@ -3622,7 +3743,7 @@ void BallGame::ExportLevelIntoJson(String &export_str)
 		if(Entity == NULL)
 			continue;
 		rapidjson::Value JCase(rapidjson::kObjectType);
-		JCase.AddMember("Type", Entity->type, allocator);
+//		JCase.AddMember("Type", Entity->type, allocator);
 		Entity->ExportToJson(JCase, allocator);
 
 		cases.PushBack(JCase, allocator);

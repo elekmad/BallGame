@@ -85,7 +85,7 @@ class BallGameEntity
 	void Finalize(void);
     static void TransformCallback(const NewtonBody* body, const dFloat* matrix, int threadIndex);
     void ExportToJson(rapidjson::Value &v, rapidjson::Document::AllocatorType& allocator);
-    void ImportFromJson(rapidjson::Value &v, Ogre::SceneManager* mSceneMgr, Node *parent = NULL);
+    void ImportFromJson(rapidjson::Value &v, BallGame *Game, Node *parent = NULL);
     void setOgreNode(SceneNode *node);
     void setNewtonBody(NewtonBody *body);
     const NewtonBody *getNewtonBody(void) const { return Body; }
@@ -129,6 +129,7 @@ class BallGameEntity
 	SceneNode *OgreEntity;
 	NewtonBody *Body;
 	GroupEntity *Group;
+	//We need to have initial pos, scale and orientation appart from ogre's one because we can edit level during physic move, so export level with ogre's one can be impossible !
 	Ogre::Vector3 InitialPos;
 	Ogre::Vector3 InitialScale;
 	Ogre::Quaternion InitialOrientation;
@@ -144,10 +145,10 @@ class BallEntity : public BallGameEntity
 
 	BallEntity(const dMatrix& matrix);
 	BallEntity();
-	void CreateFromJson(rapidjson::Value &v, Ogre::SceneManager* mSceneMgr, NewtonWorld *m_world, Node *parent = NULL);
+	void CreateFromJson(rapidjson::Value &v, BallGame *Game, NewtonWorld *m_world, Node *parent = NULL);
 	void AddForceVector(dVector *force);
     void ExportToJson(rapidjson::Value &v, rapidjson::Document::AllocatorType& allocator);
-    void ImportFromJson(rapidjson::Value &v, Ogre::SceneManager* mSceneMgr, Node *parent = NULL);
+    void ImportFromJson(rapidjson::Value &v, BallGame *Game, Node *parent = NULL);
 	dVector *GetForceVector();
 	void CleanupForces(void);
     void CreateNewtonBody(NewtonWorld *m_world);
@@ -175,13 +176,13 @@ class CaseEntity : public BallGameEntity
 	CaseEntity(const dMatrix& matrix, enum CaseType _type = typeBox);
 	CaseEntity(enum CaseType _type = typeBox);
 	~CaseEntity(){ BallsUnderCollide.clear(); }
-	void CreateFromJson(rapidjson::Value &v, Ogre::SceneManager* mSceneMgr, NewtonWorld *m_world, Node *parent = NULL);
+	void CreateFromJson(rapidjson::Value &v, BallGame *Game, NewtonWorld *m_world, Node *parent = NULL);
 //	void AddBallColliding(NewtonBody *ball);
 //	bool CheckIfAlreadyColliding(NewtonBody *ball);
 	void SetForceToApply(float force, dVector *direction);
 	void ApplyForceOnBall(BallEntity *ball);
     void ExportToJson(rapidjson::Value &v, rapidjson::Document::AllocatorType& allocator);
-    void ImportFromJson(rapidjson::Value &v, Ogre::SceneManager* mSceneMgr, Node *parent = NULL);
+    void ImportFromJson(rapidjson::Value &v, BallGame *Game, Node *parent = NULL);
     void CreateNewtonBody(NewtonWorld *m_world);
     float getForce(void) { return force_to_apply; }
     const dVector *getForceDirection(void) { return force_direction; }
@@ -203,15 +204,20 @@ class GroupEntity
 	public :
 
 	GroupEntity(String &name, Ogre::SceneManager* mSceneMgr);
+	GroupEntity(){ OgreEntity = NULL; };
 	~GroupEntity(){};
 	void Finalize(void);
+    void ExportToJson(rapidjson::Value &v, rapidjson::Document::AllocatorType& allocator);
+    void ImportFromJson(rapidjson::Value &v, BallGame *Game);
 	void AddChild(BallGameEntity* child);
 	bool DelChild(BallGameEntity* child);
 	void ComputeChilds(void);
+	void ComputeAndEquilibrateChilds(void);
 	void FillListWithChilds(std::list<BallGameEntity*> &list);
     void Move(float x, float y, float z);
     void Rotate(float x, float y, float z);
     void Scale(float x, float y, float z);
+    const Ogre::String &getName(void) const { return OgreEntity->getName(); }
 
 	private :
 
@@ -225,6 +231,8 @@ class BallGame : public BaseApplication
 
     BallGame();
     ~BallGame();
+    GroupEntity *findGroup(const char * const name);
+    void AddGroup(GroupEntity *Entity);
 
     private :
 
@@ -359,7 +367,6 @@ class BallGame : public BaseApplication
     void CheckforCollides(void);
     void AddCase(CaseEntity *Entity);
     void AddBall(BallEntity *Entity);
-    void AddGroup(GroupEntity *Entity);
 
     /////////////////////////////////////////////////
 
@@ -372,6 +379,7 @@ class BallGame : public BaseApplication
 	bool mouseMoved( const OIS::MouseEvent &arg );
     bool mousePressed( const OIS::MouseEvent &arg, OIS::MouseButtonID id );
     bool mouseReleased( const OIS::MouseEvent &arg, OIS::MouseButtonID id );
+    Ogre::SceneManager *getSceneManager(void) { return mSceneMgr; }
 
     private :
 
