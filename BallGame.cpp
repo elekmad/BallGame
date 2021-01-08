@@ -2265,7 +2265,7 @@ bool BallGame::mouseMoved(const OIS::MouseEvent &arg)
 	y = mpos.d_y / (float)mWindow->getHeight();
 
 	if(arg.state.Z.rel != 0)
-		MoveCam(0,  0, -10 * arg.state.Z.rel);
+		MoveCam(0,  0, -2 * arg.state.Z.rel);
 
 	if(mode == Editing)
 	{
