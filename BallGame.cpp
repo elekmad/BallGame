@@ -1006,6 +1006,12 @@ void BallGame::NormalizeForceDirection(void)
 	CaseForceDirectionXValueEditB->setText(toCEGUIString(direction_x));
 	CaseForceDirectionYValueEditB->setText(toCEGUIString(direction_y));
 	CaseForceDirectionZValueEditB->setText(toCEGUIString(direction_z));
+
+	//Careful, musn't use directly force_diretion vector, has it is float not double !
+	force_direction.m_x = direction_x;
+	force_direction.m_y = direction_y;
+	force_direction.m_z = direction_z;
+	UpdateForceArrows();
 }
 
 bool BallGame::NormalizeCaseForceDirectionPushBCallback(const CEGUI::EventArgs &e)
@@ -1920,7 +1926,7 @@ void BallGame::SetupGUI(void)
     CaseHasForceToggleB->setHorizontalAlignment(CEGUI::HA_CENTRE);
 
     CaseHasForceToggleB->subscribeEvent(CEGUI::ToggleButton::EventSelectStateChanged,
-			CEGUI::Event::Subscriber(&BallGame::ToggleForceCallback, this));
+			CEGUI::Event::Subscriber(&BallGame::CaseHasForceToggleBCallback, this));
 
     MainLayout->addChild(CaseHasForceToggleB);
 
@@ -1946,7 +1952,7 @@ void BallGame::SetupGUI(void)
     CaseHasForceDirectionToggleB->setHorizontalAlignment(CEGUI::HA_CENTRE);
 
 	CaseHasForceDirectionToggleB->subscribeEvent(CEGUI::ToggleButton::EventSelectStateChanged,
-			CEGUI::Event::Subscriber(&BallGame::ToggleForceDirectedCallback, this));
+			CEGUI::Event::Subscriber(&BallGame::CaseHasForceDirectionToggleBCallback, this));
 
     MainLayout->addChild(CaseHasForceDirectionToggleB);
 
@@ -2317,8 +2323,11 @@ bool BallGame::mouseMoved(const OIS::MouseEvent &arg)
 			if(itr->movable != NULL)
 			{
 				SceneNode *PickedUpNode = itr->movable->getParentSceneNode();
-				LastHighligted = Ogre::any_cast<BallGameEntity*>(((Ogre::Entity*)PickedUpNode->getAttachedObject(0))->getUserObjectBindings().getUserAny());
-				LastHighligted->DisplaySelectedBox(true);
+				if(PickedUpNode != ForcesArrows)
+				{
+					LastHighligted = Ogre::any_cast<BallGameEntity*>(((Ogre::Entity*)PickedUpNode->getAttachedObject(0))->getUserObjectBindings().getUserAny());
+					LastHighligted->DisplaySelectedBox(true);
+				}
 			}
 			itr++;
 		}
@@ -2359,19 +2368,14 @@ bool BallGame::ApplyForceChangesToCasePushBCallback(const CEGUI::EventArgs &even
 	{
 		UnderEditCaseForce = CEGUI::PropertyHelper<float>::fromString(CaseForceValueEditB->getText());
 		if(force_directed == true)
-		{
-			force_direction.m_x = CEGUI::PropertyHelper<float>::fromString(CaseForceDirectionXValueEditB->getText());
-			force_direction.m_y = CEGUI::PropertyHelper<float>::fromString(CaseForceDirectionYValueEditB->getText());
-			force_direction.m_z = CEGUI::PropertyHelper<float>::fromString(CaseForceDirectionZValueEditB->getText());
 			force_dir = new dVector(force_direction.m_x, force_direction.m_y, force_direction.m_z);
-		}
 	}
 	UnderEditCase->SetForceToApply(UnderEditCaseForce, force_dir);
 
 	return true;
 }
 
-bool BallGame::ToggleForceCallback(const CEGUI::EventArgs &event)
+bool BallGame::CaseHasForceToggleBCallback(const CEGUI::EventArgs &event)
 {
 	const CEGUI::WindowEventArgs &e = (const CEGUI::WindowEventArgs &)event;
 	LOG << "Update buttons by CE Callback of " << e.window->getName() << std::endl;
@@ -2387,16 +2391,27 @@ bool BallGame::ToggleForceCallback(const CEGUI::EventArgs &event)
     return true;
 }
 
-bool BallGame::ToggleForceDirectedCallback(const CEGUI::EventArgs &event)
+bool BallGame::CaseHasForceDirectionToggleBCallback(const CEGUI::EventArgs &event)
 {
 	const CEGUI::WindowEventArgs &e = (const CEGUI::WindowEventArgs &)event;
 	LOG << "Update buttons by CE Callback of " << e.window->getName() << std::endl;
 	CaseHasForceToggleB->setMutedState(true);
 	CaseHasForceDirectionToggleB->setMutedState(true);
 	if(CaseHasForceDirectionToggleB->isSelected())
+	{
 		force_directed = true;
+		ForcesArrows = UnderEditCase->CreateForceArrows(mSceneMgr);
+	}
 	else
+	{
 		force_directed = false;
+		if(ForcesArrows != NULL)
+		{
+			LOG << "Remove Arrows child" << std::endl;
+			mSceneMgr->getRootSceneNode()->removeAndDestroyChild("Arrows");
+			ForcesArrows = NULL;
+		}
+	}
 	UpdateEditButtons();
 	CaseHasForceDirectionToggleB->setMutedState(false);
 	CaseHasForceToggleB->setMutedState(false);
@@ -2468,12 +2483,51 @@ void BallGame::UpdateEditButtons(void)
 	}
 }
 
+Ogre::SceneNode *CaseEntity::CreateForceArrows(Ogre::SceneManager *Scene)
+{
+	Ogre::ManualObject *ForcesArrows = new ManualObject("Arrows");
+	Vector3 coords = OgreEntity->_getWorldAABB().getCenter();
+	coords.z = OgreEntity->_getWorldAABB().getMaximum().z;
+	ForcesArrows->begin("Material.001", Ogre::RenderOperation::OT_LINE_STRIP);
+	ForcesArrows->position (0.0, 0.0, 0.0);
+	ForcesArrows->position (40.0, 0.0, 0.0);
+	ForcesArrows->position (0.0, 0.0, 0.0);
+	ForcesArrows->position (0.0, 40.0, 0.0);
+	ForcesArrows->position (0.0, 0.0, 0.0);
+	ForcesArrows->position (0.0, 0.0, 40.0);
+	ForcesArrows->end();
+	LOG << "Create Arrows child" << std::endl;
+	Ogre::SceneNode *node = (Ogre::SceneNode*)Scene->getRootSceneNode()->createChildSceneNode("Arrows");
+	node->attachObject(ForcesArrows);
+	node->setPosition(coords);
+	if(force_direction != NULL && !isnanf(force_direction->m_x) && !isnanf(force_direction->m_y) && !isnanf(force_direction->m_z))
+		node->setScale(force_direction->m_x, force_direction->m_y, force_direction->m_z);
+
+	return node;
+}
+
+void BallGame::UpdateForceArrows(void)
+{
+	if(ForcesArrows == NULL)
+		return;
+	LOG << "Scale Force Arrows" << std::endl;
+	ForcesArrows->setScale(force_direction.m_x, force_direction.m_y, force_direction.m_z);
+}
+
 void BallGame::EditCase(CaseEntity *Entity)
 {
+	if(ForcesArrows != NULL)
+	{
+		LOG << "Remove Arrows child" << std::endl;
+		mSceneMgr->getRootSceneNode()->removeAndDestroyChild("Arrows");
+		ForcesArrows = NULL;
+	}
 	if(mode != Editing)
 		return;
 	if(UnderEditCase != NULL)
+	{
 		UnderEditCase->DisplaySelectedBox(false);
+	}
 	UnderEditCase = Entity;
 
 	if(UnderEditCase != NULL && PlacementMode != Delete)
@@ -2506,6 +2560,7 @@ void BallGame::EditCase(CaseEntity *Entity)
 			force_direction.m_x = case_force_direction->m_x;
 			force_direction.m_y = case_force_direction->m_y;
 			force_direction.m_z = case_force_direction->m_z;
+			ForcesArrows = UnderEditCase->CreateForceArrows(mSceneMgr);
 		}
 		LOG << "Update buttons by Mouse Pressed" << std::endl;
 		UpdateEditButtons();

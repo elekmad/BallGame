@@ -188,6 +188,7 @@ class CaseEntity : public BallGameEntity
     const dVector *getForceDirection(void) { return force_direction; }
     void AddBallColliding(BallEntity *ball);
 	void ApplyForceOnCollidingBalls(void);
+	Ogre::SceneNode *CreateForceArrows(Ogre::SceneManager *Scene);
 
 	protected :
 
@@ -323,6 +324,8 @@ class BallGame : public BaseApplication
 	float UnderEditCaseForce;
 	bool force_directed;
 	dVector force_direction;
+	Ogre::SceneNode *ForcesArrows;
+	void UpdateForceArrows(void);
     void UpdateEditButtons(void);
 
     enum RunningMode
@@ -472,13 +475,13 @@ class BallGame : public BaseApplication
 
     //Edit Case Buttons & Callbacks
     CEGUI::ToggleButton *CaseHasForceToggleB;
+    bool CaseHasForceToggleBCallback(const CEGUI::EventArgs &e);
     CEGUI::Editbox *CaseForceValueEditB;
     inline void CaseForceValueEditBSetText(float value);
     inline void CaseForceValueEditBSetText(double value);
     bool CaseForceValueEditBCallback(const CEGUI::EventArgs &event);
     CEGUI::ToggleButton *CaseHasForceDirectionToggleB;
-    bool ToggleForceCallback(const CEGUI::EventArgs &e);
-    bool ToggleForceDirectedCallback(const CEGUI::EventArgs &event);
+    bool CaseHasForceDirectionToggleBCallback(const CEGUI::EventArgs &event);
     CEGUI::Editbox *CaseForceDirectionXValueEditB;
     bool CaseForceDirectionXValueEditBMouseWheelCallback(const CEGUI::EventArgs &event);
     CEGUI::Editbox *CaseForceDirectionYValueEditB;
