@@ -2066,12 +2066,12 @@ void BallGame::SetupGame(void)
     CEGUI::Texture &guiTex = mRenderer->createTexture("textname", ptex);
 
     const CEGUI::Rectf rect(CEGUI::Vector2f(0.0f, 0.0f), guiTex.getOriginalDataSize());
-    CEGUI::BasicImage* image = (CEGUI::BasicImage*)( &CEGUI::ImageManager::getSingleton().create("BasicImage", "foobar"));
+    CEGUI::BasicImage* image = (CEGUI::BasicImage*)( &CEGUI::ImageManager::getSingleton().create("BasicImage", "ElementsThumbail"));
        image->setTexture(&guiTex);
        image->setArea(rect);
        image->setAutoScaled(CEGUI::ASM_Both);
 
-   ThumbnailWindow->setProperty("Image", "foobar");
+   ThumbnailWindow->setProperty("Image", "ElementsThumbail");
 
     ChangeLevel();
 
