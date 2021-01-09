@@ -409,6 +409,8 @@ class BallGame : public BaseApplication
 
     CEGUI::LayoutContainer* MainLayout;
 
+    //Main Menu Buttons
+    std::list<CEGUI::Window*> MainMenuButtons;
     CEGUI::PushButton *StopPhysicPushB;
     bool StopPhysicPushBCallback(const CEGUI::EventArgs &e);
     CEGUI::PushButton *EditModePushB;
@@ -419,7 +421,6 @@ class BallGame : public BaseApplication
     bool ChooseLevelComboBCallback(const CEGUI::EventArgs &e);
     void CreateThumbnail(String meshname);
     CEGUI::Editbox *NewLevelEditB;
-//    bool NewLevelEditBCallback(const CEGUI::EventArgs &e);
     CEGUI::PushButton *NewLevelCreateB;
     bool NewLevelCreateBCallback(const CEGUI::EventArgs &e);
     CEGUI::PushButton *SaveLevelPushB;
@@ -429,8 +430,10 @@ class BallGame : public BaseApplication
 
     //Edit buttons
 
-    CEGUI::Titlebar *EditingModeTitleBanner;
     CEGUI::Titlebar *LevelNameBanner;
+
+    //States Buttons
+    std::list<CEGUI::Window*> StatesButtons;
     CEGUI::Titlebar *StatesBanner;
     CEGUI::PushButton *SaveStatePushB;
     void SetupStatesButtons(void);
@@ -443,6 +446,8 @@ class BallGame : public BaseApplication
     bool DelStatePushBCallback(const CEGUI::EventArgs &e);
 
     //Add new elements Buttons & Callbacks
+    std::list<CEGUI::Window*> EditButtons;
+    CEGUI::Titlebar *EditingModeTitleBanner;
     CEGUI::Titlebar *AddElementTitleBanner;
     CEGUI::Combobox *ChooseTypeOfElementToAddB;
     bool ChooseTypeOfElementToAddBCallback(const CEGUI::EventArgs &e);
@@ -469,11 +474,13 @@ class BallGame : public BaseApplication
 
 
     //Edit Ball Buttons & Callbacks
+    std::list<CEGUI::Window*> EditBallButtons;
     CEGUI::Editbox *BallMassValueEditB;
     CEGUI::PushButton *ApplyMassChangesToBallPushB;
     bool ApplyMassChangesToBallPushBCallback(const CEGUI::EventArgs &event);
 
     //Edit Case Buttons & Callbacks
+    std::list<CEGUI::Window*> EditCaseButtons;
     CEGUI::ToggleButton *CaseHasForceToggleB;
     bool CaseHasForceToggleBCallback(const CEGUI::EventArgs &e);
     CEGUI::Editbox *CaseForceValueEditB;
