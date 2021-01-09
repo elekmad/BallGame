@@ -314,6 +314,7 @@ void BallGameEntity::setOgreNode(SceneNode *node)
 	OgreEntity = node;
 	if(node != NULL)
 	{
+		//No need to use derivated functions here, because group will be attached later !
 		node->setPosition(InitialPos);
 		node->setScale(InitialScale);
 		node->setOrientation(InitialOrientation);
@@ -617,6 +618,7 @@ BallGame::BallGame() :
 	mWindow = NULL;
 	LastHighligted = NULL;
 	UnderEditCase = NULL;
+	ForcesArrows = NULL;
 	UnderEditBall = NULL;
 	ToBePlacedEntity = NULL;
 	LastPlacedEntity = NULL;
