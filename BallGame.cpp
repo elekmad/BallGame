@@ -2741,29 +2741,30 @@ bool BallGame::mousePressed( const OIS::MouseEvent &arg, OIS::MouseButtonID id )
 				}
 				else
 				{
+					//Hide and deselect all that was showed and selected from last time.
+					MultiSelectionSetEmpty();
+					if(UnderEditBall != NULL)
+						EditBall(NULL);//Hide Ball Editing buttons;
+					if(UnderEditCase != NULL)
+						EditCase(NULL);//Hide Case Editing buttons;
+
+					//Then deal with what is to be shown and selected now.
 					if(HighlightedGroup == NULL)
 					{
-						MultiSelectionSetEmpty();
 						switch(LastHighligted->getType())
 						{
 						case Case :
 								LOG << "Edit Case by Mouse Pressed" << std::endl;
-								EditBall(NULL);//Hide Ball Editing buttons;
 								EditCase((CaseEntity*)LastHighligted);
 								break;
 						case Ball :
 								LOG << "Edit Ball by Mouse Pressed" << std::endl;
-								EditCase(NULL);//Hide Case Editing buttons;
 								EditBall((BallEntity*)LastHighligted);
 								break;
 						}
 					}
 					else
 					{
-						if(UnderEditBall != NULL)
-							EditBall(NULL);//Hide Ball Editing buttons;
-						if(UnderEditCase != NULL)
-							EditCase(NULL);//Hide Case Editing buttons;
 						std::list<BallGameEntity*> to_add;
 						HighlightedGroup->FillListWithChilds(to_add);
 						std::list<BallGameEntity*>::iterator iter(to_add.begin());
