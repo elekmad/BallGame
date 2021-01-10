@@ -3709,31 +3709,29 @@ void BallGame::ImportLevelFromJson(Node *parent)
 	myfile.close();
 	rapidjson::Document in;
 	in.Parse(buffer.str().c_str());
-	int idx = 0;
+
+	nb_entities = in["InternalCounter"].GetUint();
 	//Parsing Groups
-	rapidjson::Value &groups = in[idx++];
-	for(int cmpt = 0; cmpt < groups.Size(); cmpt++)
+	for(int cmpt = 0; cmpt < in["Groups"].GetArray().Size(); cmpt++)
 	{
 		GroupEntity *newGroup = new GroupEntity();
-		rapidjson::Value &groupjson = groups[cmpt];
+		rapidjson::Value &groupjson = in["Groups"].GetArray()[cmpt];
 		newGroup->ImportFromJson(groupjson, this);
 		AddGroup(newGroup);
 	}
 	//Parsing Cases
-	rapidjson::Value &cases = in[idx++];
-	for(int cmpt = 0; cmpt < cases.Size(); cmpt++)
+	for(int cmpt = 0; cmpt < in["Cases"].GetArray().Size(); cmpt++)
 	{
 		CaseEntity *newCase = new CaseEntity();
-		rapidjson::Value &casejson = cases[cmpt];
+		rapidjson::Value &casejson = in["Cases"].GetArray()[cmpt];
 		newCase->CreateFromJson(casejson, this, m_world, parent);
 		AddCase(newCase);
 	}
 	//Parsing Balls
-	rapidjson::Value &balls = in[idx++];
-	for(int cmpt = 0; cmpt < balls.Size(); cmpt++)
+	for(int cmpt = 0; cmpt < in["Balls"].GetArray().Size(); cmpt++)
 	{
 		BallEntity *newBall = new BallEntity();
-		rapidjson::Value &balljson = balls[cmpt];
+		rapidjson::Value &balljson = in["Balls"].GetArray()[cmpt];
 		newBall->CreateFromJson(balljson, this, m_world, parent);
 		AddBall(newBall);
 	}
@@ -3751,9 +3749,12 @@ void BallGame::ImportLevelFromJson(Node *parent)
 void BallGame::ExportLevelIntoJson(String &export_str)
 {
 	rapidjson::Document document;
-	document.SetArray();
+	document.SetObject();
 
 	rapidjson::Document::AllocatorType& allocator = document.GetAllocator();
+
+	document.AddMember("InternalCounter", nb_entities, allocator);
+
 	rapidjson::Value groups(rapidjson::kArrayType);
 
 	std::list<GroupEntity*>::iterator Git(Groups.begin());
@@ -3768,7 +3769,7 @@ void BallGame::ExportLevelIntoJson(String &export_str)
 		groups.PushBack(JGroup, allocator);
 	}
 
-	document.PushBack(groups, allocator);
+	document.AddMember("Groups", groups, allocator);
 
 	rapidjson::Value cases(rapidjson::kArrayType);
 
@@ -3785,7 +3786,7 @@ void BallGame::ExportLevelIntoJson(String &export_str)
 		cases.PushBack(JCase, allocator);
 	}
 
-	document.PushBack(cases, allocator);
+	document.AddMember("Cases", cases, allocator);
 
 	rapidjson::Value balls(rapidjson::kArrayType);
 
@@ -3801,7 +3802,7 @@ void BallGame::ExportLevelIntoJson(String &export_str)
 		balls.PushBack(JCase, allocator);
 	}
 
-	document.PushBack(balls, allocator);
+	document.AddMember("Balls", balls, allocator);
 
 	rapidjson::StringBuffer strbuf;
 	rapidjson::Writer<rapidjson::StringBuffer> writer(strbuf);

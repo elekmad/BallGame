@@ -360,7 +360,7 @@ class BallGame : public BaseApplication
     dFloat m_mainThreadPhysicsTimeAcc;
     bool m_asynchronousPhysicsUpdate;
 
-    long nb_entities;
+    unsigned long nb_entities;
     std::list<CaseEntity*> Cases;
     std::list<BallEntity*> Balls;
     std::list<GroupEntity*> Groups;
