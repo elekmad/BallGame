@@ -1158,7 +1158,7 @@ void BallGame::BuildImportLevelWindowContent(Node *parent)
 		Prefix = ImportLevelName;
 		Prefix += "-" + std::to_string(nb_entities);
 		Prefix += ":";
-		LOG << "Building Window Content for " << ImportLevelName << " (" << ImportLevelFilename << ")" << std::endl;
+		LOG << "Building Window Content for " << ImportLevelName << " (" << ImportLevelFilename << ") with Prefix " << Prefix << std::endl;
 		ImportLevelFromJson(parent, Prefix, true);
 	}
 }
@@ -1199,6 +1199,7 @@ bool BallGame::ImportLevelPushBCallback(const CEGUI::EventArgs &e)
 	GrpName += ":ImportGroup";
 	GroupEntity *ImportGroup = new GroupEntity(GrpName, mSceneMgr);
 
+	std::list<CaseEntity*> selected;
 	std::list<CaseEntity*>::iterator Citer(ImportLevelCases.begin());
 	while(Citer != ImportLevelCases.end())
 	{
@@ -1209,6 +1210,7 @@ bool BallGame::ImportLevelPushBCallback(const CEGUI::EventArgs &e)
 			Case->CreateNewtonBody(m_world);
 			AddCase(Case);
 			ImportGroup->AddChild(Case);
+			selected.push_back(Case);
 		}
 		Citer = ImportLevelCases.erase(Citer);
 	}
@@ -1241,6 +1243,16 @@ bool BallGame::ImportLevelPushBCallback(const CEGUI::EventArgs &e)
 	}
 
 	UnactivateLevelImportInterface();
+	MouseOverButton = false;
+	EditElementSetupButtons();
+	std::list<CaseEntity*>::iterator Siter(selected.begin());
+	while(Siter != selected.end())
+	{
+		CaseEntity *Case = *Siter;
+		if(Case != NULL)
+			ManageMultiSelectionSet((BallGameEntity*)Case);
+		Siter = selected.erase(Siter);
+	}
 	return true;
 }
 
@@ -1311,6 +1323,29 @@ void BallGame::DeleteElement(void)
 		}
 		ToBeDeletedEntity = NULL;
 	}
+	std::list<BallGameEntity*>::iterator delIter(UnderEditEntites.begin());
+	while(delIter != UnderEditEntites.end())
+	{
+		BallGameEntity *Entity = *delIter;
+		if(Entity != NULL)
+		{
+			if(Entity == LastHighligted)
+				LastHighligted = NULL;
+			switch(Entity->getType())
+			{
+			case Ball :
+				DeleteBall((BallEntity*)Entity);
+				break;
+			case Case :
+				DeleteCase((CaseEntity*)Entity);
+				break;
+			}
+		}
+		delIter = UnderEditEntites.erase(delIter);
+	}
+	GroupElementsB->setMutedState(true);
+	GroupElementsB->setVisible(false);
+	GroupElementsB->setMutedState(false);
 }
 
 bool BallGame::DeleteElementBCallback(const CEGUI::EventArgs &e)
@@ -1357,6 +1392,12 @@ bool BallGame::PlaceNewElementBCallback(const CEGUI::EventArgs &e)
 
 bool BallGame::EditElementBCallback(const CEGUI::EventArgs &e)
 {
+	EditElementSetupButtons();
+	return true;
+}
+
+void BallGame::EditElementSetupButtons(void)
+{
 	DeleteElementB->setDisabled(false);
 	PlaceNewElementB->setDisabled(false);
 	EditElementB->setDisabled(true);
@@ -1365,7 +1406,6 @@ bool BallGame::EditElementBCallback(const CEGUI::EventArgs &e)
 	ScaleElementB->setVisible(true);
 	GroupElementsB->setVisible(false);
 	SetMoveElement();
-	return true;
 }
 
 void BallGame::SetMoveElement(void)
@@ -1379,6 +1419,7 @@ void BallGame::SetMoveElement(void)
 		break;
 	case Delete :
 		UnprepareDeleteElement();
+		MultiSelectionSetEmpty();
 		break;
 	}
 	PlacementMode = EditMove;
@@ -1404,6 +1445,7 @@ void BallGame::SetMoveNewElement(void)
 		break;
 	case Delete :
 		UnprepareDeleteElement();
+		MultiSelectionSetEmpty();
 		break;
 	}
 	PlacementMode = PlaceMove;
@@ -2960,16 +3002,12 @@ bool BallGame::mousePressed( const OIS::MouseEvent &arg, OIS::MouseButtonID id )
     	case PlaceScale :
     		break;
     	case Delete :
-    		if(LastHighligted != NULL)
-    			PrepareDeleteElement(LastHighligted);
-    		break;
     	case EditMove :
     	case EditRotate :
     	case EditScale :
     		if(LastHighligted != NULL)
 			{
 				//Case Entity ?
-				LOG << "Edit by Mouse Pressed" << std::endl;
 				GroupEntity *HighlightedGroup = LastHighligted->getGroup();
 				if(MultiSelectionMode == true)
 				{
@@ -2992,25 +3030,35 @@ bool BallGame::mousePressed( const OIS::MouseEvent &arg, OIS::MouseButtonID id )
 				{
 					//Hide and deselect all that was showed and selected from last time.
 					MultiSelectionSetEmpty();
-					if(UnderEditBall != NULL)
-						EditBall(NULL);//Hide Ball Editing buttons;
-					if(UnderEditCase != NULL)
-						EditCase(NULL);//Hide Case Editing buttons;
+					if(PlacementMode != Delete)
+					{
+						if(UnderEditBall != NULL)
+							EditBall(NULL);//Hide Ball Editing buttons;
+						if(UnderEditCase != NULL)
+							EditCase(NULL);//Hide Case Editing buttons;
+					}
+					else
+						UnprepareDeleteElement();
 
 					//Then deal with what is to be shown and selected now.
 					if(HighlightedGroup == NULL)
 					{
-						switch(LastHighligted->getType())
+						if(PlacementMode != Delete)
 						{
-						case Case :
-								LOG << "Edit Case by Mouse Pressed" << std::endl;
-								EditCase((CaseEntity*)LastHighligted);
-								break;
-						case Ball :
-								LOG << "Edit Ball by Mouse Pressed" << std::endl;
-								EditBall((BallEntity*)LastHighligted);
-								break;
+							switch(LastHighligted->getType())
+							{
+							case Case :
+									LOG << "Edit Case by Mouse Pressed" << std::endl;
+									EditCase((CaseEntity*)LastHighligted);
+									break;
+							case Ball :
+									LOG << "Edit Ball by Mouse Pressed" << std::endl;
+									EditBall((BallEntity*)LastHighligted);
+									break;
+							}
 						}
+						else
+							PrepareDeleteElement(LastHighligted);
 					}
 					else
 					{
@@ -3797,7 +3845,11 @@ void BallGame::DeleteBall(BallEntity *Entity, std::list<BallEntity*>::iterator *
 	RemoveBall(Entity, iter);
 	GroupEntity *Group = Entity->getGroup();
 	if(Group != NULL)
-		Group->DelChild((BallGameEntity*)Entity);
+	{
+		bool tobedel = Group->DelChild((BallGameEntity*)Entity);
+		if(tobedel)
+			DeleteGroup(Group);
+	}
 	Entity->Finalize();
 	delete Entity;
 }
@@ -3827,7 +3879,11 @@ void BallGame::DeleteCase(CaseEntity *Entity, std::list<CaseEntity*>::iterator *
 	RemoveCase(Entity, iter);
 	GroupEntity *Group = Entity->getGroup();
 	if(Group != NULL)
-		Group->DelChild((BallGameEntity*)Entity);
+	{
+		bool tobedel = Group->DelChild((BallGameEntity*)Entity);
+		if(tobedel)
+			DeleteGroup(Group);
+	}
 	Entity->Finalize();
 	delete Entity;
 }
@@ -3985,7 +4041,9 @@ void BallGame::ImportLevelFromJson(Node *parent, String &nodeNamePrefix, bool is
 	rapidjson::Document in;
 	in.Parse(buffer.str().c_str());
 
-	nb_entities = in[COUNTER_JSON_FIELD].GetUint();
+	unsigned long nb_parsed = in[COUNTER_JSON_FIELD].GetUint();
+
+	nb_entities = std::max(nb_parsed, nb_entities);
 	//Parsing Groups
 	for(int cmpt = 0; cmpt < in[GROUPS_JSON_FIELD].GetArray().Size(); cmpt++)
 	{

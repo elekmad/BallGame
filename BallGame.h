@@ -477,6 +477,7 @@ class BallGame : public BaseApplication
     bool PlaceNewElementBCallback(const CEGUI::EventArgs &e);
     CEGUI::PushButton *EditElementB;
     bool EditElementBCallback(const CEGUI::EventArgs &e);
+    void EditElementSetupButtons(void);
     CEGUI::PushButton *DeleteElementB;
     bool DeleteElementBCallback(const CEGUI::EventArgs &e);
     CEGUI::PushButton *MoveElementB;
