@@ -47,7 +47,11 @@ void inline ButtonsSetVisible(std::list<CEGUI::Window*> &list, bool state)
 	{
 		CEGUI::Window *W = *(iter++);
 		if(W != NULL)
+		{
 			W->setVisible(state);
+			if(state == true)
+				W->moveToFront();
+		}
 	}
 }
 
@@ -119,17 +123,21 @@ void EquilibrateAABBAroundOrigin(Node *node)
 //	pos = node->getPosition();
 //	LOG << "After Compute Node " << pos.x << ", " << pos.y << ", " << pos.z << std::endl;
 
-	LOG << "After Equilibrate" << std::endl;
 	Node::ChildNodeIterator ite2(node->getChildIterator());
 	while ( ite2.hasMoreElements() )
 	{
 		   SceneNode* child = static_cast<SceneNode*>(ite2.getNext());
 		   child->translate(-1 * (min + max) / 2);
+		   Vector3 pos = child->getPosition(), abspos = child->_getDerivedPosition();
+		   LOG << "child " << child->getName() << " (" << child << ") Position : {" << pos.x << ", " << pos.y << ", " << pos.z << "}" << std::endl;
+		   LOG << "child " << child->getName() << " (" << child << ") AbsPosition : {" << abspos.x << ", " << abspos.y << ", " << abspos.z << "}" << std::endl;
 //	       Vector3 childmin = child->_getWorldAABB().getMinimum();
 //	       Vector3 childmax = child->_getWorldAABB().getMaximum();
 //	       LOG << "child min " << childmin.x << ", " << childmin.y << ", " << childmin.z << std::endl;
 //	       LOG << "child max " << childmax.x << ", " << childmax.y << ", " << childmax.z << std::endl;
 	}
+	Vector3 GrpPos = node->getPosition();
+	LOG << "After Equilibrate : Group(" << GrpPos.x << ", " << GrpPos.y << ", " << GrpPos.z << ")" << std::endl;
 }
 
 
@@ -314,10 +322,13 @@ void BallGameEntity::DisplaySelectedBox(bool display)
 
 void BallGameEntity::Finalize(void)
 {
-	NewtonDestroyBody(Body);
-	LOG << "Remove Ogre " << OgreEntity->getName() << std::endl;
-	SceneNode *parent = (SceneNode*)OgreEntity->getParent();
-	parent->removeAndDestroyChild(OgreEntity->getName());
+	setNewtonBody(NULL);
+	if(OgreEntity != NULL)
+	{
+		LOG << "Remove Ogre " << OgreEntity->getName() << std::endl;
+		SceneNode *parent = (SceneNode*)OgreEntity->getParent();
+		parent->removeAndDestroyChild(OgreEntity->getName());
+	}
 }
 
 void BallGameEntity::setOgreNode(SceneNode *node)
@@ -325,10 +336,12 @@ void BallGameEntity::setOgreNode(SceneNode *node)
 	OgreEntity = node;
 	if(node != NULL)
 	{
-		//No need to use derivated functions here, because group will be attached later !
-		node->setPosition(InitialPos);
+		node->_setDerivedPosition(InitialPos);
+//		LOG << "Entity " << node->getName() << " (" << node << ") set position {" << InitialPos.x << ", " << InitialPos.y << ", " << InitialPos.z << "}" << std::endl;
 		node->setScale(InitialScale);
-		node->setOrientation(InitialOrientation);
+//		LOG << "Entity" << this << "set scale {" << InitialScale.x << ", " << InitialScale.y << ", " << InitialScale.z << "}" << std::endl;
+		node->_setDerivedOrientation(InitialOrientation);
+//		LOG << "Entity" << this << "set orientation {" << InitialOrientation.x << ", " << InitialOrientation.y << ", " << InitialOrientation.z << ", " << InitialOrientation.w << "}" << std::endl;
 		((Ogre::Entity*)node->getAttachedObject(0))->getUserObjectBindings().setUserAny(Ogre::Any(this));
 	}
 }
@@ -383,8 +396,8 @@ void BallGameEntity::TransformCallback(const NewtonBody* body, const dFloat* mat
 
 		//scene->Lock(Entity->m_lock);
 		//scene->Unlock(Entity->m_lock);
-//		LOG << "Entity transform " << "position {" << NewPosition.x << ", " << NewPosition.y << ", " << NewPosition.z << "}";
-//		LOG << " Orientation {" << NewOrientation.w << ", " << NewOrientation.x << ", " << NewOrientation.y << ", " << NewOrientation.z << "}" << std::endl;
+//		LOG << "Entity " << Entity->getName() << " transform " << "position {" << NewPosition.x << ", " << NewPosition.y << ", " << NewPosition.z << "}" << std::endl;
+//		LOG << "Entity " << Entity->getName() << " Orientation {" << NewOrientation.w << ", " << NewOrientation.x << ", " << NewOrientation.y << ", " << NewOrientation.z << "}" << std::endl;
 		Entity->OgreEntity->_setDerivedPosition(NewPosition);
 		Entity->OgreEntity->_setDerivedOrientation(NewOrientation);
 	}
@@ -583,10 +596,6 @@ void CaseEntity::CreateNewtonBody(NewtonWorld *m_world)
 
 	NewtonCollision *collision_tree = NULL;
 	Matrix4 ogre_matrix;
-	if(type == CaseEntity::CaseType::typeRamp)
-		LOG << "Place a Ramp" << std::endl;
-	else
-		LOG << "Place a Box" << std::endl;
 
 	ogre_matrix.makeTransform(Vector3::ZERO, InitialScale, Quaternion::IDENTITY);
 	const MeshPtr ptr = ogreEntity->getMesh();
@@ -669,6 +678,8 @@ void BallGame::SetupNewton(void)
 GroupEntity::GroupEntity(String &name, Ogre::SceneManager* mSceneMgr)
 {
 	OgreEntity = (SceneNode*)mSceneMgr->getRootSceneNode()->createChild(name);
+	computed = false;
+	equilibrated = false;
 }
 
 void GroupEntity::Finalize(void)
@@ -692,11 +703,13 @@ void GroupEntity::AddChild(BallGameEntity* child)
 {
 	childs.push_back(child);
 	child->Group = this;
+	computed = false;
+	equilibrated = false;
 }
 
 bool GroupEntity::DelChild(BallGameEntity* child)
 {
-	LOG << "Child " << child << " Removed from Group" << std::endl;
+	LOG << "Child " << child->getName() << " Removed from Group" << std::endl;
 	child->Group = NULL;
 	Quaternion ChildOrientation = child->getAbsoluteOrientation();
 	child->OgreEntity->setOrientation(ChildOrientation);
@@ -704,6 +717,11 @@ bool GroupEntity::DelChild(BallGameEntity* child)
 	child->OgreEntity->setPosition(ChildPosition);
 	Vector3 ChildScale = child->getAbsoluteScale();
 	child->OgreEntity->setScale(ChildScale);
+
+//	Vector3 pos = child->getRelativePosition(), abspos = child->getAbsolutePosition();
+//	LOG << "Child " << child->getName() << " position {" << pos.x << ", " << pos.y << ", " << pos.z << "}" << std::endl;
+//	LOG << "Child " << child->getName() << " absposition {" << abspos.x << ", " << abspos.y << ", " << abspos.z << "}" << std::endl;
+
 	std::list<BallGameEntity*>::iterator iter(childs.begin());
 	while(iter != childs.end())
 	{
@@ -734,22 +752,31 @@ void GroupEntity::FillListWithChilds(std::list<BallGameEntity*> &list)
 
 void GroupEntity::ComputeChilds(void)
 {
+	if(computed)
+		return;
 	std::list<BallGameEntity*>::iterator iter(childs.begin());
 	while(iter != childs.end())
 	{
 		BallGameEntity *Entity = *(iter++);
 		if(Entity == NULL)
 			continue;
-		LOG << "Child " << Entity << " Added to Group" << std::endl;
+		Vector3 ChildPos = Entity->getAbsolutePosition();
+		LOG << "Child " << Entity->getName() << " (" << Entity << ") Added to Group" << std::endl;
 		Entity->OgreEntity->getParentSceneNode()->removeChild(Entity->OgreEntity);
 		OgreEntity->addChild(Entity->OgreEntity);
+		Entity->setAbsolutePosition(ChildPos);//Must conserve position will adding into group !!!!
 	}
+	computed = true;
 }
 
 void GroupEntity::ComputeAndEquilibrateChilds(void)
 {
 	ComputeChilds();
-	EquilibrateAABBAroundOrigin((Node*)OgreEntity);
+	if(equilibrated == false)
+	{
+		EquilibrateAABBAroundOrigin((Node*)OgreEntity);
+		equilibrated = true;
+	}
 }
 
 void GroupEntity::ExportToJson(rapidjson::Value &v, rapidjson::Document::AllocatorType& allocator)
@@ -774,9 +801,8 @@ void GroupEntity::ExportToJson(rapidjson::Value &v, rapidjson::Document::Allocat
 	v.AddMember("OrientationW", InitialOrientation.w, allocator);
 }
 
-void GroupEntity::ImportFromJson(rapidjson::Value &v, BallGame *Game)
+void GroupEntity::ImportFromJson(rapidjson::Value &v, Node *parent, String &nodeNamePrefix)
 {
-	Ogre::SceneManager *mSceneMgr = Game->getSceneManager();
 	Vector3 InitialPos, InitialScale;
 	Quaternion InitialOrientation;
 	InitialPos.x = v["PosX"].GetFloat();
@@ -790,8 +816,11 @@ void GroupEntity::ImportFromJson(rapidjson::Value &v, BallGame *Game)
 	InitialOrientation.z = v["OrientationZ"].GetFloat();
 	InitialOrientation.w = v["OrientationW"].GetFloat();
 
-	const char *nodename = v["NodeName"].GetString();
-	OgreEntity = mSceneMgr->getRootSceneNode()->createChildSceneNode(nodename, InitialPos);
+	const char *nodename_c = v["NodeName"].GetString();
+	String nodeName = nodeNamePrefix;
+	nodeName += nodename_c;
+	OgreEntity = (Ogre::SceneNode*)parent->createChild(nodeName, InitialPos);
+//	LOG << "Group " << OgreEntity->getName() << " (" << OgreEntity << ") set Position {" << InitialPos.x << ", " << InitialPos.y << ", " << InitialPos.z << "}" << std::endl;
 	OgreEntity->setPosition(InitialPos);
 	OgreEntity->setScale(InitialScale);
 	OgreEntity->setOrientation(InitialOrientation);
@@ -1091,6 +1120,140 @@ void BallGame::SwitchEditMode(void)
 		ButtonsSetVisible(EditCaseButtons, false);
 		ButtonsSetVisible(EditBallButtons, false);
 	}
+}
+
+void BallGame::BuildImportLevelWindowContent(Node *parent)
+{
+	mImportLevelSceneMgr->getRootSceneNode()->removeAndDestroyAllChildren();
+	std::list<GroupEntity*>::iterator Giter(ImportLevelGroups.begin());
+	while(Giter != ImportLevelGroups.end())
+	{
+		GroupEntity *Grp = *Giter;
+		if(Grp != NULL)
+			delete Grp;
+		Giter = ImportLevelGroups.erase(Giter);
+	}
+
+	std::list<CaseEntity*>::iterator Citer(ImportLevelCases.begin());
+	while(Citer != ImportLevelCases.end())
+	{
+		CaseEntity *Grp = *Citer;
+		if(Grp != NULL)
+			delete Grp;
+		Citer = ImportLevelCases.erase(Citer);
+	}
+
+	std::list<BallEntity*>::iterator Biter(ImportLevelBalls.begin());
+	while(Biter != ImportLevelBalls.end())
+	{
+		BallEntity *Grp = *Biter;
+		if(Grp != NULL)
+			delete Grp;
+		Biter = ImportLevelBalls.erase(Biter);
+	}
+
+	if(parent != NULL && ImportLevelName.empty() == false && ImportLevelFilename.empty() == false)
+	{
+		String Prefix;
+		Prefix = ImportLevelName;
+		Prefix += "-" + std::to_string(nb_entities);
+		Prefix += ":";
+		LOG << "Building Window Content for " << ImportLevelName << " (" << ImportLevelFilename << ")" << std::endl;
+		ImportLevelFromJson(parent, Prefix, true);
+	}
+}
+
+inline void BallGame::ActivateLevelImportInterface(void)
+{
+	ButtonsSetVisible(ImportLevelButtons, true);
+	ImportLevelActivateInterfacePushB->setText("-");
+}
+
+inline void BallGame::UnactivateLevelImportInterface(void)
+{
+	ButtonsSetVisible(ImportLevelButtons, false);
+	ImportLevelActivateInterfacePushB->setText("+");
+	ImportLevelName.clear();
+	ImportLevelFilename.clear();
+	BuildImportLevelWindowContent(NULL);
+}
+
+bool BallGame::ImportLevelActivateInterfacePushBCallback(const CEGUI::EventArgs &e)
+{
+	if(ImportLevelActivateInterfacePushB->getText() == "+")//Menu not activated
+		ActivateLevelImportInterface();
+	else
+		UnactivateLevelImportInterface();
+	return true;
+}
+
+bool BallGame::ImportLevelPushBCallback(const CEGUI::EventArgs &e)
+{
+	//Clear import level scene manager content
+	BuildImportLevelWindowContent(NULL);
+	//Re import content into main manager !
+	BuildImportLevelWindowContent((Node*)mSceneMgr->getRootSceneNode());
+
+	String GrpName = ImportLevelName;
+	GrpName += "-" + std::to_string(nb_entities);
+	GrpName += ":ImportGroup";
+	GroupEntity *ImportGroup = new GroupEntity(GrpName, mSceneMgr);
+
+	std::list<CaseEntity*>::iterator Citer(ImportLevelCases.begin());
+	while(Citer != ImportLevelCases.end())
+	{
+		CaseEntity *Case = *Citer;
+		if(Case != NULL)
+		{
+//			LOG << "Import of Case " << Case << " '" << Case->getName() << "'" << std::endl;
+			Case->CreateNewtonBody(m_world);
+			AddCase(Case);
+			ImportGroup->AddChild(Case);
+		}
+		Citer = ImportLevelCases.erase(Citer);
+	}
+
+	ImportGroup->ComputeAndEquilibrateChilds();
+	AddGroup(ImportGroup);
+
+	std::list<GroupEntity*>::iterator Giter(ImportLevelGroups.begin());
+	while(Giter != ImportLevelGroups.end())
+	{
+		GroupEntity *Group = *Giter;
+		if(Group != NULL)
+		{
+			Group->Finalize();
+			delete Group;
+		}
+		Giter = ImportLevelGroups.erase(Giter);
+	}
+
+	std::list<BallEntity*>::iterator Biter(ImportLevelBalls.begin());
+	while(Biter != ImportLevelBalls.end())
+	{
+		BallEntity *Ball = *Biter;
+		if(Ball != NULL)
+		{
+			Ball->Finalize();
+			delete Ball;
+		}
+		Biter = ImportLevelBalls.erase(Biter);
+	}
+
+	UnactivateLevelImportInterface();
+	return true;
+}
+
+bool BallGame::ChooseLevelToImportComboBCallback(const CEGUI::EventArgs &e)
+{
+	CEGUI::ListboxTextItem *item = (CEGUI::ListboxTextItem*)ChooseLevelToImportComboB->getSelectedItem();
+	if(item != NULL)
+	{
+		ImportLevelFilename = *(String*)item->getUserData();
+		ImportLevelName = item->getText().c_str();
+		BuildImportLevelWindowContent((Node*)mImportLevelSceneMgr->getRootSceneNode());
+	}
+	return true;
 }
 
 void BallGame::CreateThumbnail(String meshname)
@@ -1638,9 +1801,6 @@ void BallGame::SetupGUI(void)
     MainLayout->addChild(NewLevelEditB);
     ButtonSetAddButton(MainMenuButtons, NewLevelEditB);
 
-//    NewLevelEditB->subscribeEvent(CEGUI::Editbox::EventClicked,
-//    		CEGUI::Event::Subscriber(&BallGame::SaveLevelPushBCallback, this));
-
     SetWindowsPosNearToOther(NewLevelEditB, EditModePushB, 0, 2);// Be Carefull, Combobox size is size with combo expanded !
 
     NewLevelCreateB = CreateNewGUIComponent<CEGUI::PushButton>("OgreTray/Button");
@@ -1764,9 +1924,74 @@ void BallGame::SetupGUI(void)
     MainLayout->addChild(EditingModeTitleBanner);
     ButtonSetAddButton(EditButtons, EditingModeTitleBanner);
 
-    SetWindowsPosNearToOther(EditingModeTitleBanner, EditingModeTitleBanner, 0, 1);
+    SetWindowsPosNearToOther(EditingModeTitleBanner, LevelNameBanner, 0, 1);
 
-    // Add new Element GUI
+    ///ImportLevel
+    ImportLevelActivateInterfacePushB = CreateNewGUIComponent<CEGUI::PushButton>("OgreTray/Button");
+    ImportLevelActivateInterfacePushB->setText("+");
+    ImportLevelActivateInterfacePushB->setSize(CEGUI::USize(CEGUI::UDim(0, 30), CEGUI::UDim(0, 30)));
+    ImportLevelActivateInterfacePushB->setVerticalAlignment(CEGUI::VA_TOP);
+    ImportLevelActivateInterfacePushB->setHorizontalAlignment(CEGUI::HA_CENTRE);
+
+    MainLayout->addChild(ImportLevelActivateInterfacePushB);
+    ButtonSetAddButton(EditButtons, ImportLevelActivateInterfacePushB);
+
+    ImportLevelActivateInterfacePushB->subscribeEvent(CEGUI::PushButton::EventClicked,
+    		CEGUI::Event::Subscriber(&BallGame::ImportLevelActivateInterfacePushBCallback, this));
+    SetWindowsPosNearToOther(ImportLevelActivateInterfacePushB, EditingModeTitleBanner, 1, 0);
+
+
+    ChooseLevelToImportComboB = CreateNewGUIComponent<CEGUI::Combobox>("OgreTray/Combobox");
+    ChooseLevelToImportComboB->setVerticalAlignment(CEGUI::VA_TOP);
+    ChooseLevelToImportComboB->setHorizontalAlignment(CEGUI::HA_CENTRE);
+	for (size_t cmpt = 0; cmpt < ChooseLevelComboB->getItemCount(); cmpt++)//All levels that can be imported are levels that can be loaded !
+	{
+		CEGUI::ListboxTextItem *item = (CEGUI::ListboxTextItem*)ChooseLevelComboB->getListboxItemFromIndex(cmpt);
+		String *str = (String*)item->getUserData();
+		CEGUI::ListboxTextItem *newitem = new CEGUI::ListboxTextItem(item->getText());
+		String *newstr = new String(str->c_str());
+		newitem->setUserData(newstr);
+		ChooseLevelToImportComboB->addItem((CEGUI::ListboxItem*)newitem);
+	}
+    ChooseLevelToImportComboB->setSize(CEGUI::USize(CEGUI::UDim(0, 150), CEGUI::UDim(0, 40 * (ChooseLevelComboB->getItemCount() + 1))));
+
+    MainLayout->addChild(ChooseLevelToImportComboB);
+    ButtonSetAddButton(ImportLevelButtons, ChooseLevelToImportComboB);
+
+    ChooseLevelToImportComboB->subscribeEvent(CEGUI::Combobox::EventListSelectionAccepted,
+    		CEGUI::Event::Subscriber(&BallGame::ChooseLevelToImportComboBCallback, this));
+
+    SetWindowsPosNearToOther(ChooseLevelToImportComboB, EditingModeTitleBanner, 0, 1);
+
+
+    ImportLevelPushB = CreateNewGUIComponent<CEGUI::PushButton>("OgreTray/Button");
+    ImportLevelPushB->setText("Import");
+    ImportLevelPushB->setSize(CEGUI::USize(CEGUI::UDim(0, 150), CEGUI::UDim(0, 30)));
+    ImportLevelPushB->setVerticalAlignment(CEGUI::VA_TOP);
+    ImportLevelPushB->setHorizontalAlignment(CEGUI::HA_CENTRE);
+
+    MainLayout->addChild(ImportLevelPushB);
+    ButtonSetAddButton(ImportLevelButtons, ImportLevelPushB);
+
+    ImportLevelPushB->subscribeEvent(CEGUI::PushButton::EventClicked,
+    		CEGUI::Event::Subscriber(&BallGame::ImportLevelPushBCallback, this));
+    SetWindowsPosNearToOther(ImportLevelPushB, ChooseLevelToImportComboB, 1, 0);
+
+
+    ImportLevelWindow = CreateNewGUIComponent<CEGUI::Window>("OgreTray/StaticImage", "ImportLevelWindow");
+    ImportLevelWindow->setSize(CEGUI::USize(CEGUI::UDim(0.8, 0),
+ 						   CEGUI::UDim(0.8, 0)));
+    ImportLevelWindow->setVerticalAlignment(CEGUI::VA_TOP);
+    ImportLevelWindow->setHorizontalAlignment(CEGUI::HA_CENTRE);
+
+    ButtonSetAddButton(ImportLevelButtons, ImportLevelWindow);
+
+    SetWindowsPosNearToOther(ImportLevelWindow, EditingModeTitleBanner, 0, 2);
+
+    sheet->addChild(ImportLevelWindow);
+
+
+    /// Add new Element GUI
     AddElementTitleBanner = CreateNewGUIComponent<CEGUI::Titlebar>("OgreTray/Titlebar");
     AddElementTitleBanner->setText("Add");
     AddElementTitleBanner->setSize(CEGUI::USize(CEGUI::UDim(0, 150), CEGUI::UDim(0, 30)));
@@ -1807,7 +2032,7 @@ void BallGame::SetupGUI(void)
     MainLayout->addChild(ChooseTypeOfElementToAddB);
     ButtonSetAddButton(EditButtons, ChooseTypeOfElementToAddB);
 
-    ThumbnailWindow = CreateNewGUIComponent<CEGUI::Window>("OgreTray/StaticImage", "RTTWindow");
+    ThumbnailWindow = CreateNewGUIComponent<CEGUI::Window>("OgreTray/StaticImage", "ThumbnailWindow");
     ThumbnailWindow->setSize(CEGUI::USize(CEGUI::UDim(0, 150),
  						   CEGUI::UDim(0, 150)));
     ThumbnailWindow->setVerticalAlignment(CEGUI::VA_TOP);
@@ -1918,7 +2143,7 @@ void BallGame::SetupGUI(void)
     SetWindowsPosNearToOther(GroupElementsB, ScaleElementB, 0, 1);
 
 
-    // Edit Case GUI
+    /// Edit Case GUI
 
     CaseHasForceToggleB = CreateNewGUIComponent<CEGUI::ToggleButton>("OgreTray/Checkbox");
     CaseHasForceToggleB->setText("Has Force");
@@ -2032,7 +2257,7 @@ void BallGame::SetupGUI(void)
     SetWindowsPosNearToOther(CaseForceDirectionZValueEditB, CaseForceDirectionYValueEditB, 1, 0);
     SetWindowsPosNearToOther(NormalizeCaseForceDirectionPushB, CaseForceDirectionZValueEditB, 1, 0);
 
-    // Edit Ball GUI
+    /// Edit Ball GUI
 
     BallMassValueEditB = CreateNewGUIComponent<CEGUI::Editbox>("OgreTray/Editbox");
     BallMassValueEditB->setSize(CEGUI::USize(CEGUI::UDim(0, 50), CEGUI::UDim(0, 30)));
@@ -2070,27 +2295,51 @@ void BallGame::SetupGame(void)
     lightNode->attachObject(light);
     lightNode->setPosition(20, 80, 50);
 
+    SetCam(-184, -253, 352);
+    mCamera->setOrientation(Ogre::Quaternion(0.835422, 0.393051, -0.238709, -0.300998));
+
+
+    //Thumbnail Window
 	mThumbnailSceneMgr->setAmbientLight(ColourValue(0.5, 0.5, 0.5));
 
-    light = mThumbnailSceneMgr->createLight("MainThumbnailLight");
-    lightNode = mThumbnailSceneMgr->getRootSceneNode()->createChildSceneNode("MainThumbnailLight");
+	light = mThumbnailSceneMgr->createLight("MainThumbnailLight");
+	lightNode = mThumbnailSceneMgr->getRootSceneNode()->createChildSceneNode("MainThumbnailLight");
+	lightNode->attachObject(light);
+	lightNode->setPosition(20, 80, 50);
+
+    mThumbnailCamera->setPosition(-184, -253, 352);
+    mThumbnailCamera->setOrientation(Ogre::Quaternion(0.835422, 0.393051, -0.238709, -0.300998));
+
+    CEGUI::Texture &guiThumbnailTex = mRenderer->createTexture("Thumbnailtexture", pThumbnailtex);
+
+    const CEGUI::Rectf Thumbnailrect(CEGUI::Vector2f(0.0f, 0.0f), guiThumbnailTex.getOriginalDataSize());
+    CEGUI::BasicImage* Thumbnailimage = (CEGUI::BasicImage*)( &CEGUI::ImageManager::getSingleton().create("BasicImage", "ElementsThumbnail"));
+		Thumbnailimage->setTexture(&guiThumbnailTex);
+		Thumbnailimage->setArea(Thumbnailrect);
+		Thumbnailimage->setAutoScaled(CEGUI::ASM_Both);
+
+	ThumbnailWindow->setProperty("Image", "ElementsThumbnail");
+
+	//ImportLevel Window
+	mImportLevelSceneMgr->setAmbientLight(ColourValue(0.5, 0.5, 0.5));
+
+    light = mImportLevelSceneMgr->createLight("MainImportLevelLight");
+    lightNode = mImportLevelSceneMgr->getRootSceneNode()->createChildSceneNode("MainImportLevelLight");
     lightNode->attachObject(light);
     lightNode->setPosition(20, 80, 50);
 
-    SetCam(-184, -253, 352);
-    mThumbnailCamera->setPosition(-184, -253, 352);
-    mCamera->setOrientation(Ogre::Quaternion(0.835422, 0.393051, -0.238709, -0.300998));
-    mThumbnailCamera->setOrientation(Ogre::Quaternion(0.835422, 0.393051, -0.238709, -0.300998));
+	mImportLevelCamera->setPosition(-184, -253, 352);
+	mImportLevelCamera->setOrientation(Ogre::Quaternion(0.835422, 0.393051, -0.238709, -0.300998));
 
-    CEGUI::Texture &guiTex = mRenderer->createTexture("textname", ptex);
+	CEGUI::Texture &guiImportLevelTex = mRenderer->createTexture("ImportLeveltexture", pImportLeveltex);
 
-    const CEGUI::Rectf rect(CEGUI::Vector2f(0.0f, 0.0f), guiTex.getOriginalDataSize());
-    CEGUI::BasicImage* image = (CEGUI::BasicImage*)( &CEGUI::ImageManager::getSingleton().create("BasicImage", "ElementsThumbail"));
-       image->setTexture(&guiTex);
-       image->setArea(rect);
-       image->setAutoScaled(CEGUI::ASM_Both);
+	const CEGUI::Rectf ImportLevelrect(CEGUI::Vector2f(0.0f, 0.0f), guiImportLevelTex.getOriginalDataSize());
+	CEGUI::BasicImage* ImportLevelimage = (CEGUI::BasicImage*)( &CEGUI::ImageManager::getSingleton().create("BasicImage", "ImportLevelWindow"));
+	   ImportLevelimage->setTexture(&guiImportLevelTex);
+	   ImportLevelimage->setArea(ImportLevelrect);
+	   ImportLevelimage->setAutoScaled(CEGUI::ASM_Both);
 
-   ThumbnailWindow->setProperty("Image", "ElementsThumbail");
+	ImportLevelWindow->setProperty("Image", "ImportLevelWindow");
 
     ChangeLevel();
 
@@ -2793,7 +3042,7 @@ bool BallGame::mouseReleased( const OIS::MouseEvent &arg, OIS::MouseButtonID id 
 
 inline void MoveNode(Node *node, Vector3 &addPos)
 {
-	LOG << "Move Node " << node << " by " << addPos.x << ", " << addPos.y << ", " << addPos.z << std::endl;
+	LOG << "Move Node " << node->getName() << " by " << addPos.x << ", " << addPos.y << ", " << addPos.z << std::endl;
 	Vector3 pos = node->getPosition();
 	pos += addPos;
 	node->setPosition(pos);
@@ -3330,78 +3579,95 @@ void BallGame::SetLevel(String &level_name, String &levelFilename)
 	LevelNameBanner->setText((CEGUI::utf8*)Level.c_str());
 }
 
+#define MASS_JSON_FIELD "Mass"
+
 void BallEntity::ExportToJson(rapidjson::Value &v, rapidjson::Document::AllocatorType& allocator)
 {
 	BallGameEntity::ExportToJson(v, allocator);
-	v.AddMember("Mass", InitialMass, allocator);
+	v.AddMember(MASS_JSON_FIELD, InitialMass, allocator);
 }
+
+#define CASETYPE_JSON_FIELD "Type"
+#define FORCEPRESENT_JSON_FIELD "ForcePresent"
+#define FORCEVALUE_JSON_FIELD "ForceValue"
+#define FORCEDIRECTIONPRESENT_JSON_FIELD "ForceDirectionPresent"
+#define FORCEDIRECTIONX_JSON_FIELD "ForceDirectionX"
+#define FORCEDIRECTIONY_JSON_FIELD "ForceDirectionY"
+#define FORCEDIRECTIONZ_JSON_FIELD "ForceDirectionZ"
+#define FORCEDIRECTIONW_JSON_FIELD "ForceDirectionW"
 
 void CaseEntity::ExportToJson(rapidjson::Value &v, rapidjson::Document::AllocatorType& allocator)
 {
 	BallGameEntity::ExportToJson(v, allocator);
-	v.AddMember("Type", (int)type, allocator);
+	v.AddMember(CASETYPE_JSON_FIELD, (int)type, allocator);
 	if(isnan(force_to_apply))
-		v.AddMember("ForcePresent", false, allocator);
+		v.AddMember(FORCEPRESENT_JSON_FIELD, false, allocator);
 	else
 	{
-		v.AddMember("ForcePresent", true, allocator);
-		v.AddMember("ForceValue", force_to_apply, allocator);
+		v.AddMember(FORCEPRESENT_JSON_FIELD, true, allocator);
+		v.AddMember(FORCEVALUE_JSON_FIELD, force_to_apply, allocator);
 		if(force_direction == NULL)
-			v.AddMember("ForceDirectionPresent", false, allocator);
+			v.AddMember(FORCEDIRECTIONPRESENT_JSON_FIELD, false, allocator);
 		else
 		{
 			dVector *force_dir = force_direction;
-			v.AddMember("ForceDirectionPresent", true, allocator);
-			v.AddMember("ForceDirectionX", force_dir->m_x, allocator);
-			v.AddMember("ForceDirectionY", force_dir->m_y, allocator);
-			v.AddMember("ForceDirectionZ", force_dir->m_z, allocator);
-			v.AddMember("ForceDirectionW", force_dir->m_w, allocator);
+			v.AddMember(FORCEDIRECTIONPRESENT_JSON_FIELD, true, allocator);
+			v.AddMember(FORCEDIRECTIONX_JSON_FIELD, force_dir->m_x, allocator);
+			v.AddMember(FORCEDIRECTIONY_JSON_FIELD, force_dir->m_y, allocator);
+			v.AddMember(FORCEDIRECTIONZ_JSON_FIELD, force_dir->m_z, allocator);
+			v.AddMember(FORCEDIRECTIONW_JSON_FIELD, force_dir->m_w, allocator);
 		}
 	}
 }
 
-void CaseEntity::CreateFromJson(rapidjson::Value &v, BallGame *Game, NewtonWorld *m_world, Node *parent)
+void CaseEntity::CreateFromJson(rapidjson::Value &v, BallGame *Game, NewtonWorld *m_world, Node *parent, String &nodeNamePrefix)
 {
-	ImportFromJson(v, Game, parent);
-	dVector NewtonBodyLocation;
-	dVector NewtonBodySize;
-	NewtonBody *newtonBody;
-	Entity* ogreEntity = (Ogre::Entity*)OgreEntity->getAttachedObject(0);
-	dMatrix *casematrix = PrepareNewtonBody(NewtonBodyLocation, NewtonBodySize);
-	NewtonCollision *collision_tree = NULL;
+	ImportFromJson(v, Game, parent, nodeNamePrefix);
 
-	Matrix4 ogre_matrix;
-	ogre_matrix.makeTransform(Vector3::ZERO, InitialScale, Quaternion::IDENTITY);
-	const MeshPtr ptr = ogreEntity->getMesh();
-	collision_tree = ParseEntity(m_world, ptr, ogre_matrix);
+//	if(type == CaseEntity::CaseType::typeRamp)
+//		LOG << "Place a Ramp" << std::endl;
+//	else
+//		LOG << "Place a Box" << std::endl;
 
-	int defaultMaterialID = NewtonMaterialGetDefaultGroupID (m_world);
-	newtonBody = WorldAddCase(m_world, NewtonBodySize, defaultMaterialID, *casematrix, collision_tree);
-
-	setNewtonBody(newtonBody);
+	if(m_world)
+		CreateNewtonBody(m_world);
 }
 
-void CaseEntity::ImportFromJson(rapidjson::Value &v, BallGame *Game, Node *parent)
+void CaseEntity::ImportFromJson(rapidjson::Value &v, BallGame *Game, Node *parent, String &nodeNamePrefix)
 {
-	BallGameEntity::ImportFromJson(v, Game, parent);
+	BallGameEntity::ImportFromJson(v, Game, parent, nodeNamePrefix);
 	float force_json =  NAN;
 	dVector *direction_json = NULL;
-	type = (CaseEntity::CaseType)v["Type"].GetInt();
-	if(v["ForcePresent"].GetBool() == true)
+	type = (CaseEntity::CaseType)v[CASETYPE_JSON_FIELD].GetInt();
+	if(v[FORCEPRESENT_JSON_FIELD].GetBool() == true)
 	{
-		force_json = v["ForceValue"].GetFloat();
-		if(v["ForceDirectionPresent"].GetBool() == true)
+		force_json = v[FORCEVALUE_JSON_FIELD].GetFloat();
+		if(v[FORCEDIRECTIONPRESENT_JSON_FIELD].GetBool() == true)
 		{
 			float xjson, yjson, zjson, wjson;
-			xjson = v["ForceDirectionX"].GetFloat();
-			yjson = v["ForceDirectionY"].GetFloat();
-			zjson = v["ForceDirectionZ"].GetFloat();
-			wjson = v["ForceDirectionW"].GetFloat();
+			xjson = v[FORCEDIRECTIONX_JSON_FIELD].GetFloat();
+			yjson = v[FORCEDIRECTIONY_JSON_FIELD].GetFloat();
+			zjson = v[FORCEDIRECTIONZ_JSON_FIELD].GetFloat();
+			wjson = v[FORCEDIRECTIONW_JSON_FIELD].GetFloat();
 			direction_json = new dVector(xjson, yjson, zjson, wjson);
 		}
 	}
 	SetForceToApply(force_json, direction_json);
 }
+
+#define MESH_JSON_FIELD "Mesh"
+#define NODENAME_JSON_FIELD "NodeName"
+#define GROUPNAME_JSON_FIELD "GroupName"
+#define POSITIONX_JSON_FIELD "PosX"
+#define POSITIONY_JSON_FIELD "PosY"
+#define POSITIONZ_JSON_FIELD "PosZ"
+#define SCALEX_JSON_FIELD "ScaleX"
+#define SCALEY_JSON_FIELD "ScaleY"
+#define SCALEZ_JSON_FIELD "ScaleZ"
+#define ORIENTATIONX_JSON_FIELD "OrientationX"
+#define ORIENTATIONY_JSON_FIELD "OrientationY"
+#define ORIENTATIONZ_JSON_FIELD "OrientationZ"
+#define ORIENTATIONW_JSON_FIELD "OrientationW"
 
 void BallGameEntity::ExportToJson(rapidjson::Value &v, rapidjson::Document::AllocatorType& allocator)
 {
@@ -3409,85 +3675,80 @@ void BallGameEntity::ExportToJson(rapidjson::Value &v, rapidjson::Document::Allo
 	const char *cname = (const char*)entity->getMesh().get()->getName().c_str();
 	rapidjson::Value name;
 	name.SetString(cname, allocator);
-	v.AddMember("Mesh", name, allocator);
+	v.AddMember(MESH_JSON_FIELD, name, allocator);
 	const char *ogrename = (const char*)OgreEntity->getName().c_str();
 	name.SetString(ogrename, allocator);
-	v.AddMember("NodeName", name, allocator);
+	v.AddMember(NODENAME_JSON_FIELD, name, allocator);
 	if(Group != NULL)
 	{
 		rapidjson::Value gname;
 		const char *groupname = (const char*)Group->getName().c_str();
 		gname.SetString(groupname, allocator);
-		v.AddMember("GroupName", gname, allocator);
+		v.AddMember(GROUPNAME_JSON_FIELD, gname, allocator);
 	}
 	else
-		v.AddMember("GroupName", "", allocator);
-	v.AddMember("PosX", InitialPos.x, allocator);
-	v.AddMember("PosY", InitialPos.y, allocator);
-	v.AddMember("PosZ", InitialPos.z, allocator);
-	v.AddMember("ScaleX", InitialScale.x, allocator);
-	v.AddMember("ScaleY", InitialScale.y, allocator);
-	v.AddMember("ScaleZ", InitialScale.z, allocator);
-	v.AddMember("OrientationX", InitialOrientation.x, allocator);
-	v.AddMember("OrientationY", InitialOrientation.y, allocator);
-	v.AddMember("OrientationZ", InitialOrientation.z, allocator);
-	v.AddMember("OrientationW", InitialOrientation.w, allocator);
+		v.AddMember(GROUPNAME_JSON_FIELD, "", allocator);
+	v.AddMember(POSITIONX_JSON_FIELD, InitialPos.x, allocator);
+	v.AddMember(POSITIONY_JSON_FIELD, InitialPos.y, allocator);
+	v.AddMember(POSITIONZ_JSON_FIELD, InitialPos.z, allocator);
+	v.AddMember(SCALEX_JSON_FIELD, InitialScale.x, allocator);
+	v.AddMember(SCALEY_JSON_FIELD, InitialScale.y, allocator);
+	v.AddMember(SCALEZ_JSON_FIELD, InitialScale.z, allocator);
+	v.AddMember(ORIENTATIONX_JSON_FIELD, InitialOrientation.x, allocator);
+	v.AddMember(ORIENTATIONY_JSON_FIELD, InitialOrientation.y, allocator);
+	v.AddMember(ORIENTATIONZ_JSON_FIELD, InitialOrientation.z, allocator);
+	v.AddMember(ORIENTATIONW_JSON_FIELD, InitialOrientation.w, allocator);
 }
 
-void BallEntity::CreateFromJson(rapidjson::Value &v, BallGame *Game, NewtonWorld *m_world, Node *parent)
+void BallEntity::CreateFromJson(rapidjson::Value &v, BallGame *Game, NewtonWorld *m_world, Node *parent, String &nodeNamePrefix)
 {
-	ImportFromJson(v, Game, parent);
-	dVector NewtonBodyLocation;
-	dVector NewtonBodySize;
-	NewtonBody *BallBody;
+	ImportFromJson(v, Game, parent, nodeNamePrefix);
 
-	dMatrix *ballmatrix = PrepareNewtonBody(NewtonBodyLocation, NewtonBodySize);
-
-	int defaultMaterialID = NewtonMaterialGetDefaultGroupID (m_world);
-	BallBody = WorldAddBall(m_world, InitialMass, NewtonBodySize, defaultMaterialID, *ballmatrix);
-
-	setNewtonBody(BallBody);
+	if(m_world != NULL)
+		CreateNewtonBody(m_world);
 }
 
-void BallEntity::ImportFromJson(rapidjson::Value &v, BallGame *Game, Node *parent)
+void BallEntity::ImportFromJson(rapidjson::Value &v, BallGame *Game, Node *parent, String &nodeNamePrefix)
 {
-	BallGameEntity::ImportFromJson(v, Game, parent);
-	InitialMass = v["Mass"].GetFloat();
+	BallGameEntity::ImportFromJson(v, Game, parent, nodeNamePrefix);
+	InitialMass = v[MASS_JSON_FIELD].GetFloat();
 }
 
-void BallGameEntity::ImportFromJson(rapidjson::Value &v, BallGame *Game, Node *parent)
+void BallGameEntity::ImportFromJson(rapidjson::Value &v, BallGame *Game, Node *parent, String &nodeNamePrefix)
 {
-	const char *meshname = v["Mesh"].GetString();
+	const char *meshname = v[MESH_JSON_FIELD].GetString();
 	Ogre::SceneManager *mSceneMgr = Game->getSceneManager();
 	Entity* ogreEntity = mSceneMgr->createEntity(meshname);
-	InitialPos.x = v["PosX"].GetFloat();
-	InitialPos.y = v["PosY"].GetFloat();
-	InitialPos.z = v["PosZ"].GetFloat();
-	InitialScale.x = v["ScaleX"].GetFloat();
-	InitialScale.y = v["ScaleY"].GetFloat();
-	InitialScale.z = v["ScaleZ"].GetFloat();
-	InitialOrientation.x = v["OrientationX"].GetFloat();
-	InitialOrientation.y = v["OrientationY"].GetFloat();
-	InitialOrientation.z = v["OrientationZ"].GetFloat();
-	InitialOrientation.w = v["OrientationW"].GetFloat();
+//	LOG << "Mesh Entity Name : '" << ogreEntity->getName() << "'" << std::endl;
+	InitialPos.x = v[POSITIONX_JSON_FIELD].GetFloat();
+	InitialPos.y = v[POSITIONY_JSON_FIELD].GetFloat();
+	InitialPos.z = v[POSITIONZ_JSON_FIELD].GetFloat();
+	InitialScale.x = v[SCALEX_JSON_FIELD].GetFloat();
+	InitialScale.y = v[SCALEY_JSON_FIELD].GetFloat();
+	InitialScale.z = v[SCALEZ_JSON_FIELD].GetFloat();
+	InitialOrientation.x = v[ORIENTATIONX_JSON_FIELD].GetFloat();
+	InitialOrientation.y = v[ORIENTATIONY_JSON_FIELD].GetFloat();
+	InitialOrientation.z = v[ORIENTATIONZ_JSON_FIELD].GetFloat();
+	InitialOrientation.w = v[ORIENTATIONW_JSON_FIELD].GetFloat();
 
 	SceneNode* ogreNode;
-	const char *nodename = v["NodeName"].GetString();
-	if(parent == NULL)
-		ogreNode = mSceneMgr->getRootSceneNode()->createChildSceneNode(nodename, InitialPos);
-	else
-		ogreNode = (SceneNode*)parent->createChild(InitialPos);
+	const char *nodename_c = v[NODENAME_JSON_FIELD].GetString();
+	String nodeName = nodeNamePrefix;
+	nodeName += nodename_c;
+	ogreNode = (SceneNode*)parent->createChild(nodeName, InitialPos);
 	ogreNode->attachObject(ogreEntity);
 	setOgreNode(ogreNode);
-	const char *Groupname = v["GroupName"].GetString();
+	const char *Groupname = v[GROUPNAME_JSON_FIELD].GetString();
 	if(strcmp(Groupname, "") != 0)
 	{
 		GroupEntity *Grp = Game->findGroup(Groupname);
 		if(Grp != NULL)
 		{
-			LOG << "Add Child " << nodename << " to Group " << Groupname << std::endl;
+			LOG << "Add Child " << nodeName << " (" << nodename_c << ") to Group " << Groupname << std::endl;
 			Grp->AddChild(this);
 		}
+		else
+			LOG << "Pb : Group " << Groupname << " not found !!" << std::endl;
 	}
 }
 
@@ -3524,11 +3785,9 @@ GroupEntity *BallGame::findGroup(const char * const name_c)
 	std::list<GroupEntity*>::iterator it(Groups.begin());
 	while(it != Groups.end())
 	{
-		GroupEntity *B = *it;
+		GroupEntity *B = *(it++);
 		if(B != NULL && B->getName() == name)
 			return B;
-			break;
-		it++;
 	}
 	return NULL;
 }
@@ -3696,49 +3955,84 @@ void BallGame::ChangeLevel(void)
 	else
 		_StopPhysic();
 	EmptyLevel();
-	ImportLevelFromJson();
+	String nodeNamePrefix;
+	ImportLevelFromJson((Node*)mSceneMgr->getRootSceneNode(), nodeNamePrefix);
 	LoadStatesList();
 }
 
-void BallGame::ImportLevelFromJson(Node *parent)
+#define COUNTER_JSON_FIELD "InternalCounter"
+#define GROUPS_JSON_FIELD "Groups"
+#define CASES_JSON_FIELD "Cases"
+#define BALLS_JSON_FIELD "Balls"
+
+void BallGame::ImportLevelFromJson(Node *parent, String &nodeNamePrefix, bool isForImport)
 {
 	std::ifstream myfile;
 	std::stringstream buffer;
-	myfile.open (LevelFilename.c_str());
+	std::list<GroupEntity*> *GroupList = NULL;
+	if(isForImport)
+	{
+		myfile.open (ImportLevelFilename.c_str());
+		GroupList = &ImportLevelGroups;
+	}
+	else
+	{
+		myfile.open (LevelFilename.c_str());
+		GroupList = &Groups;
+	}
 	buffer << myfile.rdbuf();
 	myfile.close();
 	rapidjson::Document in;
 	in.Parse(buffer.str().c_str());
 
-	nb_entities = in["InternalCounter"].GetUint();
+	nb_entities = in[COUNTER_JSON_FIELD].GetUint();
 	//Parsing Groups
-	for(int cmpt = 0; cmpt < in["Groups"].GetArray().Size(); cmpt++)
+	for(int cmpt = 0; cmpt < in[GROUPS_JSON_FIELD].GetArray().Size(); cmpt++)
 	{
 		GroupEntity *newGroup = new GroupEntity();
-		rapidjson::Value &groupjson = in["Groups"].GetArray()[cmpt];
-		newGroup->ImportFromJson(groupjson, this);
-		AddGroup(newGroup);
+		rapidjson::Value &groupjson = in[GROUPS_JSON_FIELD].GetArray()[cmpt];
+		newGroup->ImportFromJson(groupjson, parent, nodeNamePrefix);
+		if(isForImport)
+			ImportLevelGroups.push_back(newGroup);
+		else
+			AddGroup(newGroup);
 	}
 	//Parsing Cases
-	for(int cmpt = 0; cmpt < in["Cases"].GetArray().Size(); cmpt++)
+	for(int cmpt = 0; cmpt < in[CASES_JSON_FIELD].GetArray().Size(); cmpt++)
 	{
 		CaseEntity *newCase = new CaseEntity();
-		rapidjson::Value &casejson = in["Cases"].GetArray()[cmpt];
-		newCase->CreateFromJson(casejson, this, m_world, parent);
-		AddCase(newCase);
+		rapidjson::Value &casejson = in[CASES_JSON_FIELD].GetArray()[cmpt];
+		if(isForImport)
+		{
+			newCase->ImportFromJson(casejson, this, parent, nodeNamePrefix);
+			ImportLevelCases.push_back(newCase);
+		}
+		else
+		{
+			newCase->CreateFromJson(casejson, this, m_world, parent, nodeNamePrefix);
+			AddCase(newCase);
+		}
 	}
 	//Parsing Balls
-	for(int cmpt = 0; cmpt < in["Balls"].GetArray().Size(); cmpt++)
+	for(int cmpt = 0; cmpt < in[BALLS_JSON_FIELD].GetArray().Size(); cmpt++)
 	{
 		BallEntity *newBall = new BallEntity();
-		rapidjson::Value &balljson = in["Balls"].GetArray()[cmpt];
-		newBall->CreateFromJson(balljson, this, m_world, parent);
-		AddBall(newBall);
+		rapidjson::Value &balljson = in[BALLS_JSON_FIELD].GetArray()[cmpt];
+		if(isForImport)
+		{
+			newBall->ImportFromJson(balljson, this, parent, nodeNamePrefix);
+			ImportLevelBalls.push_back(newBall);
+		}
+		else
+		{
+			newBall->CreateFromJson(balljson, this, m_world, parent, nodeNamePrefix);
+			AddBall(newBall);
+		}
 	}
 
 	//Now we need to restore links between ogre nodes.
-	std::list<GroupEntity*>::iterator iter(Groups.begin());
-	while(iter != Groups.end())
+	std::list<GroupEntity*>::iterator iter(GroupList->begin());
+	while(iter != GroupList->end())
 	{
 		GroupEntity *Grp = *(iter++);
 		if(Grp != NULL)
@@ -3753,7 +4047,7 @@ void BallGame::ExportLevelIntoJson(String &export_str)
 
 	rapidjson::Document::AllocatorType& allocator = document.GetAllocator();
 
-	document.AddMember("InternalCounter", nb_entities, allocator);
+	document.AddMember(COUNTER_JSON_FIELD, nb_entities, allocator);
 
 	rapidjson::Value groups(rapidjson::kArrayType);
 
@@ -3769,7 +4063,7 @@ void BallGame::ExportLevelIntoJson(String &export_str)
 		groups.PushBack(JGroup, allocator);
 	}
 
-	document.AddMember("Groups", groups, allocator);
+	document.AddMember(GROUPS_JSON_FIELD, groups, allocator);
 
 	rapidjson::Value cases(rapidjson::kArrayType);
 
@@ -3780,13 +4074,12 @@ void BallGame::ExportLevelIntoJson(String &export_str)
 		if(Entity == NULL)
 			continue;
 		rapidjson::Value JCase(rapidjson::kObjectType);
-//		JCase.AddMember("Type", Entity->type, allocator);
 		Entity->ExportToJson(JCase, allocator);
 
 		cases.PushBack(JCase, allocator);
 	}
 
-	document.AddMember("Cases", cases, allocator);
+	document.AddMember(CASES_JSON_FIELD, cases, allocator);
 
 	rapidjson::Value balls(rapidjson::kArrayType);
 
@@ -3802,7 +4095,7 @@ void BallGame::ExportLevelIntoJson(String &export_str)
 		balls.PushBack(JCase, allocator);
 	}
 
-	document.AddMember("Balls", balls, allocator);
+	document.AddMember(BALLS_JSON_FIELD, balls, allocator);
 
 	rapidjson::StringBuffer strbuf;
 	rapidjson::Writer<rapidjson::StringBuffer> writer(strbuf);

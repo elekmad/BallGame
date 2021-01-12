@@ -85,10 +85,11 @@ class BallGameEntity
 	void Finalize(void);
     static void TransformCallback(const NewtonBody* body, const dFloat* matrix, int threadIndex);
     void ExportToJson(rapidjson::Value &v, rapidjson::Document::AllocatorType& allocator);
-    void ImportFromJson(rapidjson::Value &v, BallGame *Game, Node *parent = NULL);
+    void ImportFromJson(rapidjson::Value &v, BallGame *Game, Node *parent, String &nodeNamePrefix);
     void setOgreNode(SceneNode *node);
     void setNewtonBody(NewtonBody *body);
     const NewtonBody *getNewtonBody(void) const { return Body; }
+    const SceneNode *getOgreEntity(void) const { return OgreEntity; }
     dMatrix *PrepareNewtonBody(dVector &NewtonBodyLocation, dVector &NewtonBodySize);
     void DisplaySelectedBox(bool display);
     const Ogre::Vector3 &getInitialPosition(void) const { return InitialPos; }
@@ -145,10 +146,10 @@ class BallEntity : public BallGameEntity
 
 	BallEntity(const dMatrix& matrix);
 	BallEntity();
-	void CreateFromJson(rapidjson::Value &v, BallGame *Game, NewtonWorld *m_world, Node *parent = NULL);
+	void CreateFromJson(rapidjson::Value &v, BallGame *Game, NewtonWorld *m_world, Node *parent, String &nodeNamePrefix);
 	void AddForceVector(dVector *force);
     void ExportToJson(rapidjson::Value &v, rapidjson::Document::AllocatorType& allocator);
-    void ImportFromJson(rapidjson::Value &v, BallGame *Game, Node *parent = NULL);
+    void ImportFromJson(rapidjson::Value &v, BallGame *Game, Node *parent, String &nodeNamePrefix);
 	dVector *GetForceVector();
 	void CleanupForces(void);
     void CreateNewtonBody(NewtonWorld *m_world);
@@ -176,13 +177,13 @@ class CaseEntity : public BallGameEntity
 	CaseEntity(const dMatrix& matrix, enum CaseType _type = typeBox);
 	CaseEntity(enum CaseType _type = typeBox);
 	~CaseEntity(){ BallsUnderCollide.clear(); }
-	void CreateFromJson(rapidjson::Value &v, BallGame *Game, NewtonWorld *m_world, Node *parent = NULL);
+	void CreateFromJson(rapidjson::Value &v, BallGame *Game, NewtonWorld *m_world, Node *parent, String &nodeNamePrefix);
 //	void AddBallColliding(NewtonBody *ball);
 //	bool CheckIfAlreadyColliding(NewtonBody *ball);
 	void SetForceToApply(float force, dVector *direction);
 	void ApplyForceOnBall(BallEntity *ball);
     void ExportToJson(rapidjson::Value &v, rapidjson::Document::AllocatorType& allocator);
-    void ImportFromJson(rapidjson::Value &v, BallGame *Game, Node *parent = NULL);
+    void ImportFromJson(rapidjson::Value &v, BallGame *Game, Node *parent, String &nodeNamePrefix);
     void CreateNewtonBody(NewtonWorld *m_world);
     float getForce(void) { return force_to_apply; }
     const dVector *getForceDirection(void) { return force_direction; }
@@ -205,11 +206,11 @@ class GroupEntity
 	public :
 
 	GroupEntity(String &name, Ogre::SceneManager* mSceneMgr);
-	GroupEntity(){ OgreEntity = NULL; };
+	GroupEntity(){ OgreEntity = NULL; computed = false; equilibrated = false; };
 	~GroupEntity(){};
 	void Finalize(void);
     void ExportToJson(rapidjson::Value &v, rapidjson::Document::AllocatorType& allocator);
-    void ImportFromJson(rapidjson::Value &v, BallGame *Game);
+    void ImportFromJson(rapidjson::Value &v, Node *parent, String &nodeNamePrefix);
 	void AddChild(BallGameEntity* child);
 	bool DelChild(BallGameEntity* child);
 	void ComputeChilds(void);
@@ -224,6 +225,8 @@ class GroupEntity
 
 	SceneNode *OgreEntity;
 	std::list<BallGameEntity*> childs;
+	bool computed;
+	bool equilibrated;
 };
 
 class BallGame : public BaseApplication
@@ -271,7 +274,7 @@ class BallGame : public BaseApplication
     void EmptyLevelsList(void);
     void EmptyLevel(void);//Clean all BallGame, Newton and Ogre entities to start with new level.
     void ChangeLevel(void);
-    void ImportLevelFromJson(Node *parent = NULL);
+    void ImportLevelFromJson(Node *parent, String &nodeNamePrefix, bool isForImport = false);
 
     String Level;
     String LevelFilename;
@@ -366,6 +369,13 @@ class BallGame : public BaseApplication
     std::list<GroupEntity*> Groups;
 	std::list<CaseEntity*> CasesUnderCollide;
 
+	String ImportLevelFilename;
+	String ImportLevelName;
+    std::list<CaseEntity*> ImportLevelCases;
+    std::list<BallEntity*> ImportLevelBalls;
+    std::list<GroupEntity*> ImportLevelGroups;
+    inline void ActivateLevelImportInterface(void);
+    inline void UnactivateLevelImportInterface(void);
 
     void CheckforCollides(void);
     void AddCase(CaseEntity *Entity);
@@ -405,12 +415,23 @@ class BallGame : public BaseApplication
     template<typename T> T*CreateNewGUIComponent(const char *TypeName, const char *Name = "");
 
     CEGUI::OgreRenderer* mRenderer;
-    CEGUI::Window *ThumbnailWindow;
 
     CEGUI::LayoutContainer* MainLayout;
+    CEGUI::Titlebar *LevelNameBanner;
+
+    // Import Level Buttons
+    std::list<CEGUI::Window*> ImportLevelButtons;
+
+    CEGUI::Combobox *ChooseLevelToImportComboB;
+    bool ChooseLevelToImportComboBCallback(const CEGUI::EventArgs &e);
+    CEGUI::PushButton *ImportLevelPushB;
+    bool ImportLevelPushBCallback(const CEGUI::EventArgs &e);
+    CEGUI::Window *ImportLevelWindow;
+    void BuildImportLevelWindowContent(Node *parent);
 
     //Main Menu Buttons
     std::list<CEGUI::Window*> MainMenuButtons;
+
     CEGUI::PushButton *StopPhysicPushB;
     bool StopPhysicPushBCallback(const CEGUI::EventArgs &e);
     CEGUI::PushButton *EditModePushB;
@@ -419,7 +440,6 @@ class BallGame : public BaseApplication
     bool StatesModePushBCallback(const CEGUI::EventArgs &e);
     CEGUI::Combobox *ChooseLevelComboB;
     bool ChooseLevelComboBCallback(const CEGUI::EventArgs &e);
-    void CreateThumbnail(String meshname);
     CEGUI::Editbox *NewLevelEditB;
     CEGUI::PushButton *NewLevelCreateB;
     bool NewLevelCreateBCallback(const CEGUI::EventArgs &e);
@@ -429,8 +449,6 @@ class BallGame : public BaseApplication
     bool QuitPushBCallback(const CEGUI::EventArgs &e);
 
     //Edit buttons
-
-    CEGUI::Titlebar *LevelNameBanner;
 
     //States Buttons
     std::list<CEGUI::Window*> StatesButtons;
@@ -447,10 +465,14 @@ class BallGame : public BaseApplication
 
     //Add new elements Buttons & Callbacks
     std::list<CEGUI::Window*> EditButtons;
+    CEGUI::PushButton *ImportLevelActivateInterfacePushB;
+    bool ImportLevelActivateInterfacePushBCallback(const CEGUI::EventArgs &e);
     CEGUI::Titlebar *EditingModeTitleBanner;
     CEGUI::Titlebar *AddElementTitleBanner;
     CEGUI::Combobox *ChooseTypeOfElementToAddB;
     bool ChooseTypeOfElementToAddBCallback(const CEGUI::EventArgs &e);
+    CEGUI::Window *ThumbnailWindow;
+    void CreateThumbnail(String meshname);
     CEGUI::PushButton *PlaceNewElementB;
     bool PlaceNewElementBCallback(const CEGUI::EventArgs &e);
     CEGUI::PushButton *EditElementB;
@@ -484,8 +506,6 @@ class BallGame : public BaseApplication
     CEGUI::ToggleButton *CaseHasForceToggleB;
     bool CaseHasForceToggleBCallback(const CEGUI::EventArgs &e);
     CEGUI::Editbox *CaseForceValueEditB;
-    inline void CaseForceValueEditBSetText(float value);
-    inline void CaseForceValueEditBSetText(double value);
     bool CaseForceValueEditBCallback(const CEGUI::EventArgs &event);
     CEGUI::ToggleButton *CaseHasForceDirectionToggleB;
     bool CaseHasForceDirectionToggleBCallback(const CEGUI::EventArgs &event);
