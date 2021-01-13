@@ -1746,12 +1746,61 @@ bool BallGame::StatesModePushBCallback(const CEGUI::EventArgs &e)
 	return true;
 }
 
-inline void SetWindowsPosNearToOther(CEGUI::Window *self, CEGUI::Window *other, float H_factor, float V_factor)
+void SetWindowsPosNearToOther(CEGUI::Window *self, CEGUI::Window *other, int H_factor, int V_factor)
 {
 	CEGUI::UVector2 pos(other->getPosition());
 
-	pos.d_x = pos.d_x + H_factor * other->getWidth();
-	pos.d_y = pos.d_y + V_factor * other->getHeight();
+	if(H_factor != 0)
+	{
+		switch(self->getHorizontalAlignment())
+		{
+		case CEGUI::HA_LEFT :
+			break;
+		case CEGUI::HA_CENTRE :
+			pos.d_x += (H_factor / 2.0f) * self->getWidth();
+			break;
+		case CEGUI::HA_RIGHT :
+			pos.d_x += H_factor * self->getWidth();
+			break;
+		}
+		switch(other->getHorizontalAlignment())
+		{
+		case CEGUI::HA_LEFT :
+			pos.d_x += H_factor * other->getWidth();
+			break;
+		case CEGUI::HA_CENTRE :
+			pos.d_x += (H_factor / 2.0f) * other->getWidth();
+			break;
+		case CEGUI::HA_RIGHT :
+			break;
+		}
+	}
+
+	if(V_factor != 0)
+	{
+		switch(self->getVerticalAlignment())
+		{
+		case CEGUI::HA_LEFT :
+			break;
+		case CEGUI::HA_CENTRE :
+			pos.d_y += (V_factor / 2.0f) * self->getHeight();
+			break;
+		case CEGUI::HA_RIGHT :
+			pos.d_y += V_factor * self->getHeight();
+			break;
+		}
+		switch(other->getVerticalAlignment())
+		{
+		case CEGUI::HA_LEFT :
+			pos.d_y += V_factor * other->getHeight();
+			break;
+		case CEGUI::HA_CENTRE :
+			pos.d_y += (V_factor / 2.0f) * other->getHeight();
+			break;
+		case CEGUI::HA_RIGHT :
+			break;
+		}
+	}
 
 	self->setPosition(pos);
 }
@@ -2007,12 +2056,8 @@ void BallGame::SetupGUI(void)
 
     ImportLevelActivateInterfacePushB->subscribeEvent(CEGUI::PushButton::EventClicked,
     		CEGUI::Event::Subscriber(&BallGame::ImportLevelActivateInterfacePushBCallback, this));
-    {
-		CEGUI::UVector2 pos(EditingModeTitleBanner->getPosition());
-		pos.d_x.d_offset += EditingModeTitleBanner->getWidth().d_offset / 2 + ImportLevelActivateInterfacePushB->getWidth().d_offset / 2;
-		ImportLevelActivateInterfacePushB->setPosition(pos);
-    }
-//    SetWindowsPosNearToOther(ImportLevelActivateInterfacePushB, EditingModeTitleBanner, 1, 0);
+
+    SetWindowsPosNearToOther(ImportLevelActivateInterfacePushB, EditingModeTitleBanner, 1, 0);
 
 
     ChooseLevelToImportComboB = CreateNewGUIComponent<CEGUI::Combobox>("OgreTray/Combobox");
@@ -2035,7 +2080,13 @@ void BallGame::SetupGUI(void)
     ChooseLevelToImportComboB->subscribeEvent(CEGUI::Combobox::EventListSelectionAccepted,
     		CEGUI::Event::Subscriber(&BallGame::ChooseLevelToImportComboBCallback, this));
 
-    SetWindowsPosNearToOther(ChooseLevelToImportComboB, EditingModeTitleBanner, -0.5, 1);
+    //set windows near to other function works for integer !
+    {
+		CEGUI::UVector2 pos(EditingModeTitleBanner->getPosition());
+		pos.d_x -= 0.5 * ChooseLevelToImportComboB->getWidth();
+		pos.d_y += EditingModeTitleBanner->getHeight();
+		ChooseLevelToImportComboB->setPosition(pos);
+    }
 
 
     ImportLevelPushB = CreateNewGUIComponent<CEGUI::PushButton>("OgreTray/Button");
