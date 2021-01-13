@@ -1,1 +1,5 @@
 => Jeu développé pour un écran en 1280 * 720 en fenêtré
+Nécessite :
+* Ogre3D v1.9 (disponible dans les dépots ubuntu ou ici https://github.com/OGRECave/ogre.git)
+* CEGUI v0.8.7 (disponible dans les dépots ubuntu ou ici https://github.com/cegui/cegui.git)
+* NewtonDynamic v3.14c (disponible ici https://github.com/MADEAPPS/newton-dynamics.git)
