@@ -47,11 +47,29 @@ void inline ButtonsSetVisible(std::list<CEGUI::Window*> &list, bool state)
 	{
 		CEGUI::Window *W = *(iter++);
 		if(W != NULL)
-		{
 			W->setVisible(state);
-			if(state == true)
-				W->moveToFront();
-		}
+	}
+}
+
+void inline ButtonsMoveToFront(std::list<CEGUI::Window*> &list)
+{
+	std::list<CEGUI::Window*>::iterator iter(list.begin());
+	while(iter != list.end())
+	{
+		CEGUI::Window *W = *(iter++);
+		if(W != NULL)
+			W->moveToFront();
+	}
+}
+
+void inline ButtonsMoveToBack(std::list<CEGUI::Window*> &list)
+{
+	std::list<CEGUI::Window*>::iterator iter(list.begin());
+	while(iter != list.end())
+	{
+		CEGUI::Window *W = *(iter++);
+		if(W != NULL)
+			W->moveToBack();
 	}
 }
 
@@ -1166,6 +1184,11 @@ void BallGame::BuildImportLevelWindowContent(Node *parent)
 inline void BallGame::ActivateLevelImportInterface(void)
 {
 	ButtonsSetVisible(ImportLevelButtons, true);
+	ButtonsMoveToFront(ImportLevelButtons);
+	ButtonsMoveToBack(MainMenuButtons);
+	ButtonsMoveToBack(EditButtons);
+	ButtonsMoveToBack(EditBallButtons);
+	ButtonsMoveToBack(EditCaseButtons);
 	ImportLevelActivateInterfacePushB->setText("-");
 }
 
@@ -1175,6 +1198,10 @@ inline void BallGame::UnactivateLevelImportInterface(void)
 	ImportLevelActivateInterfacePushB->setText("+");
 	ImportLevelName.clear();
 	ImportLevelFilename.clear();
+	ButtonsMoveToFront(MainMenuButtons);
+	ButtonsMoveToFront(EditButtons);
+	ButtonsMoveToFront(EditBallButtons);
+	ButtonsMoveToFront(EditCaseButtons);
 	BuildImportLevelWindowContent(NULL);
 }
 
@@ -1719,7 +1746,7 @@ bool BallGame::StatesModePushBCallback(const CEGUI::EventArgs &e)
 	return true;
 }
 
-inline void SetWindowsPosNearToOther(CEGUI::Window *self, CEGUI::Window *other, int H_factor, int V_factor)
+inline void SetWindowsPosNearToOther(CEGUI::Window *self, CEGUI::Window *other, float H_factor, float V_factor)
 {
 	CEGUI::UVector2 pos(other->getPosition());
 
@@ -1980,7 +2007,12 @@ void BallGame::SetupGUI(void)
 
     ImportLevelActivateInterfacePushB->subscribeEvent(CEGUI::PushButton::EventClicked,
     		CEGUI::Event::Subscriber(&BallGame::ImportLevelActivateInterfacePushBCallback, this));
-    SetWindowsPosNearToOther(ImportLevelActivateInterfacePushB, EditingModeTitleBanner, 1, 0);
+    {
+		CEGUI::UVector2 pos(EditingModeTitleBanner->getPosition());
+		pos.d_x.d_offset += EditingModeTitleBanner->getWidth().d_offset / 2 + ImportLevelActivateInterfacePushB->getWidth().d_offset / 2;
+		ImportLevelActivateInterfacePushB->setPosition(pos);
+    }
+//    SetWindowsPosNearToOther(ImportLevelActivateInterfacePushB, EditingModeTitleBanner, 1, 0);
 
 
     ChooseLevelToImportComboB = CreateNewGUIComponent<CEGUI::Combobox>("OgreTray/Combobox");
@@ -2003,7 +2035,7 @@ void BallGame::SetupGUI(void)
     ChooseLevelToImportComboB->subscribeEvent(CEGUI::Combobox::EventListSelectionAccepted,
     		CEGUI::Event::Subscriber(&BallGame::ChooseLevelToImportComboBCallback, this));
 
-    SetWindowsPosNearToOther(ChooseLevelToImportComboB, EditingModeTitleBanner, 0, 1);
+    SetWindowsPosNearToOther(ChooseLevelToImportComboB, EditingModeTitleBanner, -0.5, 1);
 
 
     ImportLevelPushB = CreateNewGUIComponent<CEGUI::PushButton>("OgreTray/Button");
@@ -2039,9 +2071,11 @@ void BallGame::SetupGUI(void)
     AddElementTitleBanner->setSize(CEGUI::USize(CEGUI::UDim(0, 150), CEGUI::UDim(0, 30)));
     AddElementTitleBanner->setVerticalAlignment(CEGUI::VA_TOP);
     AddElementTitleBanner->setHorizontalAlignment(CEGUI::HA_RIGHT);
-    CEGUI::UVector2 pos = AddElementTitleBanner->getPosition();
-    pos.d_y = CEGUI::UDim(0, (mWindow->getHeight() / 2) - 120);
-    AddElementTitleBanner->setPosition(pos);
+    {
+		CEGUI::UVector2 pos = AddElementTitleBanner->getPosition();
+		pos.d_y = CEGUI::UDim(0, (mWindow->getHeight() / 2) - 120);
+		AddElementTitleBanner->setPosition(pos);
+    }
 
     MainLayout->addChild(AddElementTitleBanner);
     ButtonSetAddButton(EditButtons, AddElementTitleBanner);
