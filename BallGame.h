@@ -355,6 +355,7 @@ class BallGame : public BaseApplication
     BallGameEntity *GetEntity(char *name);
     bool CheckIfAlreadyColliding(CaseEntity *ToCheck);
     void AddCaseColliding(CaseEntity *ToAdd);
+    inline void _updatePhysic(dFloat timestep);
 
     bool m_suspendPhysicsUpdate;
     unsigned64 m_microsecunds;

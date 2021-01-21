@@ -862,6 +862,25 @@ BallGame::~BallGame()
 	}
 }
 
+inline void BallGame::_updatePhysic(dFloat timestep)
+{
+	#ifdef DEMO_CHECK_ASYN_UPDATE
+			g_checkAsyncUpdate = 1;
+#endif
+	if (m_asynchronousPhysicsUpdate)
+	{
+		NewtonUpdateAsync(m_world, timestep);
+#ifdef DEMO_CHECK_ASYN_UPDATE
+		NewtonWaitForUpdateToFinish(m_world);
+		g_checkAsyncUpdate = 0;
+#endif
+	}
+	else
+	{
+		NewtonUpdate(m_world, timestep);
+	}
+}
+
 void BallGame::PostUpdateCallback(const NewtonWorld* const world, dFloat timestep)
 {
 //	LOG << "Post Update Time " << timestep << std::endl;
@@ -899,18 +918,7 @@ void BallGame::UpdatePhysics(dFloat timestep)
 
 			CheckforCollides();
 
-#ifdef DEMO_CHECK_ASYN_UPDATE
-			g_checkAsyncUpdate = 1;
-#endif
-			if (m_asynchronousPhysicsUpdate) {
-				NewtonUpdateAsync(m_world, timestepInSecunds);
-#ifdef DEMO_CHECK_ASYN_UPDATE
-				NewtonWaitForUpdateToFinish(m_world);
-				g_checkAsyncUpdate = 0;
-#endif
-			} else {
-				NewtonUpdate(m_world, timestepInSecunds);
-			}
+			_updatePhysic(timestepInSecunds);
 
 			physicsTime += NewtonGetLastUpdateTime(m_world);
 
@@ -4028,6 +4036,10 @@ void BallGame::EmptyLevel(void)
 	assert(Groups.empty());
 	CasesUnderCollide.clear();
 	EmptyStatesList();
+
+	//Force an update of Physic to force garbage collecting !
+	_updatePhysic(1.0f / MAX_PHYSICS_FPS);
+	_StopPhysic();
 }
 
 void BallGame::EmptyLevelsList(void)
