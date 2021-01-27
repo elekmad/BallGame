@@ -1640,7 +1640,7 @@ void BallGame::SetupGUI(void)
 		}
 		iter++;
 	}
-    ChooseTypeOfElementToAddB->setSize(CEGUI::USize(CEGUI::UDim(0, 150), CEGUI::UDim(0, 40 * (ChooseLevelComboB->getItemCount() + 1))));
+    ChooseTypeOfElementToAddB->setSize(CEGUI::USize(CEGUI::UDim(0, 150), CEGUI::UDim(0, 40 * (ChooseTypeOfElementToAddB->getItemCount() + 1))));
     ChooseTypeOfElementToAddB->setVerticalAlignment(CEGUI::VA_TOP);
     ChooseTypeOfElementToAddB->setHorizontalAlignment(CEGUI::HA_RIGHT);
 
