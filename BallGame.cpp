@@ -2262,9 +2262,21 @@ bool BallGame::CaseHasForceToggleBCallback(const CEGUI::EventArgs &event)
 	CaseHasForceToggleB->setMutedState(true);
 	CaseHasForceDirectionToggleB->setMutedState(true);
 	if(CaseHasForceToggleB->isSelected())
+	{
 		CaseHasForce = true;
+		if(force_directed == true)
+			ForcesArrows = UnderEditCase->CreateForceArrows(mSceneMgr);
+	}
 	else
+	{
 		CaseHasForce = false;
+		if(ForcesArrows != NULL)
+		{
+			LOG << "Remove Arrows child" << std::endl;
+			mSceneMgr->getRootSceneNode()->removeAndDestroyChild("Arrows");
+			ForcesArrows = NULL;
+		}
+	}
 	UpdateEditButtons();
 	CaseHasForceDirectionToggleB->setMutedState(false);
 	CaseHasForceToggleB->setMutedState(false);
