@@ -406,7 +406,7 @@ void CaseEntity::CaseMove(unsigned64 microseconds, dFloat timestep)
 			RotatePos[0] = ToReachRot->x - getAbsoluteOrientation().x;
 			RotatePos[1] = ToReachRot->y - getAbsoluteOrientation().y;
 			RotatePos[2] = ToReachRot->z - getAbsoluteOrientation().z;
-			LOG << "RotatePos = {" << RotatePos[0] << ", " << RotatePos[1] << ", " << RotatePos[2] << "}" << std::endl;
+//			LOG << "RotatePos = {" << RotatePos[0] << ", " << RotatePos[1] << ", " << RotatePos[2] << "}" << std::endl;
 			if (RotatePos[0] > 0.01)
 			{
 				RotatePos[0] = MovementToDo->actual->RotateSpeed;
@@ -492,12 +492,12 @@ void CaseEntity::CaseMove(unsigned64 microseconds, dFloat timestep)
 		//Apply Current Move.
 		if(MustTranslate)
 		{
-			LOG << "Move to next point : from " << getAbsolutePosition() << " to " << *(ToReachPos) << std::endl;
+//			LOG << "Move to next point : from " << getAbsolutePosition() << " to " << *(ToReachPos) << std::endl;
 			NewtonBodySetVelocity(Body, MovePos);
 		}
 		if(MustRotate)
 		{
-			LOG << "Rotate to next Orientation : from " << getAbsoluteOrientation() << " to " << *(ToReachRot) << std::endl;
+//			LOG << "Rotate to next Orientation : from " << getAbsoluteOrientation() << " to " << *(ToReachRot) << std::endl;
 			NewtonBodySetOmega(Body, RotatePos);
 		}
 		if(MustTranslate || MustRotate)
@@ -884,6 +884,21 @@ void BallEntity::ExportToJson(rapidjson::Value &v, rapidjson::Document::Allocato
 #define FORCEDIRECTIONY_JSON_FIELD "ForceDirectionY"
 #define FORCEDIRECTIONZ_JSON_FIELD "ForceDirectionZ"
 #define FORCEDIRECTIONW_JSON_FIELD "ForceDirectionW"
+#define MOVEPRESENT_JSON_FIELD "MovePresent"
+#define MOVEISTRIGGERED_JSON_FIELD "MoveTriggered"
+#define MOVES_JSON_FIELD "Moves"
+#define MOVESTEPPOSITIONPRESENT_JSON_FIELD "MoveTransactionPresent"
+#define MOVESTEPPOSITIONX_JSON_FIELD "MoveGoalPosX"
+#define MOVESTEPPOSITIONY_JSON_FIELD "MoveGoalPosY"
+#define MOVESTEPPOSITIONZ_JSON_FIELD "MoveGoalPosZ"
+#define MOVESTEPTRANSLATIONSPEED_JSON_FIELD "MoveTranslateSpeed"
+#define MOVESTEPROTATIONPRESENT_JSON_FIELD "MoveRotationPresent"
+#define MOVESTEPROTATIONX_JSON_FIELD "MoveGoalRotX"
+#define MOVESTEPROTATIONY_JSON_FIELD "MoveGoalRotY"
+#define MOVESTEPROTATIONZ_JSON_FIELD "MoveGoalRotZ"
+#define MOVESTEPROTATIONW_JSON_FIELD "MoveGoalRotW"
+#define MOVESTEPROTATIONSPEED_JSON_FIELD "MoveRotationSpeed"
+#define MOVESTEPWAITTIME_JSON_FIELD "MovePauseDuration"
 
 void CaseEntity::ExportToJson(rapidjson::Value &v, rapidjson::Document::AllocatorType& allocator)
 {
@@ -906,6 +921,47 @@ void CaseEntity::ExportToJson(rapidjson::Value &v, rapidjson::Document::Allocato
 			v.AddMember(FORCEDIRECTIONZ_JSON_FIELD, force_dir->m_z, allocator);
 			v.AddMember(FORCEDIRECTIONW_JSON_FIELD, force_dir->m_w, allocator);
 		}
+	}
+	if(MovementToDo == NULL)
+		v.AddMember(MOVEPRESENT_JSON_FIELD, false, allocator);
+	else
+	{
+		v.AddMember(MOVEPRESENT_JSON_FIELD, true, allocator);
+		v.AddMember(MOVEISTRIGGERED_JSON_FIELD, MovementToDo->is_launched_by_collide, allocator);
+		rapidjson::Value Moves(rapidjson::kArrayType);
+		std::list<struct MovementStep*>::iterator iter(MovementToDo->Moves.begin());
+		while(iter != MovementToDo->Moves.end())
+		{
+			struct MovementStep *step = *(iter++);
+			if(step == NULL)
+				continue;
+			rapidjson::Value Step(rapidjson::kObjectType);
+			if(!isnanf(step->TranslateSpeed))
+			{
+				Step.AddMember(MOVESTEPPOSITIONPRESENT_JSON_FIELD, true, allocator);
+				Step.AddMember(MOVESTEPPOSITIONX_JSON_FIELD, step->Position.x, allocator);
+				Step.AddMember(MOVESTEPPOSITIONY_JSON_FIELD, step->Position.y, allocator);
+				Step.AddMember(MOVESTEPPOSITIONZ_JSON_FIELD, step->Position.z, allocator);
+				Step.AddMember(MOVESTEPTRANSLATIONSPEED_JSON_FIELD, step->TranslateSpeed, allocator);
+			}
+			else
+				Step.AddMember(MOVESTEPPOSITIONPRESENT_JSON_FIELD, false, allocator);
+			if(!isnanf(step->RotateSpeed))
+			{
+				Step.AddMember(MOVESTEPROTATIONPRESENT_JSON_FIELD, true, allocator);
+				Step.AddMember(MOVESTEPROTATIONX_JSON_FIELD, step->Orientation.x, allocator);
+				Step.AddMember(MOVESTEPROTATIONY_JSON_FIELD, step->Orientation.y, allocator);
+				Step.AddMember(MOVESTEPROTATIONZ_JSON_FIELD, step->Orientation.z, allocator);
+				Step.AddMember(MOVESTEPROTATIONW_JSON_FIELD, step->Orientation.w, allocator);
+				Step.AddMember(MOVESTEPROTATIONSPEED_JSON_FIELD, step->RotateSpeed, allocator);
+			}
+			else
+				Step.AddMember(MOVESTEPROTATIONPRESENT_JSON_FIELD, false, allocator);
+			Step.AddMember(MOVESTEPWAITTIME_JSON_FIELD, (uint64_t)step->waittime, allocator);
+
+			Moves.PushBack(Step, allocator);
+		}
+		v.AddMember(MOVES_JSON_FIELD, Moves, allocator);
 	}
 }
 
@@ -942,6 +998,45 @@ void CaseEntity::ImportFromJson(rapidjson::Value &v, BallGame *Game, Node *paren
 		}
 	}
 	SetForceToApply(force_json, direction_json);
+
+
+	//Parsing Moves
+	if(MovementToDo != NULL)
+		delete MovementToDo;
+	if(v[MOVEPRESENT_JSON_FIELD].GetBool() == true)
+	{
+		struct Movement *Movement = new struct Movement;
+		Movement->is_launched_by_collide = v[MOVEISTRIGGERED_JSON_FIELD].GetBool();
+		for(int cmpt = 0; cmpt < v[MOVES_JSON_FIELD].GetArray().Size(); cmpt++)
+		{
+			rapidjson::Value &Stepjson = v[MOVES_JSON_FIELD].GetArray()[cmpt];
+			struct MovementStep *Step = new struct MovementStep;
+			Step->waittime = (unsigned64)Stepjson[MOVESTEPWAITTIME_JSON_FIELD].GetUint64();
+			if(Stepjson[MOVESTEPPOSITIONPRESENT_JSON_FIELD].GetBool() == true)
+			{
+				Step->Position.x = Stepjson[MOVESTEPPOSITIONX_JSON_FIELD].GetFloat();
+				Step->Position.y = Stepjson[MOVESTEPPOSITIONY_JSON_FIELD].GetFloat();
+				Step->Position.z = Stepjson[MOVESTEPPOSITIONZ_JSON_FIELD].GetFloat();
+				Step->TranslateSpeed = Stepjson[MOVESTEPTRANSLATIONSPEED_JSON_FIELD].GetFloat();
+			}
+			else
+				Step->TranslateSpeed = NAN;
+			if(Stepjson[MOVESTEPROTATIONPRESENT_JSON_FIELD].GetBool() == true)
+			{
+				Step->Orientation.x = Stepjson[MOVESTEPROTATIONX_JSON_FIELD].GetFloat();
+				Step->Orientation.y = Stepjson[MOVESTEPROTATIONY_JSON_FIELD].GetFloat();
+				Step->Orientation.z = Stepjson[MOVESTEPROTATIONZ_JSON_FIELD].GetFloat();
+				Step->Orientation.w = Stepjson[MOVESTEPROTATIONW_JSON_FIELD].GetFloat();
+				Step->RotateSpeed = Stepjson[MOVESTEPROTATIONSPEED_JSON_FIELD].GetFloat();
+			}
+			else
+				Step->RotateSpeed = NAN;
+			Movement->Moves.push_back(Step);
+		}
+		MovementToDo = Movement;
+	}
+	else
+		MovementToDo = NULL;
 }
 
 #define MESH_JSON_FIELD "Mesh"
