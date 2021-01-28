@@ -210,6 +210,11 @@ BallEntity::BallEntity()
 	type = Ball;
 }
 
+BallEntity::~BallEntity()
+{
+	CleanupForces();
+}
+
 void BallEntity::AddForceVector(dVector *force)
 {
 //	LOG << "Add Force {" << (*force)[0] << ", " << (*force)[1] << ", " << (*force)[2] << "} On ball" << std::endl;
@@ -276,6 +281,7 @@ CaseEntity::CaseEntity(const dMatrix& matrix, enum CaseType _type):BallGameEntit
 	this->BallGameEntity::type = Case;
 	force_to_apply = NAN;
 	force_direction = NULL;
+	MovementToDo = NULL;
 }
 
 CaseEntity::CaseEntity(enum CaseType _type)
@@ -284,6 +290,15 @@ CaseEntity::CaseEntity(enum CaseType _type)
 	this->BallGameEntity::type = Case;
 	force_to_apply = NAN;
 	force_direction = NULL;
+	MovementToDo = NULL;
+}
+
+CaseEntity::~CaseEntity()
+{
+	BallsUnderCollide.clear();
+	SetForceToApply(NAN,  NULL);
+	if(MovementToDo != NULL)
+		delete MovementToDo;
 }
 
 void CaseEntity::SetForceToApply(float force, dVector *direction)
@@ -294,6 +309,208 @@ void CaseEntity::SetForceToApply(float force, dVector *direction)
 	force_direction = direction;
 }
 
+void CaseEntity::AddMovePoint(const Vector3 &GoalPos, float speed, unsigned64 waittime, const Quaternion &GoalAngle, float RotateSpeed)
+{
+	if(MovementToDo == NULL)
+		MovementToDo = new struct Movement;
+	struct MovementStep *step = new struct MovementStep;
+	step->Position = GoalPos;
+	step->TranslateSpeed = speed;
+	step->waittime = waittime;
+	step->Orientation = GoalAngle;
+	step->RotateSpeed = RotateSpeed;
+	MovementToDo->Moves.push_back(step);
+}
+
+void CaseEntity::CaseMove(unsigned64 microseconds, dFloat timestep)
+{
+	if(MovementToDo == NULL)
+		return;
+
+	bool MoveToNextPoint = false;
+	bool MustTranslate = false;
+	bool MustRotate = false;
+	Vector3 *ToReachPos = NULL;
+	Quaternion *ToReachRot = NULL;
+	if(MovementToDo->is_launched_by_collide == false)
+		MoveToNextPoint = true;
+	else
+	{
+		if(BallsUnderCollide.empty() == false)
+			MoveToNextPoint = true;
+		else if(MovementToDo->actual != NULL)
+			MoveToNextPoint = true;
+	}
+
+	if(MoveToNextPoint)
+	{
+		if(MovementToDo->actual == NULL)
+		{
+			MovementToDo->actual = *(MovementToDo->Moves.begin());
+			MovementToDo->foreignedtime = 0;
+		}
+		ToReachPos = &MovementToDo->actual->Position;
+		ToReachRot = &MovementToDo->actual->Orientation;
+	}
+	else
+		return;
+
+	if(ToReachPos != NULL)
+	{
+		dFloat MovePos[3];
+		dFloat RotatePos[3];
+		if(!isnanf(MovementToDo->actual->TranslateSpeed))
+		{
+			MovePos[0] = ToReachPos->x - getAbsolutePosition().x;
+			MovePos[1] = ToReachPos->y - getAbsolutePosition().y;
+			MovePos[2] = ToReachPos->z - getAbsolutePosition().z;
+			if (MovePos[0] > 0.01)
+			{
+				MovePos[0] = MovementToDo->actual->TranslateSpeed;
+				MustTranslate = true;
+			}
+			else if (MovePos[0] < -0.01)
+			{
+				MovePos[0] = -1 * MovementToDo->actual->TranslateSpeed;
+				MustTranslate = true;
+			}
+			else
+				MovePos[0] = 0;
+			if (MovePos[1] > 0.01)
+			{
+				MovePos[1] = MovementToDo->actual->TranslateSpeed;
+				MustTranslate = true;
+			}
+			else if (MovePos[1] < -0.01)
+			{
+				MovePos[1] = -1 * MovementToDo->actual->TranslateSpeed;
+				MustTranslate = true;
+			}
+			else
+				MovePos[1] = 0;
+			if (MovePos[2] > 0.01)
+			{
+				MovePos[2] = MovementToDo->actual->TranslateSpeed;
+				MustTranslate = true;
+			}
+			else if (MovePos[2] < -0.01)
+			{
+				MovePos[2] = -1 * MovementToDo->actual->TranslateSpeed;
+				MustTranslate = true;
+			}
+			else
+				MovePos[2] = 0;
+		}
+		if(!isnanf(MovementToDo->actual->RotateSpeed))
+		{
+			RotatePos[0] = ToReachRot->x - getAbsoluteOrientation().x;
+			RotatePos[1] = ToReachRot->y - getAbsoluteOrientation().y;
+			RotatePos[2] = ToReachRot->z - getAbsoluteOrientation().z;
+			LOG << "RotatePos = {" << RotatePos[0] << ", " << RotatePos[1] << ", " << RotatePos[2] << "}" << std::endl;
+			if (RotatePos[0] > 0.01)
+			{
+				RotatePos[0] = MovementToDo->actual->RotateSpeed;
+				MustRotate = true;
+			}
+			else if (RotatePos[0] < -0.01)
+			{
+				RotatePos[0] = -1 * MovementToDo->actual->RotateSpeed;
+				MustRotate = true;
+			}
+			else
+				RotatePos[0] = 0;
+			if (RotatePos[1] > 0.01)
+			{
+				RotatePos[1] = MovementToDo->actual->RotateSpeed;
+				MustRotate = true;
+			}
+			else if (RotatePos[1] < -0.01)
+			{
+				RotatePos[1] = -1 * MovementToDo->actual->RotateSpeed;
+				MustRotate = true;
+			}
+			else
+				RotatePos[1] = 0;
+			if (RotatePos[2] > 0.01)
+			{
+				RotatePos[2] = MovementToDo->actual->RotateSpeed;
+				MustRotate = true;
+			}
+			else if (RotatePos[2] < -0.01)
+			{
+				RotatePos[2] = -1 * MovementToDo->actual->RotateSpeed;
+				MustRotate = true;
+			}
+			else
+				RotatePos[2] = 0;
+		}
+		if(MustRotate == false && MustTranslate == false)// So we have reached the position
+		{
+			if(MovementToDo->foreignedtime == 0)
+				MovementToDo->foreignedtime = microseconds;
+			else if (MovementToDo->foreignedtime + MovementToDo->actual->waittime < microseconds)
+			{
+				LOG << "Change Current Move" << std::endl;
+				//Move has been reached. Place the following !
+				std::list<struct MovementStep*>::iterator iter(MovementToDo->Moves.begin());
+				while(iter != MovementToDo->Moves.end())
+				{
+					struct MovementStep *step = *iter;
+					if(step != NULL)
+					{
+						if(step == MovementToDo->actual)
+						{
+							iter++;
+							if(iter == MovementToDo->Moves.end())
+							{
+								if(MovementToDo->is_launched_by_collide == false || BallsUnderCollide.empty() == false)
+								{
+									LOG << "Cycling" << std::endl;
+									MovementToDo->actual = *(MovementToDo->Moves.begin());
+								}
+								else
+								{
+									LOG << "Launched by collide " << MovementToDo->is_launched_by_collide
+											<< " && Balls under collide " << BallsUnderCollide.empty()
+											<< std::endl;
+									MovementToDo->actual = NULL;
+								}
+								MovementToDo->foreignedtime = 0;
+							}
+							else
+							{
+								MovementToDo->actual = *iter;
+								MovementToDo->foreignedtime = 0;
+							}
+							break;
+						}
+					}
+					iter++;
+				}
+			}
+		}
+		//Apply Current Move.
+		if(MustTranslate)
+		{
+			LOG << "Move to next point : from " << getAbsolutePosition() << " to " << *(ToReachPos) << std::endl;
+			NewtonBodySetVelocity(Body, MovePos);
+		}
+		if(MustRotate)
+		{
+			LOG << "Rotate to next Orientation : from " << getAbsoluteOrientation() << " to " << *(ToReachRot) << std::endl;
+			NewtonBodySetOmega(Body, RotatePos);
+		}
+		if(MustTranslate || MustRotate)
+		{
+			NewtonBodyIntegrateVelocity(Body, timestep);
+
+			//For forcing transformation !
+			dMatrix matrix;
+			NewtonBodyGetMatrix(Body, &matrix[0][0]);
+			NewtonBodySetMatrix(Body, &matrix[0][0]);
+		}
+	}
+}
 
 void CaseEntity::AddBallColliding(BallEntity *ball)
 {

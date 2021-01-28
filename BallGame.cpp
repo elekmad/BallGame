@@ -104,6 +104,22 @@ static int OnSubShapeAABBOverlapTest (const NewtonJoint* const contact, dFloat t
 	return 1;
 }
 
+void BallGame::CustomListenerPostUpdateCallback(dFloat timestep)
+{
+	std::list<CaseEntity*>::iterator iter1(CasesToBeMoved.begin());
+	while(iter1 != CasesToBeMoved.end())
+	{
+		CaseEntity *Case = *(iter1++);
+		if(Case != NULL)
+			Case->CaseMove(m_microsecunds, timestep);
+	}
+}
+
+void BallGame::GameNewtonListener::PostUpdate(dFloat timestep)
+{
+//	LOG << "PostUpdate CustomListener @" << timestep << std::endl;
+	Engine->CustomListenerPostUpdateCallback(timestep);
+}
 
 
 void BallGame::BodySerialization (NewtonBody* const body, void* const bodyUserData, NewtonSerializeCallback serializeCallback, void* const serializeHandle)
@@ -297,6 +313,7 @@ BallGame::BallGame() :
 	ToBePlacedEntityType = NULL;
 	ToBeDeletedEntity = NULL;
 	ogreThumbnailNode = NULL;
+	listener = NULL;
 	PlacementMode = PlaceMove;
 	MultiSelectionMode = false;
 	mode = Running;
@@ -325,6 +342,8 @@ void BallGame::SetupNewton(void)
 	int defaultMaterialID = NewtonMaterialGetDefaultGroupID (m_world);
 	NewtonMaterialSetCollisionCallback (m_world, defaultMaterialID, defaultMaterialID, OnBodyAABBOverlap, OnContactCollision);
 	NewtonMaterialSetCompoundCollisionCallback(m_world, defaultMaterialID, defaultMaterialID, OnSubShapeAABBOverlapTest);
+
+	listener = new GameNewtonListener(this);
 }
 
 BallGame::~BallGame()
@@ -332,7 +351,7 @@ BallGame::~BallGame()
 	EmptyLevel();
 	EmptyLevelsList();
 	if(m_world != NULL)
-		NewtonDestroy(m_world);
+		NewtonDestroy(m_world);//This causes CutomListener to be destroyed too !
 	if(mRenderer != NULL)
 		CEGUI::OgreRenderer::destroySystem();
 	std::list<class EntityType*>::iterator iter(EntityTypes.begin());
@@ -378,7 +397,8 @@ void BallGame::UpdatePhysics(dFloat timestep)
 {
 	// update the physics
 //	LOG << " Update Time " << timestep << std::endl;
-	if (m_world && !m_suspendPhysicsUpdate) {
+	if (m_world && !m_suspendPhysicsUpdate)
+	{
 		D_TRACKTIME();
 
 		dFloat timestepInSecunds = 1.0f / MAX_PHYSICS_FPS;
@@ -386,7 +406,8 @@ void BallGame::UpdatePhysics(dFloat timestep)
 
 		unsigned64 currentTime = dGetTimeInMicrosenconds ();
 		unsigned64 nextTime = currentTime - m_microsecunds;
-		if (nextTime > timestepMicrosecunds * 2) {
+		if (nextTime > timestepMicrosecunds * 2)
+		{
 			m_microsecunds = currentTime - timestepMicrosecunds * 2;
 			nextTime = currentTime - m_microsecunds;
 		}
@@ -407,20 +428,22 @@ void BallGame::UpdatePhysics(dFloat timestep)
 
 			nextTime -= timestepMicrosecunds;
 			m_microsecunds += timestepMicrosecunds;
+//			LOG << "Microseconds : " << m_microsecunds << std::endl;
 		}
 
-		if (newUpdate) {
+		if (newUpdate)
+		{
 			m_physicsFramesCount ++;
 			m_mainThreadPhysicsTimeAcc += physicsTime;
-			if (m_physicsFramesCount >= 16) {
+			if (m_physicsFramesCount >= 16)
+			{
 				m_mainThreadPhysicsTime = m_mainThreadPhysicsTimeAcc / m_physicsFramesCount;
 				m_physicsFramesCount = 0;
 				m_mainThreadPhysicsTimeAcc = 0.0f;
 			}
-
 		}
 
-//dTrace (("%f\n", m_mainThreadPhysicsTime));
+//		LOG << "Main Thread Physic Time : " << m_mainThreadPhysicsTime << std::endl;
 	}
 }
 
@@ -2000,7 +2023,22 @@ void BallGame::OnContactCollision (const NewtonJoint* contactJoint, dFloat times
 	{
 		CaseToCheck->AddBallColliding(BallToCheck);
 		Game->AddCaseColliding(CaseToCheck);
+		Game->AddCaseToBeMoved(CaseToCheck);
 	}
+}
+
+void BallGame::AddCaseToBeMoved(CaseEntity *ToAdd)
+{
+	if(ToAdd == NULL)
+		return;
+	std::list<CaseEntity*>::iterator iter(CasesToBeMoved.begin());
+	while(iter != CasesToBeMoved.end())
+	{
+		CaseEntity *Case = *(iter++);
+		if(Case == ToAdd)
+			return;
+	}
+	CasesToBeMoved.push_back(ToAdd);
 }
 
 void BallGame::AddCaseColliding(CaseEntity *ToAdd)
@@ -3240,6 +3278,7 @@ void BallGame::EmptyLevel(void)
 	}
 	assert(Groups.empty());
 	CasesUnderCollide.clear();
+	CasesToBeMoved.clear();
 	EmptyStatesList();
 
 	//Force an update of Physic to force garbage collecting !
@@ -3372,6 +3411,9 @@ void BallGame::ImportLevelFromJson(Node *parent, String &nodeNamePrefix, bool is
 			newCase->CreateFromJson(casejson, this, m_world, parent, nodeNamePrefix);
 			AddCase(newCase);
 		}
+
+		if(newCase->CaseToMove() == true)
+			CasesToBeMoved.push_back(newCase);
 	}
 	//Parsing Balls
 	for(int cmpt = 0; cmpt < in[BALLS_JSON_FIELD].GetArray().Size(); cmpt++)

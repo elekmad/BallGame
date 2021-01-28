@@ -17,6 +17,7 @@
 
 
 #include <Newton.h>
+#include <dCustomListener.h>
 #include <toolbox_stdafx.h>
 #include <dHighResolutionTimer.h>
 #include <DebugDisplay.h>
@@ -187,11 +188,28 @@ class BallGame : public BaseApplication
     static void PostUpdateCallback(const NewtonWorld* const world, dFloat timestep);
     static void OnContactCollision (const NewtonJoint* contactJoint, dFloat timestep, int threadIndex);
     void UpdatePhysics(dFloat timestep);
+    NewtonWorld* GetNewton(void);
+
+    void CustomListenerPostUpdateCallback(dFloat timestep);
 
     private :
 
     void SetupNewton(void);
-    NewtonWorld* GetNewton(void);
+
+	class GameNewtonListener : public dCustomListener
+	{
+		public :
+    	GameNewtonListener(BallGame *engine) : dCustomListener(engine->GetNewton(), "BallGameListener")
+    	{
+    		Engine = engine;
+    	}
+
+		void PostUpdate(dFloat timestep);
+		BallGame *Engine;
+	};
+
+	GameNewtonListener *listener;
+
     static void BodySerialization (NewtonBody* const body, void* const bodyUserData, NewtonSerializeCallback serializeCallback, void* const serializeHandle);
     static void BodyDeserialization (NewtonBody* const body, void* const bodyUserData, NewtonDeserializeCallback deserializecallback, void* const serializeHandle);
     void SerializedPhysicScene(const String* const name);
@@ -213,6 +231,8 @@ class BallGame : public BaseApplication
     std::list<BallEntity*> Balls;
     std::list<GroupEntity*> Groups;
 	std::list<CaseEntity*> CasesUnderCollide;
+	std::list<CaseEntity*> CasesToBeMoved;
+	void AddCaseToBeMoved(CaseEntity *ToAdd);
 
 	String ImportLevelFilename;
 	String ImportLevelName;

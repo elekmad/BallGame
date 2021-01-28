@@ -118,6 +118,7 @@ class BallEntity : public BallGameEntity
 
 	BallEntity(const dMatrix& matrix);
 	BallEntity();
+	~BallEntity();
 	void CreateFromJson(rapidjson::Value &v, BallGame *Game, NewtonWorld *m_world, Node *parent, String &nodeNamePrefix);
 	void AddForceVector(dVector *force);
     void ExportToJson(rapidjson::Value &v, rapidjson::Document::AllocatorType& allocator);
@@ -148,7 +149,7 @@ class CaseEntity : public BallGameEntity
 	enum CaseType type;
 	CaseEntity(const dMatrix& matrix, enum CaseType _type = typeBox);
 	CaseEntity(enum CaseType _type = typeBox);
-	~CaseEntity(){ BallsUnderCollide.clear(); }
+	~CaseEntity();
 	void CreateFromJson(rapidjson::Value &v, BallGame *Game, NewtonWorld *m_world, Node *parent, String &nodeNamePrefix);
 //	void AddBallColliding(NewtonBody *ball);
 //	bool CheckIfAlreadyColliding(NewtonBody *ball);
@@ -162,12 +163,61 @@ class CaseEntity : public BallGameEntity
     void AddBallColliding(BallEntity *ball);
 	void ApplyForceOnCollidingBalls(void);
 	Ogre::SceneNode *CreateForceArrows(Ogre::SceneManager *Scene);
+	void CaseMove(unsigned64 microseconds, dFloat timestep);
+	bool CaseToMove(void) { return MovementToDo != NULL; }
+	void AddMovePoint(const Vector3 &GoalPos, float speed, unsigned64 waittime, const Quaternion &GoalAngle = Ogre::Quaternion::IDENTITY, float RotateSpeed = NAN);
+	void AddTriggeredMovePoint(const Vector3 &GoalPos, float speed, unsigned64 waittime, const Quaternion &GoalAngle = Ogre::Quaternion::IDENTITY, float RotateSpeed = NAN)
+	{
+		AddMovePoint(GoalPos, speed, waittime, GoalAngle, RotateSpeed);
+		MovementToDo->is_launched_by_collide = true;
+	}
 
 	protected :
 
     bool CheckIfAlreadyColliding(BallEntity *ball);
 
 	std::list<BallEntity*> BallsUnderCollide;
+
+	struct MovementStep
+	{
+		Vector3 Position;
+		float TranslateSpeed;
+		Quaternion Orientation;
+		float RotateSpeed;
+		unsigned64 waittime;
+		MovementStep()
+		{
+			TranslateSpeed = NAN;
+			RotateSpeed = NAN;
+			waittime = 0;
+		}
+	};
+	struct Movement
+	{
+		bool is_launched_by_collide;
+		std::list<struct MovementStep*> Moves;
+		struct MovementStep *actual;
+		unsigned64 foreignedtime;
+		Movement()
+		{
+			actual = NULL;
+			is_launched_by_collide = false;
+			foreignedtime = 0;
+		}
+		~Movement()
+		{
+			std::list<struct MovementStep*>::iterator iter(Moves.begin());
+			while(iter != Moves.end())
+			{
+				struct MovementStep *step = *iter;
+				if(step != NULL)
+					delete step;
+				iter = Moves.erase(iter);
+			}
+		}
+	};
+
+	struct Movement *MovementToDo;
 
 	float force_to_apply;
 	dVector *force_direction;
