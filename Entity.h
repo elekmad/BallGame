@@ -90,6 +90,12 @@ class BallGameEntity
     void getVelocity(dFloat *Velocity) { NewtonBodyGetVelocity(Body, Velocity); }
     enum BallGameEntityType getType(void) { return type; }
     GroupEntity *getGroup(void) { return Group; }
+    void ResetToInitial(void)
+    {
+    	setRelativeScale(InitialScale);
+    	setAbsolutePosition(InitialPos);
+    	setAbsoluteOrientation(InitialOrientation);
+    }
 
 	protected :
 
