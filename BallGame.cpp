@@ -1396,6 +1396,7 @@ void BallGame::SetupGUI(void)
     SetWindowsPosNearToOther(StatesModePushB, EditModePushB, 1, 0);
 
     ChooseLevelComboB = CreateNewGUIComponent<CEGUI::Combobox>("OgreTray/Combobox");
+    ChooseLevelComboB->setReadOnly(true);
     glob_t glob_result;
     CEGUI::ListboxTextItem *actuallevel = NULL;
 	memset(&glob_result, 0, sizeof(glob_result));
@@ -1491,6 +1492,7 @@ void BallGame::SetupGUI(void)
     ButtonSetAddButton(StatesButtons, StatesBanner);
 
     ChooseStateToLoadB = CreateNewGUIComponent<CEGUI::Combobox>("OgreTray/Combobox");
+    ChooseStateToLoadB->setReadOnly(true);
     ChooseStateToLoadB->setSize(CEGUI::USize(CEGUI::UDim(0, 150), CEGUI::UDim(0, 30)));
     ChooseStateToLoadB->setVerticalAlignment(CEGUI::VA_TOP);
     ChooseStateToLoadB->setHorizontalAlignment(CEGUI::HA_RIGHT);
@@ -1575,6 +1577,7 @@ void BallGame::SetupGUI(void)
 
 
     ChooseLevelToImportComboB = CreateNewGUIComponent<CEGUI::Combobox>("OgreTray/Combobox");
+    ChooseLevelToImportComboB->setReadOnly(true);
     ChooseLevelToImportComboB->setVerticalAlignment(CEGUI::VA_TOP);
     ChooseLevelToImportComboB->setHorizontalAlignment(CEGUI::HA_CENTRE);
 	for (size_t cmpt = 0; cmpt < ChooseLevelComboB->getItemCount(); cmpt++)//All levels that can be imported are levels that can be loaded !
@@ -1647,6 +1650,7 @@ void BallGame::SetupGUI(void)
 
 
     ChooseTypeOfElementToAddB = CreateNewGUIComponent<CEGUI::Combobox>("OgreTray/Combobox");
+    ChooseTypeOfElementToAddB->setReadOnly(true);
 	std::list<class EntityType*>::iterator iter(EntityTypes.begin());
 	while(iter != EntityTypes.end())
 	{
