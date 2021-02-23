@@ -314,7 +314,9 @@ BallGame::BallGame() :
 	ToBeDeletedEntity = NULL;
 	ogreThumbnailNode = NULL;
 	listener = NULL;
-	PlacementMode = PlaceMove;
+	LevelEditMode = Place;
+	EntityEditMode = Simple;
+	EntityEditAction = Move;
 	MultiSelectionMode = false;
 	mode = Running;
 	MouseOverButton = false;
@@ -631,6 +633,8 @@ void BallGame::SwitchEditMode(void)
 		_StopPhysic();
 		ButtonsSetVisible(EditButtons, true);
 	    GroupElementsB->setVisible(false);
+	    CaractsEditElementB->setVisible(false);
+	    SimpleEditElementB->setVisible(false);
 		SetMoveNewElement();
 	}
 	else
@@ -846,7 +850,7 @@ bool BallGame::ChooseTypeOfElementToAddBCallback(const CEGUI::EventArgs &e)
 
 void BallGame::DeleteElement(void)
 {
-	if(PlacementMode != Delete)
+	if(LevelEditMode != Delete)
 		return;
 	if(ToBeDeletedEntity != NULL)
 	{
@@ -891,26 +895,24 @@ void BallGame::DeleteElement(void)
 
 bool BallGame::DeleteElementBCallback(const CEGUI::EventArgs &e)
 {
-	switch(PlacementMode)
+	switch(LevelEditMode)
 	{
-	case EditMove :
-	case EditRotate :
-	case EditScale :
+	case Edit :
 		MultiSelectionMode = false;
 		MultiSelectionSetEmpty();
 		EditBall(NULL);
 		EditCase(NULL);
 		break;
-	case PlaceMove :
-	case PlaceRotate :
-	case PlaceScale :
+	case Place :
 		UnprepareNewElement();
 		break;
 	}
-	PlacementMode = Delete;
+	LevelEditMode = Delete;
 	DeleteElementB->setDisabled(true);
 	PlaceNewElementB->setDisabled(false);
 	EditElementB->setDisabled(false);
+	SimpleEditElementB->setVisible(false);
+	CaractsEditElementB->setVisible(false);
 	MoveElementB->setVisible(false);
 	RotateElementB->setVisible(false);
 	ScaleElementB->setVisible(false);
@@ -923,10 +925,13 @@ bool BallGame::PlaceNewElementBCallback(const CEGUI::EventArgs &e)
 	DeleteElementB->setDisabled(false);
 	PlaceNewElementB->setDisabled(true);
 	EditElementB->setDisabled(false);
+	SimpleEditElementB->setVisible(false);
+	CaractsEditElementB->setVisible(false);
 	MoveElementB->setVisible(true);
 	RotateElementB->setVisible(true);
 	ScaleElementB->setVisible(true);
 	GroupElementsB->setVisible(false);
+	UnprepareNewElement();
 	SetMoveNewElement();
 	return true;
 }
@@ -942,6 +947,8 @@ void BallGame::EditElementSetupButtons(void)
 	DeleteElementB->setDisabled(false);
 	PlaceNewElementB->setDisabled(false);
 	EditElementB->setDisabled(true);
+	SimpleEditElementB->setVisible(true);
+	CaractsEditElementB->setVisible(true);
 	MoveElementB->setVisible(true);
 	RotateElementB->setVisible(true);
 	ScaleElementB->setVisible(true);
@@ -951,11 +958,9 @@ void BallGame::EditElementSetupButtons(void)
 
 void BallGame::SetMoveElement(void)
 {
-	switch(PlacementMode)
+	switch(LevelEditMode)
 	{
-	case PlaceMove :
-	case PlaceRotate :
-	case PlaceScale :
+	case Place :
 		UnprepareNewElement();
 		break;
 	case Delete :
@@ -963,9 +968,13 @@ void BallGame::SetMoveElement(void)
 		MultiSelectionSetEmpty();
 		break;
 	}
-	PlacementMode = EditMove;
+	LevelEditMode = Edit;
+	EntityEditMode = Simple;
+	EntityEditAction = Move;
 	DeleteElementB->setDisabled(false);
 	PlaceNewElementB->setDisabled(false);
+	SimpleEditElementB->setDisabled(true);
+	CaractsEditElementB->setDisabled(false);
 	EditElementB->setDisabled(true);
 	MoveElementB->setDisabled(true);
 	RotateElementB->setDisabled(false);
@@ -974,11 +983,9 @@ void BallGame::SetMoveElement(void)
 
 void BallGame::SetMoveNewElement(void)
 {
-	switch(PlacementMode)
+	switch(LevelEditMode)
 	{
-	case EditMove :
-	case EditRotate :
-	case EditScale :
+	case Edit :
 		MultiSelectionMode = false;
 		MultiSelectionSetEmpty();
 		EditBall(NULL);
@@ -989,7 +996,9 @@ void BallGame::SetMoveNewElement(void)
 		MultiSelectionSetEmpty();
 		break;
 	}
-	PlacementMode = PlaceMove;
+	LevelEditMode = Place;
+	EntityEditMode = Simple;
+	EntityEditAction = Move;
 	PrepareNewElement();
 	DeleteElementB->setDisabled(false);
 	PlaceNewElementB->setDisabled(true);
@@ -999,32 +1008,73 @@ void BallGame::SetMoveNewElement(void)
 	ScaleElementB->setDisabled(false);
 }
 
-bool BallGame::MoveElementBCallback(const CEGUI::EventArgs &e)
+bool BallGame::SimpleEditElementBCallback(const CEGUI::EventArgs &e)
 {
-	if(PlaceNewElementB->isDisabled() == true) // We are in PlaceNew mode, not Edit mode
-		SetMoveNewElement();
-	else
-		SetMoveElement();
+	EntityEditMode = Simple;
+	EntityEditAction = Move;
+	EditBall(UnderEditBall);
+	EditCase(UnderEditCase);
+	CaractsEditElementB->setEnabled(true);
+	SimpleEditElementB->setEnabled(false);
+
+	MoveElementB->setVisible(true);
+	MoveElementB->setEnabled(true);
+	RotateElementB->setVisible(true);
+	RotateElementB->setEnabled(false);
+	ScaleElementB->setVisible(true);
+	ScaleElementB->setEnabled(false);
 	return true;
 }
 
-void BallGame::SetRotateElement(void)
+bool BallGame::MoveEditElementBCallback(const CEGUI::EventArgs &e)
 {
-	PlacementMode = EditRotate;
-	DeleteElementB->setDisabled(false);
-	PlaceNewElementB->setDisabled(false);
-	EditElementB->setDisabled(true);
-	MoveElementB->setDisabled(false);
-	RotateElementB->setDisabled(true);
+	EntityEditMode = Moves;
+	EntityEditAction = Move;
+	EditBall(UnderEditBall);
+	EditCase(UnderEditCase);
+	CaractsEditElementB->setEnabled(false);
+	SimpleEditElementB->setEnabled(true);
+
+	MoveElementB->setVisible(true);
+	MoveElementB->setEnabled(true);
+	RotateElementB->setVisible(true);
+	RotateElementB->setEnabled(false);
+	ScaleElementB->setVisible(true);
+	ScaleElementB->setEnabled(false);
+	return true;
+}
+
+bool BallGame::CaractsEditElementBCallback(const CEGUI::EventArgs &e)
+{
+	EntityEditMode = Caracts;
+	EditBall(UnderEditBall);
+	EditCase(UnderEditCase);
+	CaractsEditElementB->setEnabled(false);
+	SimpleEditElementB->setEnabled(true);
+
+	MoveElementB->setVisible(false);
+	RotateElementB->setVisible(false);
+	ScaleElementB->setVisible(false);
+	return true;
+}
+
+inline void BallGame::SetMoveElementAction(void)
+{
+	EntityEditAction = Move;
+	MoveElementB->setDisabled(true);
+	RotateElementB->setDisabled(false);
 	ScaleElementB->setDisabled(false);
 }
 
-void BallGame::SetRotateNewElement(void)
+bool BallGame::MoveElementBCallback(const CEGUI::EventArgs &e)
 {
-	PlacementMode = PlaceRotate;
-	DeleteElementB->setDisabled(false);
-	PlaceNewElementB->setDisabled(true);
-	EditElementB->setDisabled(false);
+	SetMoveElementAction();
+	return true;
+}
+
+inline void BallGame::SetRotateElementAction(void)
+{
+	EntityEditAction = Rotate;
 	MoveElementB->setDisabled(false);
 	RotateElementB->setDisabled(true);
 	ScaleElementB->setDisabled(false);
@@ -1032,30 +1082,13 @@ void BallGame::SetRotateNewElement(void)
 
 bool BallGame::RotateElementBCallback(const CEGUI::EventArgs &e)
 {
-	if(PlaceNewElementB->isDisabled() == true) // We are in PlaceNew mode, not Edit mode
-		SetRotateNewElement();
-	else
-		SetRotateElement();
+	SetRotateElementAction();
 	return true;
 }
 
-void BallGame::SetScaleElement(void)
+inline void BallGame::SetScaleElementAction(void)
 {
-	PlacementMode = EditScale;
-	DeleteElementB->setDisabled(false);
-	PlaceNewElementB->setDisabled(false);
-	EditElementB->setDisabled(true);
-	MoveElementB->setDisabled(false);
-	RotateElementB->setDisabled(false);
-	ScaleElementB->setDisabled(true);
-}
-
-void BallGame::SetScaleNewElement(void)
-{
-	PlacementMode = PlaceScale;
-	DeleteElementB->setDisabled(false);
-	PlaceNewElementB->setDisabled(true);
-	EditElementB->setDisabled(false);
+	EntityEditAction = Scale;
 	MoveElementB->setDisabled(false);
 	RotateElementB->setDisabled(false);
 	ScaleElementB->setDisabled(true);
@@ -1063,10 +1096,7 @@ void BallGame::SetScaleNewElement(void)
 
 bool BallGame::ScaleElementBCallback(const CEGUI::EventArgs &e)
 {
-	if(PlaceNewElementB->isDisabled() == true) // We are in PlaceNew mode, not Edit mode
-		SetScaleNewElement();
-	else
-		SetScaleElement();
+	SetScaleElementAction();
 	return true;
 }
 
@@ -1723,9 +1753,50 @@ void BallGame::SetupGUI(void)
     ButtonSetAddButton(EditButtons, DeleteElementB);
 
 
+    SimpleEditElementB = CreateNewGUIComponent<CEGUI::PushButton>("OgreTray/Button");
+    SimpleEditElementB->setText("S");
+    SimpleEditElementB->setTooltipText("Simple Edit Element.");
+    SimpleEditElementB->setSize(CEGUI::USize(CEGUI::UDim(0, 75), CEGUI::UDim(0, 30)));
+    SimpleEditElementB->setVerticalAlignment(CEGUI::VA_TOP);
+    SimpleEditElementB->setHorizontalAlignment(CEGUI::HA_RIGHT);
+
+    SimpleEditElementB->subscribeEvent(CEGUI::PushButton::EventClicked,
+			CEGUI::Event::Subscriber(&BallGame::SimpleEditElementBCallback, this));
+
+    MainLayout->addChild(SimpleEditElementB);
+    ButtonSetAddButton(EditButtons, SimpleEditElementB);
+
+    /*
+    MoveEditElementB = CreateNewGUIComponent<CEGUI::PushButton>("OgreTray/Button");
+    MoveEditElementB->setText("M");
+    MoveEditElementB->setTooltipText("Moves Edit Element.");
+    MoveEditElementB->setSize(CEGUI::USize(CEGUI::UDim(0, 75), CEGUI::UDim(0, 30)));
+    MoveEditElementB->setVerticalAlignment(CEGUI::VA_TOP);
+    MoveEditElementB->setHorizontalAlignment(CEGUI::HA_RIGHT);
+
+    MoveEditElementB->subscribeEvent(CEGUI::PushButton::EventClicked,
+			CEGUI::Event::Subscriber(&BallGame::MoveEditElementBCallback, this));
+
+    MainLayout->addChild(MoveEditElementB);
+    ButtonSetAddButton(EditButtons, MoveEditElementB);
+    */
+
+    CaractsEditElementB = CreateNewGUIComponent<CEGUI::PushButton>("OgreTray/Button");
+    CaractsEditElementB->setText("C");
+    CaractsEditElementB->setTooltipText("Caracts Edit Element.");
+    CaractsEditElementB->setSize(CEGUI::USize(CEGUI::UDim(0, 75), CEGUI::UDim(0, 30)));
+    CaractsEditElementB->setVerticalAlignment(CEGUI::VA_TOP);
+    CaractsEditElementB->setHorizontalAlignment(CEGUI::HA_RIGHT);
+
+    CaractsEditElementB->subscribeEvent(CEGUI::PushButton::EventClicked,
+			CEGUI::Event::Subscriber(&BallGame::CaractsEditElementBCallback, this));
+
+    MainLayout->addChild(CaractsEditElementB);
+    ButtonSetAddButton(EditButtons, CaractsEditElementB);
+
     MoveElementB = CreateNewGUIComponent<CEGUI::PushButton>("OgreTray/Button");
     MoveElementB->setText("M");
-    MoveElementB->setTooltipText("Move Element. Press M to enter this mode.");
+    MoveElementB->setTooltipText("Move Element.");
     MoveElementB->setSize(CEGUI::USize(CEGUI::UDim(0, 50), CEGUI::UDim(0, 30)));
     MoveElementB->setVerticalAlignment(CEGUI::VA_TOP);
     MoveElementB->setHorizontalAlignment(CEGUI::HA_RIGHT);
@@ -1736,10 +1807,9 @@ void BallGame::SetupGUI(void)
     MainLayout->addChild(MoveElementB);
     ButtonSetAddButton(EditButtons, MoveElementB);
 
-
     RotateElementB = CreateNewGUIComponent<CEGUI::PushButton>("OgreTray/Button");
     RotateElementB->setText("R");
-    RotateElementB->setTooltipText("Rotate Element. Press R to enter this mode.");
+    RotateElementB->setTooltipText("Rotate Element.");
     RotateElementB->setSize(CEGUI::USize(CEGUI::UDim(0, 50), CEGUI::UDim(0, 30)));
     RotateElementB->setVerticalAlignment(CEGUI::VA_TOP);
     RotateElementB->setHorizontalAlignment(CEGUI::HA_RIGHT);
@@ -1753,7 +1823,7 @@ void BallGame::SetupGUI(void)
 
     ScaleElementB = CreateNewGUIComponent<CEGUI::PushButton>("OgreTray/Button");
     ScaleElementB->setText("S");
-    ScaleElementB->setTooltipText("Scale Element. Press S to enter this mode.");
+    ScaleElementB->setTooltipText("Scale Element.");
     ScaleElementB->setSize(CEGUI::USize(CEGUI::UDim(0, 50), CEGUI::UDim(0, 30)));
     ScaleElementB->setVerticalAlignment(CEGUI::VA_TOP);
     ScaleElementB->setHorizontalAlignment(CEGUI::HA_RIGHT);
@@ -1782,7 +1852,9 @@ void BallGame::SetupGUI(void)
     SetWindowsPosNearToOther(EditElementB, ThumbnailWindow, 0, 1);
     SetWindowsPosNearToOther(PlaceNewElementB, EditElementB, -1, 0);
     SetWindowsPosNearToOther(DeleteElementB, EditElementB, 0, 1);
-    SetWindowsPosNearToOther(ScaleElementB, DeleteElementB, 0, 1);
+    SetWindowsPosNearToOther(SimpleEditElementB, DeleteElementB, 0, 1);
+    SetWindowsPosNearToOther(CaractsEditElementB, SimpleEditElementB, -1, 0);
+    SetWindowsPosNearToOther(ScaleElementB, SimpleEditElementB, 0, 1);
     SetWindowsPosNearToOther(RotateElementB, ScaleElementB, -1, 0);
     SetWindowsPosNearToOther(MoveElementB, RotateElementB, -1, 0);
     SetWindowsPosNearToOther(GroupElementsB, ScaleElementB, 0, 1);
@@ -2438,10 +2510,11 @@ void BallGame::EditCase(CaseEntity *Entity)
 	if(UnderEditCase != NULL)
 	{
 		UnderEditCase->DisplaySelectedBox(false);
+		UnderEditCase->ResetToInitial();
 	}
 	UnderEditCase = Entity;
 
-	if(UnderEditCase != NULL && PlacementMode != Delete)
+	if(UnderEditCase != NULL && LevelEditMode == Edit && EntityEditMode == Caracts)
 	{
 		const dVector *case_force_direction = UnderEditCase->getForceDirection();
 		CaseHasForceToggleB->setMutedState(true);
@@ -2497,10 +2570,13 @@ void BallGame::EditBall(BallEntity *Entity)
 	if(mode != Editing)
 		return;
 	if(UnderEditBall != NULL)
+	{
 		UnderEditBall->DisplaySelectedBox(false);
+		UnderEditBall->ResetToInitial();
+	}
 	UnderEditBall = Entity;
 
-	if(UnderEditBall != NULL && PlacementMode != Delete)
+	if(UnderEditBall != NULL && LevelEditMode == Edit && EntityEditMode == Caracts)
 	{
 		UnderEditBall->DisplaySelectedBox(true);
 		UnderEditBallMass = UnderEditBall->getMass();
@@ -2522,6 +2598,7 @@ void BallGame::MultiSelectionSetEmpty(void)
 		if(Entity == NULL)
 			continue;
 		Entity->DisplaySelectedBox(false);
+		Entity->ResetToInitial();
 		iter = UnderEditEntites.erase(iter);
 	}
 	GroupElementsB->setMutedState(true);
@@ -2602,16 +2679,12 @@ bool BallGame::mousePressed( const OIS::MouseEvent &arg, OIS::MouseButtonID id )
     //BaseApplication::mousePressed(arg, id);
     if(mode == Editing && MouseOverButton == false)
     {
-    	switch(PlacementMode)
+    	switch(LevelEditMode)
     	{
-    	case PlaceMove :
-    	case PlaceRotate :
-    	case PlaceScale :
+    	case Place :
     		break;
     	case Delete :
-    	case EditMove :
-    	case EditRotate :
-    	case EditScale :
+    	case Edit :
     		if(LastHighligted != NULL)
 			{
 				//Case Entity ?
@@ -2637,7 +2710,7 @@ bool BallGame::mousePressed( const OIS::MouseEvent &arg, OIS::MouseButtonID id )
 				{
 					//Hide and deselect all that was showed and selected from last time.
 					MultiSelectionSetEmpty();
-					if(PlacementMode != Delete)
+					if(LevelEditMode != Delete)
 					{
 						if(UnderEditBall != NULL)
 							EditBall(NULL);//Hide Ball Editing buttons;
@@ -2650,7 +2723,7 @@ bool BallGame::mousePressed( const OIS::MouseEvent &arg, OIS::MouseButtonID id )
 					//Then deal with what is to be shown and selected now.
 					if(HighlightedGroup == NULL)
 					{
-						if(PlacementMode != Delete)
+						if(LevelEditMode != Delete)
 						{
 							switch(LastHighligted->getType())
 							{
@@ -2840,7 +2913,7 @@ bool BallGame::keyPressed(const OIS::KeyEvent &arg)
     case OIS::KeyCode::KC_RCONTROL :
     	if(MouseOverButton == false)
     	{
-			if(PlacementMode == EditMove || PlacementMode == EditRotate || PlacementMode == EditScale || PlacementMode == Delete)
+			if(LevelEditMode == Edit || LevelEditMode == Delete)
 			{
 				BallGameEntity *UnderEditEntity = NULL;
 				MultiSelectionMode = true;
@@ -2863,212 +2936,275 @@ bool BallGame::keyPressed(const OIS::KeyEvent &arg)
 			ButtonsSetVisible(MainMenuButtons, true);
 	    break;
 	case OIS::KeyCode::KC_UP:
-    	if(MouseOverButton == false)
+    	if(MouseOverButton == false && EntityEditMode != Caracts)
     	{
-			switch(PlacementMode)
-			{
-			case PlaceMove :
-				if(ToBePlacedEntity != NULL)
-					ToBePlacedEntity->Move(0, 10, 0);
+    		switch(LevelEditMode)
+    		{
+    		case Place :
+				switch(EntityEditAction)
+				{
+				case Move :
+					if(ToBePlacedEntity != NULL)
+						ToBePlacedEntity->Move(0, 10, 0);
+					break;
+				case Rotate :
+					if(ToBePlacedEntity != NULL)
+						ToBePlacedEntity->Rotate(0, 10, 0);
+					break;
+				case Scale :
+					if(ToBePlacedEntity != NULL)
+						ToBePlacedEntity->Scale(0, 10, 0);
+					break;
+				}
 				break;
-			case EditMove :
-				MoveEntities(0, 10, 0);
+			case Edit :
+				switch(EntityEditAction)
+				{
+				case Move :
+					MoveEntities(0, 10, 0);
+					break;
+				case Rotate :
+					RotateEntities(0, 10, 0);
+					break;
+				case Scale :
+					ScaleEntities(0, 10, 0);
+					break;
+				}
 				break;
-			case PlaceRotate :
-				if(ToBePlacedEntity != NULL)
-					ToBePlacedEntity->Rotate(0, 10, 0);
-				break;
-			case EditRotate :
-				RotateEntities(0, 10, 0);
-				break;
-			case PlaceScale :
-				if(ToBePlacedEntity != NULL)
-					ToBePlacedEntity->Scale(0, 10, 0);
-				break;
-			case EditScale :
-				ScaleEntities(0, 10, 0);
-				break;
-			}
+    		}
 		}
 	    break;
 	case OIS::KeyCode::KC_DOWN:
-    	if(MouseOverButton == false)
+    	if(MouseOverButton == false && EntityEditMode != Caracts)
     	{
-			switch(PlacementMode)
-			{
-			case PlaceMove :
-				if(ToBePlacedEntity != NULL)
-					ToBePlacedEntity->Move(0, -10, 0);
+    		switch(LevelEditMode)
+    		{
+    		case Place :
+				switch(EntityEditAction)
+				{
+				case Move :
+					if(ToBePlacedEntity != NULL)
+						ToBePlacedEntity->Move(0, -10, 0);
+					break;
+				case Rotate :
+					if(ToBePlacedEntity != NULL)
+						ToBePlacedEntity->Rotate(0, -10, 0);
+					break;
+				case Scale :
+					if(ToBePlacedEntity != NULL)
+						ToBePlacedEntity->Scale(0, -10, 0);
+					break;
+				}
 				break;
-			case EditMove :
-				MoveEntities(0, -10, 0);
+			case Edit :
+				switch(EntityEditAction)
+				{
+				case Move :
+					MoveEntities(0, -10, 0);
+					break;
+				case Rotate :
+					RotateEntities(0, -10, 0);
+					break;
+				case Scale :
+					ScaleEntities(0, -10, 0);
+					break;
+				}
 				break;
-			case PlaceRotate :
-				if(ToBePlacedEntity != NULL)
-					ToBePlacedEntity->Rotate(0, -10, 0);
-				break;
-			case EditRotate :
-				RotateEntities(0, -10, 0);
-				break;
-			case PlaceScale :
-				if(ToBePlacedEntity != NULL)
-					ToBePlacedEntity->Scale(0, -10, 0);
-				break;
-			case EditScale :
-				ScaleEntities(0, -10, 0);
-				break;
-			}
+    		}
 		}
 	    break;
 	case OIS::KeyCode::KC_RIGHT:
-    	if(MouseOverButton == false)
+    	if(MouseOverButton == false && EntityEditMode != Caracts)
     	{
-			switch(PlacementMode)
-			{
-			case PlaceMove :
-				if(ToBePlacedEntity != NULL)
-					ToBePlacedEntity->Move(10, 0, 0);
+    		switch(LevelEditMode)
+    		{
+    		case Place :
+				switch(EntityEditAction)
+				{
+				case Move :
+					if(ToBePlacedEntity != NULL)
+						ToBePlacedEntity->Move(10, 0, 0);
+					break;
+				case Rotate :
+					if(ToBePlacedEntity != NULL)
+						ToBePlacedEntity->Rotate(10, 0, 0);
+					break;
+				case Scale :
+					if(ToBePlacedEntity != NULL)
+						ToBePlacedEntity->Scale(10, 0, 0);
+					break;
+				}
 				break;
-			case EditMove :
-				MoveEntities(10, 0, 0);
+			case Edit :
+				switch(EntityEditAction)
+				{
+				case Move :
+					MoveEntities(10, 0, 0);
+					break;
+				case Rotate :
+					RotateEntities(10, 0, 0);
+					break;
+				case Scale :
+					ScaleEntities(10, 0, 0);
+					break;
+				}
 				break;
-			case PlaceRotate :
-				if(ToBePlacedEntity != NULL)
-					ToBePlacedEntity->Rotate(10, 0, 0);
-				break;
-			case EditRotate :
-				RotateEntities(10, 0, 0);
-				break;
-			case PlaceScale :
-				if(ToBePlacedEntity != NULL)
-					ToBePlacedEntity->Scale(10, 0, 0);
-				break;
-			case EditScale :
-				ScaleEntities(10, 0, 0);
-				break;
-			}
+    		}
 		}
 	    break;
 	case OIS::KeyCode::KC_LEFT:
-    	if(MouseOverButton == false)
+    	if(MouseOverButton == false && EntityEditMode != Caracts)
     	{
-			switch(PlacementMode)
-			{
-			case PlaceMove :
-				if(ToBePlacedEntity != NULL)
-					ToBePlacedEntity->Move(-10, 0, 0);
+    		switch(LevelEditMode)
+    		{
+    		case Place :
+				switch(EntityEditAction)
+				{
+				case Move :
+					if(ToBePlacedEntity != NULL)
+						ToBePlacedEntity->Move(-10, 0, 0);
+					break;
+				case Rotate :
+					if(ToBePlacedEntity != NULL)
+						ToBePlacedEntity->Rotate(-10, 0, 0);
+					break;
+				case Scale :
+					if(ToBePlacedEntity != NULL)
+						ToBePlacedEntity->Scale(-10, 0, 0);
+					break;
+				}
 				break;
-			case EditMove :
-				MoveEntities(-10, 0, 0);
+			case Edit :
+				switch(EntityEditAction)
+				{
+				case Move :
+					MoveEntities(-10, 0, 0);
+					break;
+				case Rotate :
+					RotateEntities(-10, 0, 0);
+					break;
+				case Scale :
+					ScaleEntities(-10, 0, 0);
+					break;
+				}
 				break;
-			case PlaceRotate :
-				if(ToBePlacedEntity != NULL)
-					ToBePlacedEntity->Rotate(-10, 0, 0);
-				break;
-			case EditRotate :
-				RotateEntities(-10, 0, 0);
-				break;
-			case PlaceScale :
-				if(ToBePlacedEntity != NULL)
-					ToBePlacedEntity->Scale(-10, 0, 0);
-				break;
-			case EditScale :
-				ScaleEntities(-10, 0, 0);
-				break;
-			}
+    		}
 		}
 	    break;
 	case OIS::KeyCode::KC_PGUP:
-    	if(MouseOverButton == false)
+    	if(MouseOverButton == false && EntityEditMode != Caracts)
     	{
-			switch(PlacementMode)
-			{
-			case PlaceMove :
-				if(ToBePlacedEntity != NULL)
-					ToBePlacedEntity->Move(0, 0, 10);
+    		switch(LevelEditMode)
+    		{
+    		case Place :
+				switch(EntityEditAction)
+				{
+				case Move :
+					if(ToBePlacedEntity != NULL)
+						ToBePlacedEntity->Move(0, 0, 10);
+					break;
+				case Rotate :
+					if(ToBePlacedEntity != NULL)
+						ToBePlacedEntity->Rotate(0, 0, 10);
+					break;
+				case Scale :
+					if(ToBePlacedEntity != NULL)
+						ToBePlacedEntity->Scale(0, 0, 10);
+					break;
+				}
 				break;
-			case EditMove :
-				MoveEntities(0, 0, 10);
+			case Edit :
+				switch(EntityEditAction)
+				{
+				case Move :
+					MoveEntities(0, 0, 10);
+					break;
+				case Rotate :
+					RotateEntities(0, 0, 10);
+					break;
+				case Scale :
+					ScaleEntities(0, 0, 10);
+					break;
+				}
 				break;
-			case PlaceRotate :
-				if(ToBePlacedEntity != NULL)
-					ToBePlacedEntity->Rotate(0, 0, 10);
-				break;
-			case EditRotate :
-				RotateEntities(0, 0, 10);
-				break;
-			case PlaceScale :
-				if(ToBePlacedEntity != NULL)
-					ToBePlacedEntity->Scale(0, 0, 10);
-				break;
-			case EditScale :
-				ScaleEntities(0, 0, 10);
-				break;
-			}
+    		}
 		}
 	    break;
 	case OIS::KeyCode::KC_PGDOWN:
-    	if(MouseOverButton == false)
+    	if(MouseOverButton == false && EntityEditMode != Caracts)
     	{
-			switch(PlacementMode)
-			{
-			case PlaceMove :
-				if(ToBePlacedEntity != NULL)
-					ToBePlacedEntity->Move(0, 0, -10);
+    		switch(LevelEditMode)
+    		{
+    		case Place :
+				switch(EntityEditAction)
+				{
+				case Move :
+					if(ToBePlacedEntity != NULL)
+						ToBePlacedEntity->Move(0, 0, -10);
+					break;
+				case Rotate :
+					if(ToBePlacedEntity != NULL)
+						ToBePlacedEntity->Rotate(0, 0, -10);
+					break;
+				case Scale :
+					if(ToBePlacedEntity != NULL)
+						ToBePlacedEntity->Scale(0, 0, -10);
+					break;
+				}
 				break;
-			case EditMove :
-				MoveEntities(0, 0, -10);
+			case Edit :
+				switch(EntityEditAction)
+				{
+				case Move :
+					MoveEntities(0, 0, -10);
+					break;
+				case Rotate :
+					RotateEntities(0, 0, -10);
+					break;
+				case Scale :
+					ScaleEntities(0, 0, -10);
+					break;
+				}
 				break;
-			case PlaceRotate :
-				if(ToBePlacedEntity != NULL)
-					ToBePlacedEntity->Rotate(0, 0, -10);
-				break;
-			case EditRotate :
-				RotateEntities(0, 0, -10);
-				break;
-			case PlaceScale :
-				if(ToBePlacedEntity != NULL)
-					ToBePlacedEntity->Scale(0, 0, -10);
-				break;
-			case EditScale :
-				ScaleEntities(0, 0, -10);
-				break;
-			}
+    		}
 		}
 	    break;
 	case OIS::KeyCode::KC_SPACE:
 		if(mode == Editing && MouseOverButton == false)
 		{
-			switch(PlacementMode)
+			switch(LevelEditMode)
 			{
-			case PlaceMove :
-			case PlaceRotate :
-			case PlaceScale :
+			case Place :
 				PlaceNewElement();
 				break;
-			case EditMove :
-			case EditRotate :
-			case EditScale :
-				PlaceUnderEditElement();
+			case Edit :
+				switch(EntityEditMode)
+				{
+				case Simple :
+					PlaceUnderEditElement();
+					break;
+				case Moves :
+					break;
+				}
 				break;
 			}
 		}
 		break;
 	case OIS::KeyCode::KC_DELETE:
-		if(mode == Editing && MouseOverButton == false)
+		if(mode == Editing && MouseOverButton == false && EntityEditMode != Caracts)
 			DeleteElement();
 		break;
 	case OIS::KeyCode::KC_M:
 		if(mode == Editing)
-			SetMoveNewElement();
+			SetMoveElementAction();
 		break;
 	case OIS::KeyCode::KC_R:
 		if(mode == Editing)
-			SetRotateNewElement();
+			SetRotateElementAction();
 		break;
 	case OIS::KeyCode::KC_S:
 		if(mode == Editing)
-			SetScaleNewElement();
+			SetScaleElementAction();
 		break;
 	case OIS::KeyCode::KC_PAUSE:
 		if(m_suspendPhysicsUpdate)

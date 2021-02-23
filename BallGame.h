@@ -126,16 +126,26 @@ class BallGame : public BaseApplication
     void SetLevel(String &level_name, String &levelFilename);
 
     //Place New Element
-    enum PlacementModes
+    enum LevelEditModes
 	{
-    	PlaceMove,
-		PlaceRotate,
-		PlaceScale,
-    	EditMove,
-		EditRotate,
-		EditScale,
+    	Place,
+    	Edit,
 		Delete
-	}PlacementMode;
+	}LevelEditMode;
+
+	enum EntityEditModes
+	{
+		Simple,
+		Moves,
+		Caracts
+	}EntityEditMode;
+
+	enum EntityEditActions
+	{
+		Move,
+		Rotate,
+		Scale,
+	}EntityEditAction;
 
 	EntityType *ToBePlacedEntityType;
 	SceneNode *ogreThumbnailNode;
@@ -338,6 +348,8 @@ class BallGame : public BaseApplication
     bool ChooseTypeOfElementToAddBCallback(const CEGUI::EventArgs &e);
     CEGUI::Window *ThumbnailWindow;
     void CreateThumbnail(String meshname);
+
+    ///Edit Modes
     CEGUI::PushButton *PlaceNewElementB;
     bool PlaceNewElementBCallback(const CEGUI::EventArgs &e);
     CEGUI::PushButton *EditElementB;
@@ -345,18 +357,31 @@ class BallGame : public BaseApplication
     void EditElementSetupButtons(void);
     CEGUI::PushButton *DeleteElementB;
     bool DeleteElementBCallback(const CEGUI::EventArgs &e);
+
+    ///Edit Entity Modes
+    CEGUI::PushButton *SimpleEditElementB;
+	bool SimpleEditElementBCallback(const CEGUI::EventArgs &e);
+    CEGUI::PushButton *MoveEditElementB;
+	bool MoveEditElementBCallback(const CEGUI::EventArgs &e);
+    CEGUI::PushButton *CaractsEditElementB;
+	bool CaractsEditElementBCallback(const CEGUI::EventArgs &e);
+
+    ///Edit Entity Actions
     CEGUI::PushButton *MoveElementB;
     bool MoveElementBCallback(const CEGUI::EventArgs &e);
     void SetMoveNewElement(void);
     void SetMoveElement(void);
+    inline void SetMoveElementAction(void);
     CEGUI::PushButton *RotateElementB;
     bool RotateElementBCallback(const CEGUI::EventArgs &e);
     void SetRotateNewElement(void);
     void SetRotateElement(void);
+    inline void SetRotateElementAction(void);
     CEGUI::PushButton *ScaleElementB;
     bool ScaleElementBCallback(const CEGUI::EventArgs &e);
     void SetScaleNewElement(void);
     void SetScaleElement(void);
+    inline void SetScaleElementAction(void);
     CEGUI::ToggleButton *GroupElementsB;
     bool GroupElementsBCallback(const CEGUI::EventArgs &e);
 
