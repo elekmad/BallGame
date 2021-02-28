@@ -3428,9 +3428,9 @@ void BallGame::EmptyLevel(void)
 
 void BallGame::EmptyLevelsList(void)
 {
-	for (size_t cmpt = 0; cmpt < ChooseLevelComboB->getItemCount(); cmpt++)
+	while(ChooseLevelComboB->getItemCount())
 	{
-		CEGUI::ListboxTextItem *item = (CEGUI::ListboxTextItem*)ChooseLevelComboB->getListboxItemFromIndex(cmpt);
+		CEGUI::ListboxTextItem *item = (CEGUI::ListboxTextItem*)ChooseLevelComboB->getListboxItemFromIndex(0);
 		String *str = (String*)item->getUserData();
 		if(str != NULL)
 			delete str;
@@ -3440,9 +3440,9 @@ void BallGame::EmptyLevelsList(void)
 
 void BallGame::EmptyStatesList(void)
 {
-	for (size_t cmpt = 0; cmpt < ChooseStateToLoadB->getItemCount(); cmpt++)
+	while (ChooseStateToLoadB->getItemCount())
 	{
-		CEGUI::ListboxTextItem *item = (CEGUI::ListboxTextItem*)ChooseStateToLoadB->getListboxItemFromIndex(cmpt);
+		CEGUI::ListboxTextItem *item = (CEGUI::ListboxTextItem*)ChooseStateToLoadB->getListboxItemFromIndex(0);
 		String *str = (String*)item->getUserData();
 		if(str != NULL)
 			delete str;
@@ -3553,7 +3553,7 @@ void BallGame::ImportLevelFromJson(Node *parent, String &nodeNamePrefix, bool is
 		}
 
 		if(newCase->CaseToMove() == true)
-			CasesToBeMoved.push_back(newCase);
+			AddCaseToBeMoved(newCase);
 	}
 	//Parsing Balls
 	for(int cmpt = 0; cmpt < in[BALLS_JSON_FIELD].GetArray().Size(); cmpt++)
