@@ -115,7 +115,9 @@ static int OnSubShapeAABBOverlapTest (const NewtonJoint* const contact, dFloat t
 	return 1;
 }
 
-void BallGame::CustomListenerPostUpdateCallback(dFloat timestep)
+namespace BallGame {
+
+void GameEngine::CustomListenerPostUpdateCallback(dFloat timestep)
 {
 	std::list<CaseEntity*>::iterator iter1(CasesToBeMoved.begin());
 	while(iter1 != CasesToBeMoved.end())
@@ -126,40 +128,40 @@ void BallGame::CustomListenerPostUpdateCallback(dFloat timestep)
 	}
 }
 
-void BallGame::GameNewtonListener::PostUpdate(dFloat timestep)
+void GameEngine::GameNewtonListener::PostUpdate(dFloat timestep)
 {
 //	LOG << "PostUpdate CustomListener @" << timestep << std::endl;
 	Engine->CustomListenerPostUpdateCallback(timestep);
 }
 
 
-void BallGame::BodySerialization (NewtonBody* const body, void* const bodyUserData, NewtonSerializeCallback serializeCallback, void* const serializeHandle)
+void GameEngine::BodySerialization (NewtonBody* const body, void* const bodyUserData, NewtonSerializeCallback serializeCallback, void* const serializeHandle)
 {
-	BallGameEntity *Entity = (BallGameEntity*)NewtonBodyGetUserData(body);
+	Entity *Ent = (Entity*)NewtonBodyGetUserData(body);
 
-	const char* const bodyIndentification = Entity->getName().c_str();
-	LOG << "Serialize Entity (" << Entity << "/" << body << ") name :" << bodyIndentification << std::endl;
+	const char* const bodyIndentification = Ent->getName().c_str();
+	LOG << "Serialize Entity (" << Ent << "/" << body << ") name :" << bodyIndentification << std::endl;
 	int size = (strlen (bodyIndentification) + 3) & -4;
 	serializeCallback (serializeHandle, &size, sizeof (size));
 	serializeCallback (serializeHandle, bodyIndentification, size);
 }
 
-void BallGame::BodyDeserialization (NewtonBody* const body, void* const bodyUserData, NewtonDeserializeCallback deserializecallback, void* const serializeHandle)
+void GameEngine::BodyDeserialization (NewtonBody* const body, void* const bodyUserData, NewtonDeserializeCallback deserializecallback, void* const serializeHandle)
 {
 	int size;
 	char bodyIndentification[256];
-	BallGame *Game = (BallGame*)bodyUserData;
+	LevelEditor *Game = (LevelEditor*)bodyUserData;
 
 	deserializecallback (serializeHandle, &size, sizeof (size));
 	deserializecallback (serializeHandle, bodyIndentification, size);
 	bodyIndentification[size] = 0;
 
-	BallGameEntity *Entity = Game->GetEntity(bodyIndentification);
+	Entity *Entity = Game->GetEntity(bodyIndentification);
 	LOG << "Deserialize Entity (" << Entity << "/" << body << ") name :" << bodyIndentification << std::endl;
 
 	NewtonBodySetUserData (body, Entity);
 	Entity->setNewtonBody(body);
-	NewtonBodySetTransformCallback(body, BallGameEntity::TransformCallback);
+	NewtonBodySetTransformCallback(body, Entity::TransformCallback);
 	if(Entity->getType() == Ball)
 		NewtonBodySetForceAndTorqueCallback(body, PhysicsAddForceAndGravity);
 	else
@@ -173,27 +175,27 @@ void BallGame::BodyDeserialization (NewtonBody* const body, void* const bodyUser
 	#endif
 }
 
-BallGameEntity *BallGame::GetEntity(char *name_c)
+Entity *GameEngine::GetEntity(char *name_c)
 {
 	String name(name_c);
 	std::list<CaseEntity*>::iterator Citer(Cases.begin());
 	while(Citer != Cases.end())
 	{
-		CaseEntity *Entity = *(Citer++);
-		if(Entity != NULL && Entity->getName() == name)
-			return (BallGameEntity*)Entity;
+		CaseEntity *Ent = *(Citer++);
+		if(Ent != NULL && Ent->getName() == name)
+			return (Entity*)Ent;
 	}
 	std::list<BallEntity*>::iterator Biter(Balls.begin());
 	while(Biter != Balls.end())
 	{
-		BallEntity *Entity = *(Biter++);
-		if(Entity != NULL && Entity->getName() == name)
-			return (BallGameEntity*)Entity;
+		BallEntity *Ent = *(Biter++);
+		if(Ent != NULL && Ent->getName() == name)
+			return (Entity*)Ent;
 	}
 	return NULL;
 }
 
-void BallGame::SerializedPhysicScene(const String* const name)
+void GameEngine::SerializedPhysicScene(const String* const name)
 {
 //	NewtonSerializeToFile(m_world, name, NULL, NULL);
 	_StopPhysic();
@@ -201,7 +203,7 @@ void BallGame::SerializedPhysicScene(const String* const name)
 	_StartPhysic();
 }
 
-void BallGame::DeserializedPhysicScene(const String* const name)
+void GameEngine::DeserializedPhysicScene(const String* const name)
 {
 	LOG << "Load '" << (*name) << "'" << std::endl;
 	_StopPhysic();
@@ -227,7 +229,7 @@ void BallGame::DeserializedPhysicScene(const String* const name)
 }
 
 
-bool BallGame::SaveStatePushBCallback(const CEGUI::EventArgs &e)
+bool LevelEditor::SaveStatePushBCallback(const CEGUI::EventArgs &e)
 {
 	String *state_filename, state_name = Level;
 	state_name += "-";
@@ -242,7 +244,7 @@ bool BallGame::SaveStatePushBCallback(const CEGUI::EventArgs &e)
 	return true;
 }
 
-bool BallGame::LoadStatePushBCallback(const CEGUI::EventArgs &e)
+bool LevelEditor::LoadStatePushBCallback(const CEGUI::EventArgs &e)
 {
 	CEGUI::ListboxItem *item = ChooseStateToLoadB->getSelectedItem();
 	if(item == NULL)
@@ -253,7 +255,7 @@ bool BallGame::LoadStatePushBCallback(const CEGUI::EventArgs &e)
 	return true;
 }
 
-bool BallGame::DelStatePushBCallback(const CEGUI::EventArgs &e)
+bool LevelEditor::DelStatePushBCallback(const CEGUI::EventArgs &e)
 {
 	CEGUI::ListboxItem *item = ChooseStateToLoadB->getSelectedItem();
 	if(item == NULL)
@@ -265,13 +267,13 @@ bool BallGame::DelStatePushBCallback(const CEGUI::EventArgs &e)
 	return true;
 }
 
-bool BallGame::ChooseStateToLoadBCallback(const CEGUI::EventArgs &e)
+bool LevelEditor::ChooseStateToLoadBCallback(const CEGUI::EventArgs &e)
 {
 	SetupStatesButtons();
 	return true;
 }
 
-void BallGame::SetupStatesButtons(void)
+void LevelEditor::SetupStatesButtons(void)
 {
 	LOG << "Change selected state" << std::endl;
 	if(ChooseStateToLoadB->getSelectedItem() != NULL)
@@ -286,24 +288,22 @@ void BallGame::SetupStatesButtons(void)
 	}
 }
 
-NewtonWorld* BallGame::GetNewton(void)
+NewtonWorld* GameEngine::GetNewton(void)
 {
 	return m_world;
 }
 
-void BallGame::SetCam(float x, float y, float z)
+void GameEngine::SetCam(float x, float y, float z)
 {
-    //camNode->translate(camx, camx, camz, Ogre::Node::TransformSpace::TS_LOCAL);
     mCamera->setPosition(x, y, z);
 }
 
-void BallGame::MoveCam(float x, float y, float z)
+void GameEngine::MoveCam(float x, float y, float z)
 {
 	mCamera->moveRelative(Ogre::Vector3(x, y, z));
 }
 
-
-BallGame::BallGame() :
+GameEngine::GameEngine() :
 		m_asynchronousPhysicsUpdate(false)
 		,m_suspendPhysicsUpdate(false)
 		,m_physicsFramesCount(0)
@@ -311,9 +311,24 @@ BallGame::BallGame() :
 		,m_mainThreadPhysicsTime(0.0f)
 		,m_mainThreadPhysicsTimeAcc(0.0f)
 {
+	m_world = NULL;
+
+	nb_entities = 0;
+	listener = NULL;
+	SetupNewton();
+}
+
+
+LevelEditor::LevelEditor() :
+	mThumbnailCamera(0),
+	mThumbnailSceneMgr(0),
+	rThumbnailtex(0),
+	mImportLevelCamera(0),
+	mImportLevelSceneMgr(0),
+	rImportLeveltex(0)
+{
 	mRenderer = NULL;
 
-	m_world = NULL;
 	mWindow = NULL;
 	LastHighligted = NULL;
 	UnderEditCase = NULL;
@@ -324,19 +339,26 @@ BallGame::BallGame() :
 	ToBePlacedEntityType = NULL;
 	ToBeDeletedEntity = NULL;
 	ogreThumbnailNode = NULL;
-	listener = NULL;
 	LevelEditMode = Place;
 	EntityEditMode = Simple;
 	EntityEditAction = Move;
+	LevelNameBanner = NULL;
+	MoveElementB = NULL;
+	MoveWaitTimeEditB = NULL;
+	MoveWaitTimeTitleB = NULL;
+	UnderEditBall = NULL;
+	UnderEditBallMass = NAN;
+	CaseForceValueEditB = NULL;
+	CaseHasForceToggleB = NULL;
+	CaseHasForceDirectionToggleB = NULL;
+	StopPhysicPushB = NULL;
 	MultiSelectionMode = false;
 	mode = Running;
 	MouseOverButton = false;
 	// create the newton world
-	SetupNewton();
-	nb_entities = 0;
 }
 
-void BallGame::SetupNewton(void)
+void GameEngine::SetupNewton(void)
 {
 	m_world = NewtonCreate();
 
@@ -359,12 +381,76 @@ void BallGame::SetupNewton(void)
 	listener = new GameNewtonListener(this);
 }
 
-BallGame::~BallGame()
+GameEngine::~GameEngine()
+{
+	if(m_world != NULL)
+		NewtonDestroy(m_world);//This causes CutomListener to be destroyed too !
+}
+
+void LevelEditor::chooseSceneManager(void)
+{
+	GameEngine::chooseSceneManager();
+	mThumbnailSceneMgr = mRoot->createSceneManager(Ogre::ST_GENERIC);
+	mImportLevelSceneMgr = mRoot->createSceneManager(Ogre::ST_GENERIC);
+}
+
+void LevelEditor::createCamera(void)
+{
+	GameEngine::createCamera();
+	mThumbnailCamera = mThumbnailSceneMgr->createCamera("ThumbnailCam");
+	mThumbnailCamera->setNearClipDistance(5);
+
+	mImportLevelCamera = mImportLevelSceneMgr->createCamera("ImportLevelCam");
+	mImportLevelCamera->setNearClipDistance(5);
+}
+
+void LevelEditor::createViewports(void)
+{
+	GameEngine::createViewports();
+
+    pThumbnailtex = mRoot->getTextureManager()->createManual(
+        "RTT",
+        Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME,
+        Ogre::TEX_TYPE_2D,
+        512,
+        512,
+        0,
+        Ogre::PF_R8G8B8,
+        Ogre::TU_RENDERTARGET);
+    rThumbnailtex = pThumbnailtex->getBuffer()->getRenderTarget();
+
+
+    Ogre::Viewport* vp = rThumbnailtex->addViewport(mThumbnailCamera);
+	vp->setBackgroundColour(Ogre::ColourValue(0,0,0));
+
+	// Alter the camera aspect ratio to match the viewport
+	mThumbnailCamera->setAspectRatio(
+		Ogre::Real(vp->getActualWidth()) / Ogre::Real(vp->getActualHeight()));
+
+    pImportLeveltex = mRoot->getTextureManager()->createManual(
+        "RTT",
+        Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME,
+        Ogre::TEX_TYPE_2D,
+		vp->getActualWidth(),
+		vp->getActualHeight(),
+        0,
+        Ogre::PF_R8G8B8,
+        Ogre::TU_RENDERTARGET);
+    rImportLeveltex = pImportLeveltex->getBuffer()->getRenderTarget();
+
+
+	vp = rImportLeveltex->addViewport(mImportLevelCamera);
+	vp->setBackgroundColour(Ogre::ColourValue(0,0,0));
+
+	// Alter the camera aspect ratio to match the viewport
+	mImportLevelCamera->setAspectRatio(
+		Ogre::Real(vp->getActualWidth()) / Ogre::Real(vp->getActualHeight()));
+}
+
+LevelEditor::~LevelEditor()
 {
 	EmptyLevel();
 	EmptyLevelsList();
-	if(m_world != NULL)
-		NewtonDestroy(m_world);//This causes CutomListener to be destroyed too !
 	if(mRenderer != NULL)
 		CEGUI::OgreRenderer::destroySystem();
 	std::list<class EntityType*>::iterator iter(EntityTypes.begin());
@@ -375,9 +461,25 @@ BallGame::~BallGame()
 			delete type;
 		iter = EntityTypes.erase(iter);
 	}
+
+	if (mThumbnailCamera) delete mThumbnailCamera;
+	if (mThumbnailSceneMgr)
+	{
+		mThumbnailSceneMgr->getRootSceneNode()->removeAndDestroyAllChildren();
+		delete mThumbnailSceneMgr;
+	}
+	if (rThumbnailtex)delete rThumbnailtex;
+
+	if (mImportLevelCamera) delete mImportLevelCamera;
+	if (mImportLevelSceneMgr)
+	{
+		mImportLevelSceneMgr->getRootSceneNode()->removeAndDestroyAllChildren();
+		delete mImportLevelSceneMgr;
+	}
+	if (rImportLeveltex)delete rImportLeveltex;
 }
 
-inline void BallGame::_updatePhysic(dFloat timestep)
+inline void GameEngine::_updatePhysic(dFloat timestep)
 {
 	#ifdef DEMO_CHECK_ASYN_UPDATE
 			g_checkAsyncUpdate = 1;
@@ -396,17 +498,17 @@ inline void BallGame::_updatePhysic(dFloat timestep)
 	}
 }
 
-void BallGame::PostUpdateCallback(const NewtonWorld* const world, dFloat timestep)
+void GameEngine::PostUpdateCallback(const NewtonWorld* const world, dFloat timestep)
 {
 //	LOG << "Post Update Time " << timestep << std::endl;
-/*	BallGame* const scene = (BallGame*) NewtonWorldGetUserData(world);
+/*	LevelEditor* const scene = (LevelEditor*) NewtonWorldGetUserData(world);
 	scene->m_cameraManager->FixUpdate(scene->GetNewton(), timestep);
 	if (scene->m_updateCamera) {
 		scene->m_updateCamera(scene, scene->m_updateCameraContext, timestep);
 	}*/
 }
 
-void BallGame::UpdatePhysics(dFloat timestep)
+void GameEngine::UpdatePhysics(dFloat timestep)
 {
 	// update the physics
 //	LOG << " Update Time " << timestep << std::endl;
@@ -460,21 +562,21 @@ void BallGame::UpdatePhysics(dFloat timestep)
 	}
 }
 
-bool BallGame::EnteringArea(const CEGUI::EventArgs &event)
+bool LevelEditor::EnteringArea(const CEGUI::EventArgs &event)
 {
 //	LOG << "Enter Button Area" << std::endl;
 	MouseOverButton = true;
 	return true;
 }
 
-bool BallGame::LeavingArea(const CEGUI::EventArgs &event)
+bool LevelEditor::LeavingArea(const CEGUI::EventArgs &event)
 {
 //	LOG << "Leave Button Area" << std::endl;
 	MouseOverButton = false;
 	return true;
 }
 
-void BallGame::LoadBallGameEntityTypes(void)
+void LevelEditor::LoadBallGameEntityTypes(void)
 {
     glob_t glob_result;
 	memset(&glob_result, 0, sizeof(glob_result));
@@ -513,7 +615,7 @@ void BallGame::LoadBallGameEntityTypes(void)
 	}
 }
 
-void BallGame::createScene(void)
+void LevelEditor::createScene(void)
 {
 	LoadBallGameEntityTypes();
 
@@ -522,13 +624,13 @@ void BallGame::createScene(void)
 	SetupGame();
 }
 
-bool BallGame::CaseForceValueEditBCallback(const CEGUI::EventArgs &event)
+bool LevelEditor::CaseForceValueEditBCallback(const CEGUI::EventArgs &event)
 {
 	UnderEditCaseForce = CEGUI::PropertyHelper<float>::fromString(CaseForceValueEditB->getText());
 	return true;
 }
 
-bool BallGame::CaseForceDirectionXValueEditBMouseWheelCallback(const CEGUI::EventArgs &e)
+bool LevelEditor::CaseForceDirectionXValueEditBMouseWheelCallback(const CEGUI::EventArgs &e)
 {
 	CEGUI::MouseEventArgs &event = (CEGUI::MouseEventArgs &)e;
 
@@ -544,7 +646,7 @@ bool BallGame::CaseForceDirectionXValueEditBMouseWheelCallback(const CEGUI::Even
 	return true;
 }
 
-bool BallGame::CaseForceDirectionYValueEditBMouseWheelCallback(const CEGUI::EventArgs &e)
+bool LevelEditor::CaseForceDirectionYValueEditBMouseWheelCallback(const CEGUI::EventArgs &e)
 {
 	CEGUI::MouseEventArgs &event = (CEGUI::MouseEventArgs &)e;
 
@@ -560,7 +662,7 @@ bool BallGame::CaseForceDirectionYValueEditBMouseWheelCallback(const CEGUI::Even
 	return true;
 }
 
-bool BallGame::CaseForceDirectionZValueEditBMouseWheelCallback(const CEGUI::EventArgs &e)
+bool LevelEditor::CaseForceDirectionZValueEditBMouseWheelCallback(const CEGUI::EventArgs &e)
 {
 	CEGUI::MouseEventArgs &event = (CEGUI::MouseEventArgs &)e;
 
@@ -576,7 +678,7 @@ bool BallGame::CaseForceDirectionZValueEditBMouseWheelCallback(const CEGUI::Even
 	return true;
 }
 
-void BallGame::NormalizeForceDirection(void)
+void LevelEditor::NormalizeForceDirection(void)
 {
 	double direction_x, direction_y, direction_z, direction;
 	direction_x = CEGUI::PropertyHelper<double>::fromString(CaseForceDirectionXValueEditB->getText());
@@ -601,32 +703,42 @@ void BallGame::NormalizeForceDirection(void)
 	UpdateForceArrows();
 }
 
-bool BallGame::NormalizeCaseForceDirectionPushBCallback(const CEGUI::EventArgs &e)
+bool LevelEditor::NormalizeCaseForceDirectionPushBCallback(const CEGUI::EventArgs &e)
 {
 	NormalizeForceDirection();
 	return true;
 }
 
-bool BallGame::QuitPushBCallback(const CEGUI::EventArgs &e)
+bool LevelEditor::QuitPushBCallback(const CEGUI::EventArgs &e)
 {
 	mRoot->queueEndRendering();
     return true;
 }
 
-void BallGame::_StartPhysic(void)
+void GameEngine::_StartPhysic(void)
 {
-	StopPhysicPushB->setText("Stop Physic");
 	m_suspendPhysicsUpdate = false;
 }
 
-void BallGame::_StopPhysic(void)
+void GameEngine::_StopPhysic(void)
 {
-	StopPhysicPushB->setText("Start Physic");
 	m_suspendPhysicsUpdate = true;
 	NewtonWaitForUpdateToFinish(m_world);
 }
 
-bool BallGame::StopPhysicPushBCallback(const CEGUI::EventArgs &e)
+void LevelEditor::_StartPhysic(void)
+{
+	GameEngine::_StartPhysic();
+	StopPhysicPushB->setText("Stop Physic");
+}
+
+void LevelEditor::_StopPhysic(void)
+{
+	GameEngine::_StopPhysic();
+	StopPhysicPushB->setText("Start Physic");
+}
+
+bool LevelEditor::StopPhysicPushBCallback(const CEGUI::EventArgs &e)
 {
 	if(m_suspendPhysicsUpdate)
 		_StartPhysic();
@@ -635,7 +747,7 @@ bool BallGame::StopPhysicPushBCallback(const CEGUI::EventArgs &e)
     return true;
 }
 
-void BallGame::SwitchEditMode(void)
+void LevelEditor::SwitchEditMode(void)
 {
 	if(mode == Running)
 	{
@@ -670,7 +782,7 @@ void BallGame::SwitchEditMode(void)
 	}
 }
 
-void BallGame::BuildImportLevelWindowContent(Node *parent)
+void LevelEditor::BuildImportLevelWindowContent(Node *parent)
 {
 	mImportLevelSceneMgr->getRootSceneNode()->removeAndDestroyAllChildren();
 	std::list<GroupEntity*>::iterator Giter(ImportLevelGroups.begin());
@@ -711,7 +823,7 @@ void BallGame::BuildImportLevelWindowContent(Node *parent)
 	}
 }
 
-inline void BallGame::ActivateLevelImportInterface(void)
+inline void LevelEditor::ActivateLevelImportInterface(void)
 {
 	ButtonsSetVisible(ImportLevelButtons, true);
 	ButtonsMoveToFront(ImportLevelButtons);
@@ -722,7 +834,7 @@ inline void BallGame::ActivateLevelImportInterface(void)
 	ImportLevelActivateInterfacePushB->setText("-");
 }
 
-inline void BallGame::UnactivateLevelImportInterface(void)
+inline void LevelEditor::UnactivateLevelImportInterface(void)
 {
 	ButtonsSetVisible(ImportLevelButtons, false);
 	ImportLevelActivateInterfacePushB->setText("+");
@@ -735,7 +847,7 @@ inline void BallGame::UnactivateLevelImportInterface(void)
 	BuildImportLevelWindowContent(NULL);
 }
 
-bool BallGame::ImportLevelActivateInterfacePushBCallback(const CEGUI::EventArgs &e)
+bool LevelEditor::ImportLevelActivateInterfacePushBCallback(const CEGUI::EventArgs &e)
 {
 	if(ImportLevelActivateInterfacePushB->getText() == "+")//Menu not activated
 		ActivateLevelImportInterface();
@@ -744,7 +856,7 @@ bool BallGame::ImportLevelActivateInterfacePushBCallback(const CEGUI::EventArgs 
 	return true;
 }
 
-bool BallGame::ImportLevelPushBCallback(const CEGUI::EventArgs &e)
+bool LevelEditor::ImportLevelPushBCallback(const CEGUI::EventArgs &e)
 {
 	//Clear import level scene manager content
 	BuildImportLevelWindowContent(NULL);
@@ -807,13 +919,13 @@ bool BallGame::ImportLevelPushBCallback(const CEGUI::EventArgs &e)
 	{
 		CaseEntity *Case = *Siter;
 		if(Case != NULL)
-			ManageMultiSelectionSet((BallGameEntity*)Case);
+			ManageMultiSelectionSet((Entity*)Case);
 		Siter = selected.erase(Siter);
 	}
 	return true;
 }
 
-bool BallGame::ChooseLevelToImportComboBCallback(const CEGUI::EventArgs &e)
+bool LevelEditor::ChooseLevelToImportComboBCallback(const CEGUI::EventArgs &e)
 {
 	CEGUI::ListboxTextItem *item = (CEGUI::ListboxTextItem*)ChooseLevelToImportComboB->getSelectedItem();
 	if(item != NULL)
@@ -825,9 +937,9 @@ bool BallGame::ChooseLevelToImportComboBCallback(const CEGUI::EventArgs &e)
 	return true;
 }
 
-void BallGame::CreateThumbnail(String meshname)
+void LevelEditor::CreateThumbnail(String meshname)
 {
-	Entity *ogreEntity = mThumbnailSceneMgr->createEntity(meshname);
+	Ogre::Entity *ogreEntity = mThumbnailSceneMgr->createEntity(meshname);
 	mThumbnailSceneMgr->getRootSceneNode()->removeAndDestroyAllChildren();
 	ogreThumbnailNode = mThumbnailSceneMgr->getRootSceneNode()->createChildSceneNode();
 	ogreThumbnailNode->attachObject(ogreEntity);
@@ -835,7 +947,7 @@ void BallGame::CreateThumbnail(String meshname)
 	ogreThumbnailNode->setPosition(270, 130, -30);
 }
 
-bool BallGame::ChooseTypeOfElementToAddBCallback(const CEGUI::EventArgs &e)
+bool LevelEditor::ChooseTypeOfElementToAddBCallback(const CEGUI::EventArgs &e)
 {
 	String ElementType;
 	ToBePlacedEntityType = NULL;
@@ -860,7 +972,7 @@ bool BallGame::ChooseTypeOfElementToAddBCallback(const CEGUI::EventArgs &e)
 	return true;
 }
 
-void BallGame::DeleteElement(void)
+void LevelEditor::DeleteElement(void)
 {
 	if(LevelEditMode != Delete)
 		return;
@@ -880,10 +992,10 @@ void BallGame::DeleteElement(void)
 		}
 		ToBeDeletedEntity = NULL;
 	}
-	std::list<BallGameEntity*>::iterator delIter(UnderEditEntites.begin());
+	std::list<Entity*>::iterator delIter(UnderEditEntites.begin());
 	while(delIter != UnderEditEntites.end())
 	{
-		BallGameEntity *Entity = *delIter;
+		Entity *Entity = *delIter;
 		if(Entity != NULL)
 		{
 			if(Entity == LastHighligted)
@@ -905,7 +1017,7 @@ void BallGame::DeleteElement(void)
 	GroupElementsB->setMutedState(false);
 }
 
-bool BallGame::DeleteElementBCallback(const CEGUI::EventArgs &e)
+bool LevelEditor::DeleteElementBCallback(const CEGUI::EventArgs &e)
 {
 	switch(LevelEditMode)
 	{
@@ -933,7 +1045,7 @@ bool BallGame::DeleteElementBCallback(const CEGUI::EventArgs &e)
 	return true;
 }
 
-bool BallGame::PlaceNewElementBCallback(const CEGUI::EventArgs &e)
+bool LevelEditor::PlaceNewElementBCallback(const CEGUI::EventArgs &e)
 {
 	DeleteElementB->setDisabled(false);
 	PlaceNewElementB->setDisabled(true);
@@ -950,13 +1062,13 @@ bool BallGame::PlaceNewElementBCallback(const CEGUI::EventArgs &e)
 	return true;
 }
 
-bool BallGame::EditElementBCallback(const CEGUI::EventArgs &e)
+bool LevelEditor::EditElementBCallback(const CEGUI::EventArgs &e)
 {
 	EditElementSetupButtons();
 	return true;
 }
 
-void BallGame::EditElementSetupButtons(void)
+void LevelEditor::EditElementSetupButtons(void)
 {
 	DeleteElementB->setDisabled(false);
 	PlaceNewElementB->setDisabled(false);
@@ -971,7 +1083,7 @@ void BallGame::EditElementSetupButtons(void)
 	SetMoveElement();
 }
 
-void BallGame::SetMoveElement(void)
+void LevelEditor::SetMoveElement(void)
 {
 	switch(LevelEditMode)
 	{
@@ -997,7 +1109,7 @@ void BallGame::SetMoveElement(void)
 	ScaleElementB->setDisabled(false);
 }
 
-void BallGame::SetMoveNewElement(void)
+void LevelEditor::SetMoveNewElement(void)
 {
 	switch(LevelEditMode)
 	{
@@ -1024,7 +1136,7 @@ void BallGame::SetMoveNewElement(void)
 	ScaleElementB->setDisabled(false);
 }
 
-bool BallGame::SimpleEditElementBCallback(const CEGUI::EventArgs &e)
+bool LevelEditor::SimpleEditElementBCallback(const CEGUI::EventArgs &e)
 {
 	EntityEditMode = Simple;
 	EntityEditAction = Move;
@@ -1043,7 +1155,7 @@ bool BallGame::SimpleEditElementBCallback(const CEGUI::EventArgs &e)
 	return true;
 }
 
-bool BallGame::MoveEditElementBCallback(const CEGUI::EventArgs &e)
+bool LevelEditor::MoveEditElementBCallback(const CEGUI::EventArgs &e)
 {
 	EntityEditMode = Moves;
 	EntityEditAction = Move;
@@ -1062,7 +1174,7 @@ bool BallGame::MoveEditElementBCallback(const CEGUI::EventArgs &e)
 	return true;
 }
 
-bool BallGame::CaractsEditElementBCallback(const CEGUI::EventArgs &e)
+bool LevelEditor::CaractsEditElementBCallback(const CEGUI::EventArgs &e)
 {
 	EntityEditMode = Caracts;
 	EditBall(UnderEditBall);
@@ -1077,7 +1189,7 @@ bool BallGame::CaractsEditElementBCallback(const CEGUI::EventArgs &e)
 	return true;
 }
 
-inline void BallGame::SetMoveElementAction(void)
+inline void LevelEditor::SetMoveElementAction(void)
 {
 	EntityEditAction = Move;
 	MoveElementB->setDisabled(true);
@@ -1085,13 +1197,13 @@ inline void BallGame::SetMoveElementAction(void)
 	ScaleElementB->setDisabled(false);
 }
 
-bool BallGame::MoveElementBCallback(const CEGUI::EventArgs &e)
+bool LevelEditor::MoveElementBCallback(const CEGUI::EventArgs &e)
 {
 	SetMoveElementAction();
 	return true;
 }
 
-inline void BallGame::SetRotateElementAction(void)
+inline void LevelEditor::SetRotateElementAction(void)
 {
 	EntityEditAction = Rotate;
 	MoveElementB->setDisabled(false);
@@ -1099,13 +1211,13 @@ inline void BallGame::SetRotateElementAction(void)
 	ScaleElementB->setDisabled(false);
 }
 
-bool BallGame::RotateElementBCallback(const CEGUI::EventArgs &e)
+bool LevelEditor::RotateElementBCallback(const CEGUI::EventArgs &e)
 {
 	SetRotateElementAction();
 	return true;
 }
 
-inline void BallGame::SetScaleElementAction(void)
+inline void LevelEditor::SetScaleElementAction(void)
 {
 	EntityEditAction = Scale;
 	MoveElementB->setDisabled(false);
@@ -1113,13 +1225,13 @@ inline void BallGame::SetScaleElementAction(void)
 	ScaleElementB->setDisabled(true);
 }
 
-bool BallGame::ScaleElementBCallback(const CEGUI::EventArgs &e)
+bool LevelEditor::ScaleElementBCallback(const CEGUI::EventArgs &e)
 {
 	SetScaleElementAction();
 	return true;
 }
 
-inline void BallGame::UnprepareNewElement(void)
+inline void LevelEditor::UnprepareNewElement(void)
 {
 	if(ToBePlacedEntity != NULL)
 	{
@@ -1130,7 +1242,7 @@ inline void BallGame::UnprepareNewElement(void)
 	}
 }
 
-inline void BallGame::UnprepareDeleteElement(void)
+inline void LevelEditor::UnprepareDeleteElement(void)
 {
 	if(ToBeDeletedEntity != NULL)
 	{
@@ -1140,7 +1252,7 @@ inline void BallGame::UnprepareDeleteElement(void)
 	}
 }
 
-inline void BallGame::PrepareDeleteElement(BallGameEntity *Entity)
+inline void LevelEditor::PrepareDeleteElement(Entity *Entity)
 {
 	if(ToBeDeletedEntity != NULL)
 		ToBeDeletedEntity->DisplaySelectedBox(false);
@@ -1152,9 +1264,9 @@ inline void BallGame::PrepareDeleteElement(BallGameEntity *Entity)
 	}
 }
 
-void BallGame::PrepareNewElement(void)
+void LevelEditor::PrepareNewElement(void)
 {
-	Entity *ogreEntity;
+	Ogre::Entity *ogreEntity;
 	SceneNode *ogreNode;
 	Vector3 Pos, Scale;
 	Quaternion Orient;
@@ -1201,7 +1313,7 @@ void BallGame::PrepareNewElement(void)
 	ToBePlacedEntity->DisplaySelectedBox(true);
 }
 
-void BallGame::PlaceUnderEditElement(void)
+void LevelEditor::PlaceUnderEditElement(void)
 {
 	if(UnderEditBall != NULL)
 		UnderEditBall->CreateNewtonBody(m_world);
@@ -1211,10 +1323,10 @@ void BallGame::PlaceUnderEditElement(void)
 
 	if(UnderEditEntites.empty() == false)
 	{
-		std::list<BallGameEntity*>::iterator iter(UnderEditEntites.begin());
+		std::list<Entity*>::iterator iter(UnderEditEntites.begin());
 		while(iter != UnderEditEntites.end())
 		{
-			BallGameEntity *Entity = *(iter++);
+			Entity *Entity = *(iter++);
 			if(Entity == NULL)
 				continue;
 			switch(Entity->getType())
@@ -1230,14 +1342,14 @@ void BallGame::PlaceUnderEditElement(void)
 	}
 }
 
-void BallGame::PlaceNewElement(void)
+void LevelEditor::PlaceNewElement(void)
 {
 	PlaceElement(ToBePlacedEntity);
 	LastPlacedEntity = ToBePlacedEntity;
 	PrepareNewElement();
 }
 
-void BallGame::PlaceElement(BallGameEntity *ToBePlaced)
+void LevelEditor::PlaceElement(Entity *ToBePlaced)
 {
 	if(ToBePlaced == NULL)
 		return;
@@ -1258,7 +1370,7 @@ void BallGame::PlaceElement(BallGameEntity *ToBePlaced)
 	}
 }
 
-bool BallGame::GroupElementsBCallback(const CEGUI::EventArgs &e)
+bool LevelEditor::GroupElementsBCallback(const CEGUI::EventArgs &e)
 {
 	GroupEntity *Grp = NULL;
 	if(GroupElementsB->isSelected())
@@ -1270,10 +1382,10 @@ bool BallGame::GroupElementsBCallback(const CEGUI::EventArgs &e)
 	}
 	else
 		LOG << "Toggle is not selected" << std::endl;
-	std:list<BallGameEntity*>::iterator iter(UnderEditEntites.begin());
+	std:list<Entity*>::iterator iter(UnderEditEntites.begin());
 	while(iter != UnderEditEntites.end())
 	{
-		BallGameEntity *Entity = *(iter++);
+		Entity *Entity = *(iter++);
 		GroupEntity *old;
 		if(Entity == NULL)
 			continue;
@@ -1294,13 +1406,13 @@ bool BallGame::GroupElementsBCallback(const CEGUI::EventArgs &e)
 	return true;
 }
 
-bool BallGame::EditModePushBCallback(const CEGUI::EventArgs &e)
+bool LevelEditor::EditModePushBCallback(const CEGUI::EventArgs &e)
 {
 	SwitchEditMode();
     return true;
 }
 
-bool BallGame::StatesModePushBCallback(const CEGUI::EventArgs &e)
+bool LevelEditor::StatesModePushBCallback(const CEGUI::EventArgs &e)
 {
 	if(StatesBanner->isVisible() == false)
 		ButtonsSetVisible(StatesButtons, true);
@@ -1368,26 +1480,26 @@ void SetWindowsPosNearToOther(CEGUI::Window *self, CEGUI::Window *other, int H_f
 	self->setPosition(pos);
 }
 
-template<typename T> T* BallGame::CreateNewGUIComponent(std::string &TypeName, std::string &Name)
+template<typename T> T* LevelEditor::CreateNewGUIComponent(std::string &TypeName, std::string &Name)
 {
     return CreateNewGUIComponent<T>(TypeName.c_str(), Name.c_str());
 }
 
-template<typename T> T* BallGame::CreateNewGUIComponent(const char *TypeName, const char *Name)
+template<typename T> T* LevelEditor::CreateNewGUIComponent(const char *TypeName, const char *Name)
 {
     CEGUI::WindowManager &wmgr = CEGUI::WindowManager::getSingleton();
 	T* ret = (T*)wmgr.createWindow(TypeName, Name);
     ret->subscribeEvent(T::EventMouseEntersArea,
-			CEGUI::Event::Subscriber(&BallGame::EnteringArea, this));
+			CEGUI::Event::Subscriber(&LevelEditor::EnteringArea, this));
     ret->subscribeEvent(T::EventMouseLeavesArea,
-			CEGUI::Event::Subscriber(&BallGame::LeavingArea, this));
+			CEGUI::Event::Subscriber(&LevelEditor::LeavingArea, this));
     ret->setVisible(false);
     return ret;
 }
 
 #define ButtonSetAddButton(S, B) S.push_back((CEGUI::Window*)B)
 
-void BallGame::SetupGUI(void)
+void LevelEditor::SetupGUI(void)
 {
 	mRenderer = &CEGUI::OgreRenderer::bootstrapSystem();
 
@@ -1418,7 +1530,7 @@ void BallGame::SetupGUI(void)
     ButtonSetAddButton(MainMenuButtons, StopPhysicPushB);
 
     StopPhysicPushB->subscribeEvent(CEGUI::PushButton::EventClicked,
-    		CEGUI::Event::Subscriber(&BallGame::StopPhysicPushBCallback, this));
+    		CEGUI::Event::Subscriber(&LevelEditor::StopPhysicPushBCallback, this));
 
     EditModePushB = CreateNewGUIComponent<CEGUI::PushButton>("OgreTray/Button");
     EditModePushB->setText("Edit");
@@ -1428,7 +1540,7 @@ void BallGame::SetupGUI(void)
     ButtonSetAddButton(MainMenuButtons, EditModePushB);
 
     EditModePushB->subscribeEvent(CEGUI::PushButton::EventClicked,
-    		CEGUI::Event::Subscriber(&BallGame::EditModePushBCallback, this));
+    		CEGUI::Event::Subscriber(&LevelEditor::EditModePushBCallback, this));
 
     SetWindowsPosNearToOther(EditModePushB, StopPhysicPushB, 0, 1);
 
@@ -1440,7 +1552,7 @@ void BallGame::SetupGUI(void)
     ButtonSetAddButton(MainMenuButtons, StatesModePushB);
 
     StatesModePushB->subscribeEvent(CEGUI::PushButton::EventClicked,
-    		CEGUI::Event::Subscriber(&BallGame::StatesModePushBCallback, this));
+    		CEGUI::Event::Subscriber(&LevelEditor::StatesModePushBCallback, this));
 
     SetWindowsPosNearToOther(StatesModePushB, EditModePushB, 1, 0);
 
@@ -1472,7 +1584,7 @@ void BallGame::SetupGUI(void)
     ButtonSetAddButton(MainMenuButtons, ChooseLevelComboB);
 
     ChooseLevelComboB->subscribeEvent(CEGUI::Combobox::EventListSelectionAccepted,
-    		CEGUI::Event::Subscriber(&BallGame::ChooseLevelComboBCallback, this));
+    		CEGUI::Event::Subscriber(&LevelEditor::ChooseLevelComboBCallback, this));
 
     SetWindowsPosNearToOther(ChooseLevelComboB, EditModePushB, 0, 1);
 
@@ -1493,7 +1605,7 @@ void BallGame::SetupGUI(void)
     ButtonSetAddButton(MainMenuButtons, NewLevelCreateB);
 
     NewLevelCreateB->subscribeEvent(CEGUI::PushButton::EventClicked,
-			CEGUI::Event::Subscriber(&BallGame::NewLevelCreateBCallback, this));
+			CEGUI::Event::Subscriber(&LevelEditor::NewLevelCreateBCallback, this));
 
     SetWindowsPosNearToOther(NewLevelCreateB, NewLevelEditB, 1, 0);
 
@@ -1505,7 +1617,7 @@ void BallGame::SetupGUI(void)
     ButtonSetAddButton(MainMenuButtons, SaveLevelPushB);
 
     SaveLevelPushB->subscribeEvent(CEGUI::PushButton::EventClicked,
-    		CEGUI::Event::Subscriber(&BallGame::SaveLevelPushBCallback, this));
+    		CEGUI::Event::Subscriber(&LevelEditor::SaveLevelPushBCallback, this));
 
     SetWindowsPosNearToOther(SaveLevelPushB, NewLevelEditB, 0, 1);
 
@@ -1518,7 +1630,7 @@ void BallGame::SetupGUI(void)
     ButtonSetAddButton(MainMenuButtons, QuitPushB);
 
     QuitPushB->subscribeEvent(CEGUI::PushButton::EventClicked,
-    		CEGUI::Event::Subscriber(&BallGame::QuitPushBCallback, this));
+    		CEGUI::Event::Subscriber(&LevelEditor::QuitPushBCallback, this));
 
     SetWindowsPosNearToOther(QuitPushB, SaveLevelPushB, 0, 1);
 
@@ -1549,9 +1661,9 @@ void BallGame::SetupGUI(void)
     MainLayout->addChild(ChooseStateToLoadB);
     ButtonSetAddButton(StatesButtons, ChooseStateToLoadB);
     ChooseStateToLoadB->subscribeEvent(CEGUI::Combobox::EventListSelectionChanged,
-    		CEGUI::Event::Subscriber(&BallGame::ChooseStateToLoadBCallback, this));
+    		CEGUI::Event::Subscriber(&LevelEditor::ChooseStateToLoadBCallback, this));
     ChooseStateToLoadB->subscribeEvent(CEGUI::Combobox::EventListContentsChanged,
-    		CEGUI::Event::Subscriber(&BallGame::ChooseStateToLoadBCallback, this));
+    		CEGUI::Event::Subscriber(&LevelEditor::ChooseStateToLoadBCallback, this));
     SetWindowsPosNearToOther(ChooseStateToLoadB, StatesBanner, 0, 1);
 
     LoadStatePushB = CreateNewGUIComponent<CEGUI::PushButton>("OgreTray/Button");
@@ -1563,7 +1675,7 @@ void BallGame::SetupGUI(void)
     MainLayout->addChild(LoadStatePushB);
     ButtonSetAddButton(StatesButtons, LoadStatePushB);
     LoadStatePushB->subscribeEvent(CEGUI::PushButton::EventClicked,
-    		CEGUI::Event::Subscriber(&BallGame::LoadStatePushBCallback, this));
+    		CEGUI::Event::Subscriber(&LevelEditor::LoadStatePushBCallback, this));
     SetWindowsPosNearToOther(LoadStatePushB, StatesBanner, 0, 2);
 
     DelStatePushB = CreateNewGUIComponent<CEGUI::PushButton>("OgreTray/Button");
@@ -1575,7 +1687,7 @@ void BallGame::SetupGUI(void)
     MainLayout->addChild(DelStatePushB);
     ButtonSetAddButton(StatesButtons, DelStatePushB);
     DelStatePushB->subscribeEvent(CEGUI::PushButton::EventClicked,
-    		CEGUI::Event::Subscriber(&BallGame::DelStatePushBCallback, this));
+    		CEGUI::Event::Subscriber(&LevelEditor::DelStatePushBCallback, this));
     SetWindowsPosNearToOther(DelStatePushB, LoadStatePushB, 0, 1);
 
     SaveStatePushB = CreateNewGUIComponent<CEGUI::PushButton>("OgreTray/Button");
@@ -1587,7 +1699,7 @@ void BallGame::SetupGUI(void)
     MainLayout->addChild(SaveStatePushB);
     ButtonSetAddButton(StatesButtons, SaveStatePushB);
     SaveStatePushB->subscribeEvent(CEGUI::PushButton::EventClicked,
-    		CEGUI::Event::Subscriber(&BallGame::SaveStatePushBCallback, this));
+    		CEGUI::Event::Subscriber(&LevelEditor::SaveStatePushBCallback, this));
     SetWindowsPosNearToOther(SaveStatePushB, DelStatePushB, 0, 1);
 
     //Now LevelNameBanner exist, we can call SetLevel !
@@ -1620,7 +1732,7 @@ void BallGame::SetupGUI(void)
     ButtonSetAddButton(EditButtons, ImportLevelActivateInterfacePushB);
 
     ImportLevelActivateInterfacePushB->subscribeEvent(CEGUI::PushButton::EventClicked,
-    		CEGUI::Event::Subscriber(&BallGame::ImportLevelActivateInterfacePushBCallback, this));
+    		CEGUI::Event::Subscriber(&LevelEditor::ImportLevelActivateInterfacePushBCallback, this));
 
     SetWindowsPosNearToOther(ImportLevelActivateInterfacePushB, EditingModeTitleBanner, 1, 0);
 
@@ -1644,7 +1756,7 @@ void BallGame::SetupGUI(void)
     ButtonSetAddButton(ImportLevelButtons, ChooseLevelToImportComboB);
 
     ChooseLevelToImportComboB->subscribeEvent(CEGUI::Combobox::EventListSelectionAccepted,
-    		CEGUI::Event::Subscriber(&BallGame::ChooseLevelToImportComboBCallback, this));
+    		CEGUI::Event::Subscriber(&LevelEditor::ChooseLevelToImportComboBCallback, this));
 
     //set windows near to other function works for integer !
     {
@@ -1665,7 +1777,7 @@ void BallGame::SetupGUI(void)
     ButtonSetAddButton(ImportLevelButtons, ImportLevelPushB);
 
     ImportLevelPushB->subscribeEvent(CEGUI::PushButton::EventClicked,
-    		CEGUI::Event::Subscriber(&BallGame::ImportLevelPushBCallback, this));
+    		CEGUI::Event::Subscriber(&LevelEditor::ImportLevelPushBCallback, this));
     SetWindowsPosNearToOther(ImportLevelPushB, ChooseLevelToImportComboB, 1, 0);
 
 
@@ -1721,7 +1833,7 @@ void BallGame::SetupGUI(void)
     ChooseTypeOfElementToAddB->setHorizontalAlignment(CEGUI::HA_RIGHT);
 
     ChooseTypeOfElementToAddB->subscribeEvent(CEGUI::Combobox::EventListSelectionAccepted,
-    		CEGUI::Event::Subscriber(&BallGame::ChooseTypeOfElementToAddBCallback, this));
+    		CEGUI::Event::Subscriber(&LevelEditor::ChooseTypeOfElementToAddBCallback, this));
 
     MainLayout->addChild(ChooseTypeOfElementToAddB);
     ButtonSetAddButton(EditButtons, ChooseTypeOfElementToAddB);
@@ -1742,7 +1854,7 @@ void BallGame::SetupGUI(void)
     PlaceNewElementB->setHorizontalAlignment(CEGUI::HA_RIGHT);
 
     PlaceNewElementB->subscribeEvent(CEGUI::PushButton::EventClicked,
-			CEGUI::Event::Subscriber(&BallGame::PlaceNewElementBCallback, this));
+			CEGUI::Event::Subscriber(&LevelEditor::PlaceNewElementBCallback, this));
 
     MainLayout->addChild(PlaceNewElementB);
     ButtonSetAddButton(EditButtons, PlaceNewElementB);
@@ -1754,7 +1866,7 @@ void BallGame::SetupGUI(void)
     EditElementB->setHorizontalAlignment(CEGUI::HA_RIGHT);
 
     EditElementB->subscribeEvent(CEGUI::PushButton::EventClicked,
-			CEGUI::Event::Subscriber(&BallGame::EditElementBCallback, this));
+			CEGUI::Event::Subscriber(&LevelEditor::EditElementBCallback, this));
 
     MainLayout->addChild(EditElementB);
     ButtonSetAddButton(EditButtons, EditElementB);
@@ -1766,7 +1878,7 @@ void BallGame::SetupGUI(void)
     DeleteElementB->setHorizontalAlignment(CEGUI::HA_RIGHT);
 
     DeleteElementB->subscribeEvent(CEGUI::PushButton::EventClicked,
-			CEGUI::Event::Subscriber(&BallGame::DeleteElementBCallback, this));
+			CEGUI::Event::Subscriber(&LevelEditor::DeleteElementBCallback, this));
 
     MainLayout->addChild(DeleteElementB);
     ButtonSetAddButton(EditButtons, DeleteElementB);
@@ -1780,7 +1892,7 @@ void BallGame::SetupGUI(void)
     SimpleEditElementB->setHorizontalAlignment(CEGUI::HA_RIGHT);
 
     SimpleEditElementB->subscribeEvent(CEGUI::PushButton::EventClicked,
-			CEGUI::Event::Subscriber(&BallGame::SimpleEditElementBCallback, this));
+			CEGUI::Event::Subscriber(&LevelEditor::SimpleEditElementBCallback, this));
 
     MainLayout->addChild(SimpleEditElementB);
     ButtonSetAddButton(EditButtons, SimpleEditElementB);
@@ -1793,7 +1905,7 @@ void BallGame::SetupGUI(void)
     MoveEditElementB->setHorizontalAlignment(CEGUI::HA_RIGHT);
 
     MoveEditElementB->subscribeEvent(CEGUI::PushButton::EventClicked,
-			CEGUI::Event::Subscriber(&BallGame::MoveEditElementBCallback, this));
+			CEGUI::Event::Subscriber(&LevelEditor::MoveEditElementBCallback, this));
 
     MainLayout->addChild(MoveEditElementB);
     ButtonSetAddButton(EditButtons, MoveEditElementB);
@@ -1806,7 +1918,7 @@ void BallGame::SetupGUI(void)
     CaractsEditElementB->setHorizontalAlignment(CEGUI::HA_RIGHT);
 
     CaractsEditElementB->subscribeEvent(CEGUI::PushButton::EventClicked,
-			CEGUI::Event::Subscriber(&BallGame::CaractsEditElementBCallback, this));
+			CEGUI::Event::Subscriber(&LevelEditor::CaractsEditElementBCallback, this));
 
     MainLayout->addChild(CaractsEditElementB);
     ButtonSetAddButton(EditButtons, CaractsEditElementB);
@@ -1819,7 +1931,7 @@ void BallGame::SetupGUI(void)
     MoveElementB->setHorizontalAlignment(CEGUI::HA_RIGHT);
 
     MoveElementB->subscribeEvent(CEGUI::PushButton::EventClicked,
-			CEGUI::Event::Subscriber(&BallGame::MoveElementBCallback, this));
+			CEGUI::Event::Subscriber(&LevelEditor::MoveElementBCallback, this));
 
     MainLayout->addChild(MoveElementB);
     ButtonSetAddButton(EditButtons, MoveElementB);
@@ -1832,7 +1944,7 @@ void BallGame::SetupGUI(void)
     RotateElementB->setHorizontalAlignment(CEGUI::HA_RIGHT);
 
     RotateElementB->subscribeEvent(CEGUI::PushButton::EventClicked,
-			CEGUI::Event::Subscriber(&BallGame::RotateElementBCallback, this));
+			CEGUI::Event::Subscriber(&LevelEditor::RotateElementBCallback, this));
 
     MainLayout->addChild(RotateElementB);
     ButtonSetAddButton(EditButtons, RotateElementB);
@@ -1846,7 +1958,7 @@ void BallGame::SetupGUI(void)
     ScaleElementB->setHorizontalAlignment(CEGUI::HA_RIGHT);
 
     ScaleElementB->subscribeEvent(CEGUI::PushButton::EventClicked,
-			CEGUI::Event::Subscriber(&BallGame::ScaleElementBCallback, this));
+			CEGUI::Event::Subscriber(&LevelEditor::ScaleElementBCallback, this));
 
     MainLayout->addChild(ScaleElementB);
     ButtonSetAddButton(EditButtons, ScaleElementB);
@@ -1859,7 +1971,7 @@ void BallGame::SetupGUI(void)
     GroupElementsB->setHorizontalAlignment(CEGUI::HA_RIGHT);
 
     GroupElementsB->subscribeEvent(CEGUI::ToggleButton::EventSelectStateChanged,
-			CEGUI::Event::Subscriber(&BallGame::GroupElementsBCallback, this));
+			CEGUI::Event::Subscriber(&LevelEditor::GroupElementsBCallback, this));
 
     MainLayout->addChild(GroupElementsB);
     ButtonSetAddButton(EditButtons, GroupElementsB);
@@ -1888,7 +2000,7 @@ void BallGame::SetupGUI(void)
     CaseHasForceToggleB->setHorizontalAlignment(CEGUI::HA_CENTRE);
 
     CaseHasForceToggleB->subscribeEvent(CEGUI::ToggleButton::EventSelectStateChanged,
-			CEGUI::Event::Subscriber(&BallGame::CaseHasForceToggleBCallback, this));
+			CEGUI::Event::Subscriber(&LevelEditor::CaseHasForceToggleBCallback, this));
 
     MainLayout->addChild(CaseHasForceToggleB);
     ButtonSetAddButton(EditCaseButtons, CaseHasForceToggleB);
@@ -1903,9 +2015,9 @@ void BallGame::SetupGUI(void)
     CaseForceValueEditB->setValidationString(FloatingNumRegex);
 
     CaseForceValueEditB->subscribeEvent(CEGUI::Editbox::EventTextAccepted,
-			CEGUI::Event::Subscriber(&BallGame::CaseForceValueEditBCallback, this));
+			CEGUI::Event::Subscriber(&LevelEditor::CaseForceValueEditBCallback, this));
     CaseForceValueEditB->subscribeEvent(CEGUI::Editbox::EventMouseLeavesArea,
-			CEGUI::Event::Subscriber(&BallGame::CaseForceValueEditBCallback, this));
+			CEGUI::Event::Subscriber(&LevelEditor::CaseForceValueEditBCallback, this));
 
     MainLayout->addChild(CaseForceValueEditB);
     ButtonSetAddButton(EditCaseButtons, CaseForceValueEditB);
@@ -1918,7 +2030,7 @@ void BallGame::SetupGUI(void)
     CaseHasForceDirectionToggleB->setHorizontalAlignment(CEGUI::HA_CENTRE);
 
 	CaseHasForceDirectionToggleB->subscribeEvent(CEGUI::ToggleButton::EventSelectStateChanged,
-			CEGUI::Event::Subscriber(&BallGame::CaseHasForceDirectionToggleBCallback, this));
+			CEGUI::Event::Subscriber(&LevelEditor::CaseHasForceDirectionToggleBCallback, this));
 
     MainLayout->addChild(CaseHasForceDirectionToggleB);
     ButtonSetAddButton(EditCaseButtons, CaseHasForceDirectionToggleB);
@@ -1930,7 +2042,7 @@ void BallGame::SetupGUI(void)
     CaseForceDirectionXValueEditB->setValidationString(FloatingNumRegex);
 
     CaseForceDirectionXValueEditB->subscribeEvent(CEGUI::Editbox::EventMouseWheel,
-			CEGUI::Event::Subscriber(&BallGame::CaseForceDirectionXValueEditBMouseWheelCallback, this));
+			CEGUI::Event::Subscriber(&LevelEditor::CaseForceDirectionXValueEditBMouseWheelCallback, this));
 
 
     MainLayout->addChild(CaseForceDirectionXValueEditB);
@@ -1943,7 +2055,7 @@ void BallGame::SetupGUI(void)
     CaseForceDirectionYValueEditB->setValidationString(FloatingNumRegex);
 
     CaseForceDirectionYValueEditB->subscribeEvent(CEGUI::Editbox::EventMouseWheel,
-			CEGUI::Event::Subscriber(&BallGame::CaseForceDirectionYValueEditBMouseWheelCallback, this));
+			CEGUI::Event::Subscriber(&LevelEditor::CaseForceDirectionYValueEditBMouseWheelCallback, this));
 
 
     MainLayout->addChild(CaseForceDirectionYValueEditB);
@@ -1956,7 +2068,7 @@ void BallGame::SetupGUI(void)
     CaseForceDirectionZValueEditB->setValidationString(FloatingNumRegex);
 
     CaseForceDirectionZValueEditB->subscribeEvent(CEGUI::Editbox::EventMouseWheel,
-			CEGUI::Event::Subscriber(&BallGame::CaseForceDirectionZValueEditBMouseWheelCallback, this));
+			CEGUI::Event::Subscriber(&LevelEditor::CaseForceDirectionZValueEditBMouseWheelCallback, this));
 
 
     MainLayout->addChild(CaseForceDirectionZValueEditB);
@@ -1968,7 +2080,7 @@ void BallGame::SetupGUI(void)
     NormalizeCaseForceDirectionPushB->setVerticalAlignment(CEGUI::VA_BOTTOM);
     NormalizeCaseForceDirectionPushB->setHorizontalAlignment(CEGUI::HA_CENTRE);
     NormalizeCaseForceDirectionPushB->subscribeEvent(CEGUI::PushButton::EventClicked,
-    		CEGUI::Event::Subscriber(&BallGame::NormalizeCaseForceDirectionPushBCallback, this));
+    		CEGUI::Event::Subscriber(&LevelEditor::NormalizeCaseForceDirectionPushBCallback, this));
 
 
     MainLayout->addChild(NormalizeCaseForceDirectionPushB);
@@ -1981,7 +2093,7 @@ void BallGame::SetupGUI(void)
     ApplyForceChangesToCasePushB->setHorizontalAlignment(CEGUI::HA_CENTRE);
 
     ApplyForceChangesToCasePushB->subscribeEvent(CEGUI::PushButton::EventClicked,
-    		CEGUI::Event::Subscriber(&BallGame::ApplyForceChangesToCasePushBCallback, this));
+    		CEGUI::Event::Subscriber(&LevelEditor::ApplyForceChangesToCasePushBCallback, this));
 
     MainLayout->addChild(ApplyForceChangesToCasePushB);
     ButtonSetAddButton(EditCaseButtons, ApplyForceChangesToCasePushB);
@@ -2002,7 +2114,7 @@ void BallGame::SetupGUI(void)
     AddMoveStepPushB->setVerticalAlignment(CEGUI::VA_TOP);
     AddMoveStepPushB->setHorizontalAlignment(CEGUI::HA_RIGHT);
     AddMoveStepPushB->subscribeEvent(CEGUI::PushButton::EventClicked,
-    		CEGUI::Event::Subscriber(&BallGame::AddMoveStepPushBCallback, this));
+    		CEGUI::Event::Subscriber(&LevelEditor::AddMoveStepPushBCallback, this));
 
     MainLayout->addChild(AddMoveStepPushB);
     ButtonSetAddButton(EditMovesButtons, AddMoveStepPushB);
@@ -2013,7 +2125,7 @@ void BallGame::SetupGUI(void)
     DelMoveStepPushB->setVerticalAlignment(CEGUI::VA_TOP);
     DelMoveStepPushB->setHorizontalAlignment(CEGUI::HA_RIGHT);
     DelMoveStepPushB->subscribeEvent(CEGUI::PushButton::EventClicked,
-    		CEGUI::Event::Subscriber(&BallGame::DelMoveStepPushBCallback, this));
+    		CEGUI::Event::Subscriber(&LevelEditor::DelMoveStepPushBCallback, this));
 
     MainLayout->addChild(DelMoveStepPushB);
     ButtonSetAddButton(EditMovesButtons, DelMoveStepPushB);
@@ -2026,7 +2138,7 @@ void BallGame::SetupGUI(void)
 
 
     ChooseMoveComboB->subscribeEvent(CEGUI::Combobox::EventListSelectionAccepted,
-    		CEGUI::Event::Subscriber(&BallGame::ChooseMoveComboBCallback, this));
+    		CEGUI::Event::Subscriber(&LevelEditor::ChooseMoveComboBCallback, this));
     MainLayout->addChild(ChooseMoveComboB);
     ButtonSetAddButton(EditMovesButtons, ChooseMoveComboB);
 
@@ -2090,7 +2202,7 @@ void BallGame::SetupGUI(void)
     ApplyToMoveStepPushB->setVerticalAlignment(CEGUI::VA_TOP);
     ApplyToMoveStepPushB->setHorizontalAlignment(CEGUI::HA_RIGHT);
     ApplyToMoveStepPushB->subscribeEvent(CEGUI::PushButton::EventClicked,
-    		CEGUI::Event::Subscriber(&BallGame::ApplyToMoveStepPushBCallback, this));
+    		CEGUI::Event::Subscriber(&LevelEditor::ApplyToMoveStepPushBCallback, this));
 
     MainLayout->addChild(ApplyToMoveStepPushB);
     ButtonSetAddButton(EditMovesButtons, ApplyToMoveStepPushB);
@@ -2103,7 +2215,7 @@ void BallGame::SetupGUI(void)
     IsMoveTriggeredToggleB->setHorizontalAlignment(CEGUI::HA_RIGHT);
 
 	IsMoveTriggeredToggleB->subscribeEvent(CEGUI::ToggleButton::EventSelectStateChanged,
-			CEGUI::Event::Subscriber(&BallGame::IsMoveTriggeredToggleBCallback, this));
+			CEGUI::Event::Subscriber(&LevelEditor::IsMoveTriggeredToggleBCallback, this));
 
     MainLayout->addChild(IsMoveTriggeredToggleB);
     ButtonSetAddButton(EditMovesButtons, IsMoveTriggeredToggleB);
@@ -2137,7 +2249,7 @@ void BallGame::SetupGUI(void)
     ApplyMassChangesToBallPushB->setVerticalAlignment(CEGUI::VA_BOTTOM);
     ApplyMassChangesToBallPushB->setHorizontalAlignment(CEGUI::HA_CENTRE);
     ApplyMassChangesToBallPushB->subscribeEvent(CEGUI::PushButton::EventClicked,
-    		CEGUI::Event::Subscriber(&BallGame::ApplyMassChangesToBallPushBCallback, this));
+    		CEGUI::Event::Subscriber(&LevelEditor::ApplyMassChangesToBallPushBCallback, this));
 
     MainLayout->addChild(ApplyMassChangesToBallPushB);
     ButtonSetAddButton(EditBallButtons, ApplyMassChangesToBallPushB);
@@ -2145,12 +2257,8 @@ void BallGame::SetupGUI(void)
     SetWindowsPosNearToOther(BallMassValueEditB, ApplyMassChangesToBallPushB, 0, -1);
 }
 
-void BallGame::SetupGame(void)
+void GameEngine::SetupGame(void)
 {
-//    // register our scene with the RTSS
-//    RTShader::ShaderGenerator* shadergen = RTShader::ShaderGenerator::getSingletonPtr();
-//    shadergen->addSceneManager(scnMgr);
-
 	mSceneMgr->setAmbientLight(ColourValue(0.5, 0.5, 0.5));
 
     Light* light = mSceneMgr->createLight("MainLight");
@@ -2160,13 +2268,16 @@ void BallGame::SetupGame(void)
 
     SetCam(-184, -253, 352);
     mCamera->setOrientation(Ogre::Quaternion(0.835422, 0.393051, -0.238709, -0.300998));
+}
 
-
+void LevelEditor::SetupGame(void)
+{
+	GameEngine::SetupGame();
     //Thumbnail Window
 	mThumbnailSceneMgr->setAmbientLight(ColourValue(0.5, 0.5, 0.5));
 
-	light = mThumbnailSceneMgr->createLight("MainThumbnailLight");
-	lightNode = mThumbnailSceneMgr->getRootSceneNode()->createChildSceneNode("MainThumbnailLight");
+	Light* light = mThumbnailSceneMgr->createLight("MainThumbnailLight");
+	SceneNode* lightNode = mThumbnailSceneMgr->getRootSceneNode()->createChildSceneNode("MainThumbnailLight");
 	lightNode->attachObject(light);
 	lightNode->setPosition(20, 80, 50);
 
@@ -2210,13 +2321,13 @@ void BallGame::SetupGame(void)
 //    _StopPhysic();
 }
 
-void BallGame::OnContactCollision (const NewtonJoint* contactJoint, dFloat timestep, int threadIndex)
+void GameEngine::OnContactCollision (const NewtonJoint* contactJoint, dFloat timestep, int threadIndex)
 {
 	NewtonBody *body0 = NewtonJointGetBody0(contactJoint);
 	NewtonBody *body1 = NewtonJointGetBody1(contactJoint);
-	BallGame *Game = (BallGame*)NewtonWorldGetUserData(NewtonBodyGetWorld(body0));
-	BallGameEntity *Entity0 = (BallGameEntity*)NewtonBodyGetUserData(body0);
-	BallGameEntity *Entity1 = (BallGameEntity*)NewtonBodyGetUserData(body1);
+	LevelEditor *Game = (LevelEditor*)NewtonWorldGetUserData(NewtonBodyGetWorld(body0));
+	Entity *Entity0 = (Entity*)NewtonBodyGetUserData(body0);
+	Entity *Entity1 = (Entity*)NewtonBodyGetUserData(body1);
 	BallEntity *BallToCheck = NULL;
 	CaseEntity *CaseToCheck = NULL;
 	switch(Entity0->getType())
@@ -2249,7 +2360,7 @@ void BallGame::OnContactCollision (const NewtonJoint* contactJoint, dFloat times
 	}
 }
 
-void BallGame::AddCaseToBeMoved(CaseEntity *ToAdd)
+void GameEngine::AddCaseToBeMoved(CaseEntity *ToAdd)
 {
 	if(ToAdd == NULL)
 		return;
@@ -2263,7 +2374,7 @@ void BallGame::AddCaseToBeMoved(CaseEntity *ToAdd)
 	CasesToBeMoved.push_back(ToAdd);
 }
 
-void BallGame::DelCaseToBeMoved(CaseEntity *ToDel)
+void GameEngine::DelCaseToBeMoved(CaseEntity *ToDel)
 {
 	if(ToDel == NULL)
 		return;
@@ -2281,7 +2392,7 @@ void BallGame::DelCaseToBeMoved(CaseEntity *ToDel)
 }
 
 
-bool BallGame::ChooseMoveComboBCallback(const CEGUI::EventArgs &e)
+bool LevelEditor::ChooseMoveComboBCallback(const CEGUI::EventArgs &e)
 {
 	if(UnderEditCase == NULL)
 		return true;
@@ -2294,7 +2405,7 @@ bool BallGame::ChooseMoveComboBCallback(const CEGUI::EventArgs &e)
 	return true;
 }
 
-bool BallGame::IsMoveTriggeredToggleBCallback(const CEGUI::EventArgs &e)
+bool LevelEditor::IsMoveTriggeredToggleBCallback(const CEGUI::EventArgs &e)
 {
 	if(UnderEditCase == NULL || UnderEditCase->CaseToMove() == false)
 		return true;
@@ -2302,13 +2413,13 @@ bool BallGame::IsMoveTriggeredToggleBCallback(const CEGUI::EventArgs &e)
 	return true;
 }
 
-bool BallGame::AddMoveStepPushBCallback(const CEGUI::EventArgs &e)
+bool LevelEditor::AddMoveStepPushBCallback(const CEGUI::EventArgs &e)
 {
 	AddMoveStep();
 	return true;
 }
 
-bool BallGame::ApplyToMoveStepPushBCallback(const CEGUI::EventArgs &e)
+bool LevelEditor::ApplyToMoveStepPushBCallback(const CEGUI::EventArgs &e)
 {
 	CEGUI::ListboxTextItem *item = (CEGUI::ListboxTextItem*)ChooseMoveComboB->getSelectedItem();
 	if(item == NULL)
@@ -2322,7 +2433,7 @@ bool BallGame::ApplyToMoveStepPushBCallback(const CEGUI::EventArgs &e)
 	return true;
 }
 
-void BallGame::AddMoveStep(void)
+void LevelEditor::AddMoveStep(void)
 {
 	if(UnderEditCase == NULL)
 		return;
@@ -2345,13 +2456,13 @@ void BallGame::AddMoveStep(void)
 		AddCaseToBeMoved(UnderEditCase);
 }
 
-bool BallGame::DelMoveStepPushBCallback(const CEGUI::EventArgs &e)
+bool LevelEditor::DelMoveStepPushBCallback(const CEGUI::EventArgs &e)
 {
 	DelMoveStep();
 	return true;
 }
 
-void BallGame::DelMoveStep(void)
+void LevelEditor::DelMoveStep(void)
 {
 	if(UnderEditCase == NULL)
 		return;
@@ -2366,7 +2477,7 @@ void BallGame::DelMoveStep(void)
 		DelCaseToBeMoved(UnderEditCase);
 }
 
-void BallGame::AddCaseColliding(CaseEntity *ToAdd)
+void GameEngine::AddCaseColliding(CaseEntity *ToAdd)
 {
 	if(ToAdd == NULL)
 		return;
@@ -2374,7 +2485,7 @@ void BallGame::AddCaseColliding(CaseEntity *ToAdd)
 		CasesUnderCollide.push_back(ToAdd);
 }
 
-bool BallGame::CheckIfAlreadyColliding(CaseEntity *ToCheck)
+bool GameEngine::CheckIfAlreadyColliding(CaseEntity *ToCheck)
 {
 	bool ret = false;
 	if(ToCheck == NULL)
@@ -2389,7 +2500,7 @@ bool BallGame::CheckIfAlreadyColliding(CaseEntity *ToCheck)
 	return ret;
 }
 
-void BallGame::CheckforCollides(void)
+void GameEngine::CheckforCollides(void)
 {
 	std::list<CaseEntity*>::iterator iter(CasesUnderCollide.begin());
 	while(iter != CasesUnderCollide.end())
@@ -2401,7 +2512,7 @@ void BallGame::CheckforCollides(void)
 	}
 }
 
-void BallGame::AddGroup(GroupEntity *group)
+void GameEngine::AddGroup(GroupEntity *group)
 {
 	if(group == NULL)
 		return;
@@ -2409,7 +2520,7 @@ void BallGame::AddGroup(GroupEntity *group)
 	nb_entities++;
 }
 
-void BallGame::AddBall(BallEntity *ball)
+void GameEngine::AddBall(BallEntity *ball)
 {
 	if(ball == NULL)
 		return;
@@ -2417,7 +2528,7 @@ void BallGame::AddBall(BallEntity *ball)
 	nb_entities++;
 }
 
-void BallGame::AddCase(CaseEntity *Wcase)
+void GameEngine::AddCase(CaseEntity *Wcase)
 {
 	if(Wcase == NULL)
 		return;
@@ -2426,19 +2537,27 @@ void BallGame::AddCase(CaseEntity *Wcase)
 }
 
 
-bool BallGame::frameEnded(const Ogre::FrameEvent& fe)
+bool LevelEditor::frameEnded(const Ogre::FrameEvent& fe)
 {
-//    LOG << "Render a frame" << std::endl;
-	dFloat timestep = dGetElapsedSeconds();
-	UpdatePhysics(timestep);
-
 	// Needed for tool tips ? For the moment doesn't work and if uncommented, all buttons places are broke down !
 //	CEGUI::System::getSingleton().getDefaultGUIContext().injectTimePulse( fe.timeSinceLastFrame );
 
 	if(ThumbnailWindow->isVisible() == true && ogreThumbnailNode != NULL)
 		ogreThumbnailNode->roll(Degree(0.01), Node::TS_WORLD);
 
-	if(mode == Running)
+	GameEngine::frameEnded(fe);
+
+    return true;
+}
+
+
+bool GameEngine::frameEnded(const Ogre::FrameEvent& fe)
+{
+//    LOG << "Render a frame" << std::endl;
+	dFloat timestep = dGetElapsedSeconds();
+	UpdatePhysics(timestep);
+
+	if(m_suspendPhysicsUpdate == false)
 	{
 		std::list<BallEntity*>::iterator iter(Balls.begin());
 		while(iter != Balls.end())
@@ -2496,7 +2615,7 @@ bool BallGame::frameEnded(const Ogre::FrameEvent& fe)
     return true;
 }
 
-bool BallGame::mouseMoved(const OIS::MouseEvent &arg)
+bool LevelEditor::mouseMoved(const OIS::MouseEvent &arg)
 {
     CEGUI::GUIContext& context = CEGUI::System::getSingleton().getDefaultGUIContext();
     context.injectMouseMove(arg.state.X.rel, arg.state.Y.rel);
@@ -2531,10 +2650,10 @@ bool BallGame::mouseMoved(const OIS::MouseEvent &arg)
 			if(UnderEditEntites.empty() == false)
 			{
 //				LOG << "Multi selection mode" << std::endl;
-				std::list<BallGameEntity*>::iterator iter(UnderEditEntites.begin());
+				std::list<Entity*>::iterator iter(UnderEditEntites.begin());
 				while(iter != UnderEditEntites.end())
 				{
-					BallGameEntity *Entity = *(iter++);
+					Entity *Entity = *(iter++);
 					if(Entity != NULL && Entity == LastHighligted)
 					{
 						HideBoundingBox = false;
@@ -2568,7 +2687,7 @@ bool BallGame::mouseMoved(const OIS::MouseEvent &arg)
 				SceneNode *PickedUpNode = itr->movable->getParentSceneNode();
 				if(PickedUpNode != ForcesArrows)
 				{
-					LastHighligted = Ogre::any_cast<BallGameEntity*>(((Ogre::Entity*)PickedUpNode->getAttachedObject(0))->getUserObjectBindings().getUserAny());
+					LastHighligted = Ogre::any_cast<Entity*>(((Ogre::Entity*)PickedUpNode->getAttachedObject(0))->getUserObjectBindings().getUserAny());
 					LastHighligted->DisplaySelectedBox(true);
 				}
 			}
@@ -2601,7 +2720,7 @@ CEGUI::MouseButton convertButton(OIS::MouseButtonID buttonID)
     }
 }
 
-bool BallGame::ApplyForceChangesToCasePushBCallback(const CEGUI::EventArgs &event)
+bool LevelEditor::ApplyForceChangesToCasePushBCallback(const CEGUI::EventArgs &event)
 {
 	dVector *force_dir = NULL;
 	if(UnderEditCase == NULL)
@@ -2618,7 +2737,7 @@ bool BallGame::ApplyForceChangesToCasePushBCallback(const CEGUI::EventArgs &even
 	return true;
 }
 
-bool BallGame::CaseHasForceToggleBCallback(const CEGUI::EventArgs &event)
+bool LevelEditor::CaseHasForceToggleBCallback(const CEGUI::EventArgs &event)
 {
 	const CEGUI::WindowEventArgs &e = (const CEGUI::WindowEventArgs &)event;
 	LOG << "Update buttons by CE Callback of " << e.window->getName() << std::endl;
@@ -2646,7 +2765,7 @@ bool BallGame::CaseHasForceToggleBCallback(const CEGUI::EventArgs &event)
     return true;
 }
 
-bool BallGame::CaseHasForceDirectionToggleBCallback(const CEGUI::EventArgs &event)
+bool LevelEditor::CaseHasForceDirectionToggleBCallback(const CEGUI::EventArgs &event)
 {
 	const CEGUI::WindowEventArgs &e = (const CEGUI::WindowEventArgs &)event;
 	LOG << "Update buttons by CE Callback of " << e.window->getName() << std::endl;
@@ -2673,7 +2792,7 @@ bool BallGame::CaseHasForceDirectionToggleBCallback(const CEGUI::EventArgs &even
     return true;
 }
 
-void BallGame::UpdateEditButtons(void)
+void LevelEditor::UpdateEditButtons(void)
 {
 	LOG << "Update Edit buttons"<< std::endl;
 	CaseHasForceToggleB->setVisible(true);
@@ -2738,7 +2857,7 @@ void BallGame::UpdateEditButtons(void)
 	}
 }
 
-void BallGame::UpdateForceArrows(void)
+void LevelEditor::UpdateForceArrows(void)
 {
 	if(ForcesArrows == NULL)
 		return;
@@ -2746,7 +2865,7 @@ void BallGame::UpdateForceArrows(void)
 	ForcesArrows->setScale(force_direction.m_x, force_direction.m_y, force_direction.m_z);
 }
 
-void BallGame::EditCase(CaseEntity *Entity)
+void LevelEditor::EditCase(CaseEntity *Entity)
 {
 	if(ForcesArrows != NULL)
 	{
@@ -2834,7 +2953,7 @@ void BallGame::EditCase(CaseEntity *Entity)
 	ButtonsSetMutedState(EditCaseButtons, false);
 }
 
-bool BallGame::ApplyMassChangesToBallPushBCallback(const CEGUI::EventArgs &event)
+bool LevelEditor::ApplyMassChangesToBallPushBCallback(const CEGUI::EventArgs &event)
 {
 	if(UnderEditBall == NULL)
 		return true;
@@ -2843,7 +2962,7 @@ bool BallGame::ApplyMassChangesToBallPushBCallback(const CEGUI::EventArgs &event
 	return true;
 }
 
-void BallGame::EditBall(BallEntity *Entity)
+void LevelEditor::EditBall(BallEntity *Entity)
 {
 	if(mode != Editing)
 		return;
@@ -2869,12 +2988,12 @@ void BallGame::EditBall(BallEntity *Entity)
 	ButtonsSetMutedState(EditBallButtons, false);
 }
 
-void BallGame::MultiSelectionSetEmpty(void)
+void LevelEditor::MultiSelectionSetEmpty(void)
 {
-	std::list<BallGameEntity*>::iterator iter(UnderEditEntites.begin());
+	std::list<Entity*>::iterator iter(UnderEditEntites.begin());
 	while(iter != UnderEditEntites.end())
 	{
-		BallGameEntity *Entity = *iter;
+		Entity *Entity = *iter;
 		if(Entity == NULL)
 			continue;
 		Entity->DisplaySelectedBox(false);
@@ -2886,13 +3005,13 @@ void BallGame::MultiSelectionSetEmpty(void)
 	GroupElementsB->setMutedState(false);
 }
 
-bool BallGame::ManageMultiSelectionSet(BallGameEntity *entity)
+bool LevelEditor::ManageMultiSelectionSet(Entity *entity)
 {
 	bool add_it = true;
-	std::list<BallGameEntity*>::iterator iter(UnderEditEntites.begin());
+	std::list<Entity*>::iterator iter(UnderEditEntites.begin());
 	while(iter != UnderEditEntites.end())
 	{
-		BallGameEntity *got = *iter;
+		Entity *got = *iter;
 		if(got == NULL)
 		{
 			iter++;
@@ -2917,10 +3036,10 @@ bool BallGame::ManageMultiSelectionSet(BallGameEntity *entity)
 
 	GroupEntity *to_check = NULL;
 	bool group_are_identical = true;
-	std::list<BallGameEntity*>::iterator iter2(UnderEditEntites.begin());
+	std::list<Entity*>::iterator iter2(UnderEditEntites.begin());
 	while(iter2 != UnderEditEntites.end())
 	{
-		BallGameEntity *CheckEnt = *(iter2++);
+		Entity *CheckEnt = *(iter2++);
 		if(CheckEnt == NULL)
 			continue;
 		if(to_check == NULL)
@@ -2951,7 +3070,7 @@ bool BallGame::ManageMultiSelectionSet(BallGameEntity *entity)
 	return add_it;
 }
 
-bool BallGame::mousePressed( const OIS::MouseEvent &arg, OIS::MouseButtonID id )
+bool LevelEditor::mousePressed( const OIS::MouseEvent &arg, OIS::MouseButtonID id )
 {
     CEGUI::GUIContext& context = CEGUI::System::getSingleton().getDefaultGUIContext();
     context.injectMouseButtonDown(convertButton(id));
@@ -2973,12 +3092,12 @@ bool BallGame::mousePressed( const OIS::MouseEvent &arg, OIS::MouseButtonID id )
 				{
 					if(HighlightedGroup != NULL)
 					{
-						std::list<BallGameEntity*> to_add;
+						std::list<Entity*> to_add;
 						HighlightedGroup->FillListWithChilds(to_add);
-						std::list<BallGameEntity*>::iterator iter(to_add.begin());
+						std::list<Entity*>::iterator iter(to_add.begin());
 						while(iter != to_add.end())
 						{
-							BallGameEntity *child = *(iter++);
+							Entity *child = *(iter++);
 							if(child != NULL)
 								ManageMultiSelectionSet(child);
 						}
@@ -3022,12 +3141,12 @@ bool BallGame::mousePressed( const OIS::MouseEvent &arg, OIS::MouseButtonID id )
 					}
 					else
 					{
-						std::list<BallGameEntity*> to_add;
+						std::list<Entity*> to_add;
 						HighlightedGroup->FillListWithChilds(to_add);
-						std::list<BallGameEntity*>::iterator iter(to_add.begin());
+						std::list<Entity*>::iterator iter(to_add.begin());
 						while(iter != to_add.end())
 						{
-							BallGameEntity *child = *(iter++);
+							Entity *child = *(iter++);
 							if(child != NULL)
 								ManageMultiSelectionSet(child);
 						}
@@ -3040,7 +3159,7 @@ bool BallGame::mousePressed( const OIS::MouseEvent &arg, OIS::MouseButtonID id )
     return true;
 }
 
-bool BallGame::mouseReleased( const OIS::MouseEvent &arg, OIS::MouseButtonID id )
+bool LevelEditor::mouseReleased( const OIS::MouseEvent &arg, OIS::MouseButtonID id )
 {
     CEGUI::GUIContext& context = CEGUI::System::getSingleton().getDefaultGUIContext();
     context.injectMouseButtonUp(convertButton(id));
@@ -3048,17 +3167,17 @@ bool BallGame::mouseReleased( const OIS::MouseEvent &arg, OIS::MouseButtonID id 
     return true;
 }
 
-void BallGame::MoveEntities(float x, float y, float z)
+void LevelEditor::MoveEntities(float x, float y, float z)
 {
 	if(UnderEditCase != NULL)
 		UnderEditCase->Move(x, y, z);
 	if(UnderEditBall != NULL)
 		UnderEditBall->Move(x, y, z);
 	std::list<GroupEntity*> ToMoveGroups;
-	std::list<BallGameEntity*>::iterator iter(UnderEditEntites.begin());
+	std::list<Entity*>::iterator iter(UnderEditEntites.begin());
 	while(iter != UnderEditEntites.end())
 	{
-		BallGameEntity *Entity = *(iter++);
+		Entity *Entity = *(iter++);
 		GroupEntity *EntityGroup;
 		if(Entity == NULL)
 			continue;
@@ -3091,17 +3210,17 @@ void BallGame::MoveEntities(float x, float y, float z)
 	}
 }
 
-void BallGame::RotateEntities(float x, float y, float z)
+void LevelEditor::RotateEntities(float x, float y, float z)
 {
 	if(UnderEditCase != NULL)
 		UnderEditCase->Rotate(x, y, z);
 	if(UnderEditBall != NULL)
 		UnderEditBall->Rotate(x, y, z);
 	std::list<GroupEntity*> ToRotateGroups;
-	std::list<BallGameEntity*>::iterator iter(UnderEditEntites.begin());
+	std::list<Entity*>::iterator iter(UnderEditEntites.begin());
 	while(iter != UnderEditEntites.end())
 	{
-		BallGameEntity *Entity = *(iter++);
+		Entity *Entity = *(iter++);
 		GroupEntity *EntityGroup;
 		if(Entity == NULL)
 			continue;
@@ -3134,17 +3253,17 @@ void BallGame::RotateEntities(float x, float y, float z)
 	}
 }
 
-void BallGame::ScaleEntities(float x, float y, float z)
+void LevelEditor::ScaleEntities(float x, float y, float z)
 {
 	if(UnderEditCase != NULL)
 		UnderEditCase->Scale(x, y, z);
 	if(UnderEditBall != NULL)
 		UnderEditBall->Scale(x, y, z);
 	std::list<GroupEntity*> ToScaleGroups;
-	std::list<BallGameEntity*>::iterator iter(UnderEditEntites.begin());
+	std::list<Entity*>::iterator iter(UnderEditEntites.begin());
 	while(iter != UnderEditEntites.end())
 	{
-		BallGameEntity *Entity = *(iter++);
+		Entity *Entity = *(iter++);
 		GroupEntity *EntityGroup;
 		if(Entity == NULL)
 			continue;
@@ -3178,7 +3297,7 @@ void BallGame::ScaleEntities(float x, float y, float z)
 	}
 }
 
-bool BallGame::keyPressed(const OIS::KeyEvent &arg)
+bool LevelEditor::keyPressed(const OIS::KeyEvent &arg)
 {
 	LOG << "Key pressed " << arg.key << std::endl;
 
@@ -3195,13 +3314,13 @@ bool BallGame::keyPressed(const OIS::KeyEvent &arg)
     	{
 			if(LevelEditMode == Edit || LevelEditMode == Delete)
 			{
-				BallGameEntity *UnderEditEntity = NULL;
+				Entity *UnderEditEntity = NULL;
 				MultiSelectionMode = true;
 				LOG << "Activate Multi selection mode" << std::endl;
 				if(UnderEditBall != NULL)
-					UnderEditEntity = (BallGameEntity*)UnderEditBall;
+					UnderEditEntity = (Entity*)UnderEditBall;
 				if(UnderEditCase != NULL)
-					UnderEditEntity = (BallGameEntity*)UnderEditCase;
+					UnderEditEntity = (Entity*)UnderEditCase;
 				EditBall(NULL);
 				EditCase(NULL);
 				if(UnderEditEntity != NULL)
@@ -3515,7 +3634,7 @@ bool BallGame::keyPressed(const OIS::KeyEvent &arg)
     return true;
 }
 
-bool BallGame::keyReleased( const OIS::KeyEvent &arg )
+bool LevelEditor::keyReleased( const OIS::KeyEvent &arg )
 {
     CEGUI::GUIContext& context = CEGUI::System::getSingleton().getDefaultGUIContext();
     if(context.injectKeyUp((CEGUI::Key::Scan)arg.key))
@@ -3532,7 +3651,7 @@ bool BallGame::keyReleased( const OIS::KeyEvent &arg )
     return true;
 }
 
-bool BallGame::NewLevelCreateBCallback(const CEGUI::EventArgs &e)
+bool LevelEditor::NewLevelCreateBCallback(const CEGUI::EventArgs &e)
 {
 	EmptyLevel();
 	String level;
@@ -3545,7 +3664,7 @@ bool BallGame::NewLevelCreateBCallback(const CEGUI::EventArgs &e)
 	return true;
 }
 
-bool BallGame::SaveLevelPushBCallback(const CEGUI::EventArgs &e)
+bool LevelEditor::SaveLevelPushBCallback(const CEGUI::EventArgs &e)
 {
 	String export_str;
 	ExportLevelIntoJson(export_str);
@@ -3556,7 +3675,7 @@ bool BallGame::SaveLevelPushBCallback(const CEGUI::EventArgs &e)
 	return true;
 }
 
-bool BallGame::ChooseLevelComboBCallback(const CEGUI::EventArgs &e)
+bool LevelEditor::ChooseLevelComboBCallback(const CEGUI::EventArgs &e)
 {
 	CEGUI::ListboxTextItem *item = (CEGUI::ListboxTextItem*)ChooseLevelComboB->getSelectedItem();
 	String level(item->getText().c_str()), *filename = (String*)item->getUserData();
@@ -3565,21 +3684,21 @@ bool BallGame::ChooseLevelComboBCallback(const CEGUI::EventArgs &e)
 	return true;
 }
 
-void BallGame::SetLevel(String &level_name, String &levelFilename)
+void LevelEditor::SetLevel(String &level_name, String &levelFilename)
 {
 	Level = level_name;
 	LevelFilename = levelFilename;
 	LevelNameBanner->setText((CEGUI::utf8*)Level.c_str());
 }
 
-void BallGame::DeleteGroup(GroupEntity *Entity, std::list<GroupEntity*>::iterator *iter)
+void GameEngine::DeleteGroup(GroupEntity *Entity, std::list<GroupEntity*>::iterator *iter)
 {
 	RemoveGroup(Entity, iter);
 	Entity->Finalize();
 	delete Entity;
 }
 
-void BallGame::RemoveGroup(GroupEntity *Entity, std::list<GroupEntity*>::iterator *iter)
+void GameEngine::RemoveGroup(GroupEntity *Entity, std::list<GroupEntity*>::iterator *iter)
 {
 	if(iter != NULL)
 		*iter = Groups.erase(*iter);
@@ -3599,7 +3718,7 @@ void BallGame::RemoveGroup(GroupEntity *Entity, std::list<GroupEntity*>::iterato
 	}
 }
 
-GroupEntity *BallGame::findGroup(const char * const name_c)
+GroupEntity *GameEngine::findGroup(const char * const name_c)
 {
 	String name(name_c);
 	std::list<GroupEntity*>::iterator it(Groups.begin());
@@ -3612,21 +3731,21 @@ GroupEntity *BallGame::findGroup(const char * const name_c)
 	return NULL;
 }
 
-void BallGame::DeleteBall(BallEntity *Entity, std::list<BallEntity*>::iterator *iter)
+void GameEngine::DeleteBall(BallEntity *Ent, std::list<BallEntity*>::iterator *iter)
 {
-	RemoveBall(Entity, iter);
-	GroupEntity *Group = Entity->getGroup();
+	RemoveBall(Ent, iter);
+	GroupEntity *Group = Ent->getGroup();
 	if(Group != NULL)
 	{
-		bool tobedel = Group->DelChild((BallGameEntity*)Entity);
+		bool tobedel = Group->DelChild((Entity*)Ent);
 		if(tobedel)
 			DeleteGroup(Group);
 	}
-	Entity->Finalize();
-	delete Entity;
+	Ent->Finalize();
+	delete Ent;
 }
 
-void BallGame::RemoveBall(BallEntity *Entity, std::list<BallEntity*>::iterator *iter)
+void GameEngine::RemoveBall(BallEntity *Entity, std::list<BallEntity*>::iterator *iter)
 {
 	if(iter != NULL)
 		*iter = Balls.erase(*iter);
@@ -3646,21 +3765,21 @@ void BallGame::RemoveBall(BallEntity *Entity, std::list<BallEntity*>::iterator *
 	}
 }
 
-void BallGame::DeleteCase(CaseEntity *Entity, std::list<CaseEntity*>::iterator *iter)
+void GameEngine::DeleteCase(CaseEntity *Ent, std::list<CaseEntity*>::iterator *iter)
 {
-	RemoveCase(Entity, iter);
-	GroupEntity *Group = Entity->getGroup();
+	RemoveCase(Ent, iter);
+	GroupEntity *Group = Ent->getGroup();
 	if(Group != NULL)
 	{
-		bool tobedel = Group->DelChild((BallGameEntity*)Entity);
+		bool tobedel = Group->DelChild((Entity*)Ent);
 		if(tobedel)
 			DeleteGroup(Group);
 	}
-	Entity->Finalize();
-	delete Entity;
+	Ent->Finalize();
+	delete Ent;
 }
 
-void BallGame::RemoveCase(CaseEntity *Entity, std::list<CaseEntity*>::iterator *iter)
+void GameEngine::RemoveCase(CaseEntity *Entity, std::list<CaseEntity*>::iterator *iter)
 {
 	if(iter != NULL)
 		*iter = Cases.erase(*iter);
@@ -3680,7 +3799,7 @@ void BallGame::RemoveCase(CaseEntity *Entity, std::list<CaseEntity*>::iterator *
 	}
 }
 
-void BallGame::EmptyLevel(void)
+void GameEngine::EmptyLevel(void)
 {
 	_StopPhysic();
 	std::list<CaseEntity*>::iterator Cit(Cases.begin());
@@ -3715,14 +3834,19 @@ void BallGame::EmptyLevel(void)
 	assert(Groups.empty());
 	CasesUnderCollide.clear();
 	CasesToBeMoved.clear();
-	EmptyStatesList();
 
 	//Force an update of Physic to force garbage collecting !
 	_updatePhysic(1.0f / MAX_PHYSICS_FPS);
 	_StopPhysic();
 }
 
-void BallGame::EmptyLevelsList(void)
+void LevelEditor::EmptyLevel(void)
+{
+	GameEngine::EmptyLevel();
+	EmptyStatesList();
+}
+
+void LevelEditor::EmptyLevelsList(void)
 {
 	while(ChooseLevelComboB->getItemCount())
 	{
@@ -3734,7 +3858,7 @@ void BallGame::EmptyLevelsList(void)
 	}
 }
 
-void BallGame::EmptyStatesList(void)
+void LevelEditor::EmptyStatesList(void)
 {
 	while (ChooseStateToLoadB->getItemCount())
 	{
@@ -3746,7 +3870,7 @@ void BallGame::EmptyStatesList(void)
 	}
 }
 
-void BallGame::LoadStatesList(void)
+void LevelEditor::LoadStatesList(void)
 {
 	LOG << "Load selected state list" << std::endl;
 	ChooseStateToLoadB->setMutedState(true);
@@ -3781,7 +3905,7 @@ void BallGame::LoadStatesList(void)
 		ChooseStateToLoadB->setText("");
 }
 
-void BallGame::ChangeLevel(void)
+void LevelEditor::ChangeLevel(void)
 {
 	if(mode == Editing)
 		SwitchEditMode();
@@ -3798,7 +3922,7 @@ void BallGame::ChangeLevel(void)
 #define CASES_JSON_FIELD "Cases"
 #define BALLS_JSON_FIELD "Balls"
 
-void BallGame::ImportLevelFromJson(Node *parent, String &nodeNamePrefix, bool isForImport)
+void GameEngine::ImportLevelFromJson(Node *parent, String &nodeNamePrefix, bool isForImport)
 {
 	std::ifstream myfile;
 	std::stringstream buffer;
@@ -3878,7 +4002,7 @@ void BallGame::ImportLevelFromJson(Node *parent, String &nodeNamePrefix, bool is
 	}
 }
 
-void BallGame::ExportLevelIntoJson(String &export_str)
+void LevelEditor::ExportLevelIntoJson(String &export_str)
 {
 	rapidjson::Document document;
 	document.SetObject();
@@ -3942,4 +4066,6 @@ void BallGame::ExportLevelIntoJson(String &export_str)
 	export_str = strbuf.GetString();
 
 	LOG << strbuf.GetString() << std::endl;
+}
+
 }

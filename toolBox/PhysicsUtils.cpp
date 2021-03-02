@@ -556,7 +556,7 @@ NewtonMesh* CreateCollisionTreeDoubleFaces (NewtonWorld* world, NewtonCollision*
 
 // return the collision joint, if the body collide
 
-bool CheckIfEntitiesCollide(const BallGameEntity *const Entity1, const BallGameEntity * const Entity2)
+bool CheckIfEntitiesCollide(const BallGame::Entity *const Entity1, const BallGame::Entity * const Entity2)
 {
 	return CheckIfBodiesCollide(Entity1->getNewtonBody(), Entity2->getNewtonBody()) == NULL ? false : true;
 }
@@ -959,7 +959,7 @@ NewtonBody* CreateSimpleBody (NewtonWorld* const world, void* const userData, dF
 	NewtonBodySetDestructorCallback (rigidBody, PhysicsBodyDestructor);
 
 	// set the transform call back function
-	NewtonBodySetTransformCallback (rigidBody, BallGameEntity::TransformCallback);
+	NewtonBodySetTransformCallback (rigidBody, BallGame::Entity::TransformCallback);
 
 	// set the force and torque call back function
 	NewtonBodySetForceAndTorqueCallback (rigidBody, PhysicsApplyGravityForce);

@@ -4,7 +4,7 @@
 int main(void)
 {
 //    BaseApplication app;
-    BallGame app;
+    BallGame::LevelEditor app;
     app.go();
     return 0;
 }

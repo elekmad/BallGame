@@ -13,7 +13,7 @@ set (CMAKE_CXX_STANDARD 11)
 add_definitions(-D_POSIX_VER_64)
 add_definitions(-ggdb3)
 
-project(Demo)
+project(Editor)
 
 
 file(GLOB CPP_SOURCE
@@ -23,29 +23,29 @@ file(GLOB CPP_SOURCE
         ./toolBox/*.cpp
 )
 source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/" FILES ${CPP_SOURCE})
-add_executable(Demo ${CPP_SOURCE})
+add_executable(Editor ${CPP_SOURCE})
 
 find_package(PkgConfig REQUIRED)
 
 #RapidJson
 pkg_check_modules(Json REQUIRED IMPORTED_TARGET RapidJSON)
-target_link_libraries(Demo ${Json_LIBRARIES})
+target_link_libraries(Editor ${Json_LIBRARIES})
 include_directories(${Json_INCLUDE_DIRS})
 
 #CEGUI
 pkg_check_modules(CEGUI REQUIRED IMPORTED_TARGET CEGUI-0-OGRE)
-target_link_libraries(Demo ${CEGUI_LIBRARIES})
+target_link_libraries(Editor ${CEGUI_LIBRARIES})
 include_directories(${CEGUI_INCLUDE_DIRS})
 
 #OIS
 pkg_check_modules(OIS REQUIRED IMPORTED_TARGET OIS)
-target_link_libraries(Demo ${OIS_LIBRARIES})
+target_link_libraries(Editor ${OIS_LIBRARIES})
 include_directories(${OIS_INCLUDE_DIRS})
 
 #find_package(OGRE 1.9 REQUIRED)
 #if(OGRE_FOUND)
     include_directories("/usr/local/include/OGRE" "/usr/local/include/OGRE/Bites" "/usr/local/include/OGRE/RTShaderSystem" "/usr/local/include/OGRE/Overlay")
-    target_link_libraries(Demo -L/usr/local/lib -lOgreOverlay -lOgreRTShaderSystem -lOgreMain -L/usr/local/lib/OGRE -lzzip -lfreetyped -lboost_system)
+    target_link_libraries(Editor -L/usr/local/lib -lOgreOverlay -lOgreRTShaderSystem -lOgreMain -L/usr/local/lib/OGRE -lzzip -lfreetyped -lboost_system)
 #endif()
 
 
@@ -78,11 +78,11 @@ if (NEWTON_BUILD_PROFILER)
         include_directories(/usr/local/include/dNewton/dProfiler/dProfiler/)
 endif ()
 
-target_link_libraries (Demo dAnimation dContainers dMath newton dCustomJoints dNewton dScene dModel dVehicle -L../ -lglatter)
-target_link_libraries (Demo GL GLU dl X11 pthread)
+target_link_libraries (Editor dAnimation dContainers dMath newton dCustomJoints dNewton dScene dModel dVehicle -L../ -lglatter)
+target_link_libraries (Editor GL GLU dl X11 pthread)
 
 if (NEWTON_BUILD_PROFILER)
-    target_link_libraries (Demo dProfiler)
+    target_link_libraries (Editor dProfiler)
 endif ()
 
 #to add ggdb3 : -DCMAKE_RELEASE_MODE=Debug

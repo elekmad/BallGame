@@ -100,18 +100,10 @@ protected:
  
 	Ogre::Root *mRoot;
 	Ogre::Camera* mCamera;
-	Ogre::Camera* mThumbnailCamera;
-	Ogre::Camera* mImportLevelCamera;
 	Ogre::SceneManager* mSceneMgr;
-	Ogre::SceneManager* mThumbnailSceneMgr;
-	Ogre::SceneManager* mImportLevelSceneMgr;
 	Ogre::RenderWindow* mWindow;
 	Ogre::String mResourcesCfg;
 	Ogre::String mPluginsCfg;
-	Ogre::TexturePtr pThumbnailtex;
-	Ogre::TexturePtr pImportLeveltex;
-	Ogre::RenderTexture *rThumbnailtex;
-	Ogre::RenderTexture *rImportLeveltex;
 	Ogre::OverlaySystem *mOverlaySystem;
  
 	// OgreBites

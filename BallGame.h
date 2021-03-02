@@ -5,8 +5,8 @@
  *      Author: damien
  */
 
-#ifndef BALLGAME_H_
-#define BALLGAME_H_
+#ifndef LEVELEDITOR_H_
+#define LEVELEDITOR_H_
 
 #include <Ogre.h>
 #include <OgreRTShaderSystem.h>
@@ -74,14 +74,124 @@ using namespace OgreBites;
 inline float Normalize(float v1, float v2, float v3);
 inline double Normalize(double v1, double v2, double v3);
 
-class BallGame : public BaseApplication
+namespace BallGame {
+
+class GameEngine : public BaseApplication
+{
+	public :
+
+	GameEngine();
+    ~GameEngine();
+
+    GroupEntity *findGroup(const char * const name);
+    void AddGroup(GroupEntity *Entity);
+
+	protected :
+
+    void _StartPhysic(void);
+    void _StopPhysic(void);
+    void DeleteCase(CaseEntity *Entity, std::list<CaseEntity*>::iterator *iter = NULL);
+    void RemoveCase(CaseEntity *Entity, std::list<CaseEntity*>::iterator *iter = NULL);
+    void DeleteBall(BallEntity *Entity, std::list<BallEntity*>::iterator *iter = NULL);
+    void RemoveBall(BallEntity *Entity, std::list<BallEntity*>::iterator *iter = NULL);
+    void DeleteGroup(GroupEntity *Entity, std::list<GroupEntity*>::iterator *iter = NULL);
+    void RemoveGroup(GroupEntity *Entity, std::list<GroupEntity*>::iterator *iter = NULL);
+    void EmptyLevel(void);//Clean all Engine, Newton and Ogre entities to start with new level.
+    void ImportLevelFromJson(Node *parent, String &nodeNamePrefix, bool isForImport = false);
+
+    String LevelFilename;
+
+	String ImportLevelFilename;
+	String ImportLevelName;
+    std::list<CaseEntity*> ImportLevelCases;
+    std::list<BallEntity*> ImportLevelBalls;
+    std::list<GroupEntity*> ImportLevelGroups;
+
+    /////////////////////  NEWTON ///////////////////
+	public :
+
+	NewtonWorld* m_world;
+	static void PostUpdateCallback(const NewtonWorld* const world, dFloat timestep);
+	static void OnContactCollision (const NewtonJoint* contactJoint, dFloat timestep, int threadIndex);
+	void UpdatePhysics(dFloat timestep);
+	NewtonWorld* GetNewton(void);
+
+	void CustomListenerPostUpdateCallback(dFloat timestep);
+
+	protected :
+
+	void SetupNewton(void);
+
+	class GameNewtonListener : public dCustomListener
+	{
+		public :
+		GameNewtonListener(GameEngine *engine) : dCustomListener(engine->GetNewton(), "BallGameListener")
+		{
+			Engine = engine;
+		}
+
+		void PostUpdate(dFloat timestep);
+		GameEngine *Engine;
+	};
+
+	GameNewtonListener *listener;
+
+    static void BodySerialization (NewtonBody* const body, void* const bodyUserData, NewtonSerializeCallback serializeCallback, void* const serializeHandle);
+    static void BodyDeserialization (NewtonBody* const body, void* const bodyUserData, NewtonDeserializeCallback deserializecallback, void* const serializeHandle);
+    void SerializedPhysicScene(const String* const name);
+    void DeserializedPhysicScene(const String* const name);
+    Entity *GetEntity(char *name);
+    bool CheckIfAlreadyColliding(CaseEntity *ToCheck);
+    void AddCaseColliding(CaseEntity *ToAdd);
+    inline void _updatePhysic(dFloat timestep);
+
+    bool m_suspendPhysicsUpdate;
+    unsigned64 m_microsecunds;
+    int m_physicsFramesCount;
+    dFloat m_mainThreadPhysicsTime;
+    dFloat m_mainThreadPhysicsTimeAcc;
+    bool m_asynchronousPhysicsUpdate;
+
+    ///////////////////////////////////////////////////
+
+    /////////////// OGRE /////////////////
+
+	public :
+
+    Ogre::SceneManager *getSceneManager(void) { return mSceneMgr; }
+
+	protected :
+
+    void SetupGame(void);
+
+    //////////////////////////////////
+
+	protected :
+
+    unsigned long nb_entities;
+    std::list<CaseEntity*> Cases;
+    std::list<BallEntity*> Balls;
+    std::list<GroupEntity*> Groups;
+	std::list<CaseEntity*> CasesUnderCollide;
+	std::list<CaseEntity*> CasesToBeMoved;
+	void AddCaseToBeMoved(CaseEntity *ToAdd);
+	void DelCaseToBeMoved(CaseEntity *ToDel);
+
+    void CheckforCollides(void);
+    void AddCase(CaseEntity *Entity);
+    void AddBall(BallEntity *Entity);
+
+    bool frameEnded(const Ogre::FrameEvent& fe);
+    void SetCam(float x, float y, float z);
+    void MoveCam(float x, float y, float z);
+};
+
+class LevelEditor : public GameEngine
 {
     public :
 
-    BallGame();
-    ~BallGame();
-    GroupEntity *findGroup(const char * const name);
-    void AddGroup(GroupEntity *Entity);
+    LevelEditor();
+    ~LevelEditor();
 
     private :
 
@@ -104,25 +214,16 @@ class BallGame : public BaseApplication
 
     void LoadBallGameEntityTypes(void);
 
-    void Append(BallGameEntity *entity);
     void _StartPhysic(void);
     void _StopPhysic(void);
     void SwitchEditMode(void);
-    void DeleteCase(CaseEntity *Entity, std::list<CaseEntity*>::iterator *iter = NULL);
-    void RemoveCase(CaseEntity *Entity, std::list<CaseEntity*>::iterator *iter = NULL);
-    void DeleteBall(BallEntity *Entity, std::list<BallEntity*>::iterator *iter = NULL);
-    void RemoveBall(BallEntity *Entity, std::list<BallEntity*>::iterator *iter = NULL);
-    void DeleteGroup(GroupEntity *Entity, std::list<GroupEntity*>::iterator *iter = NULL);
-    void RemoveGroup(GroupEntity *Entity, std::list<GroupEntity*>::iterator *iter = NULL);
     void LoadStatesList(void);
     void EmptyStatesList(void);
     void EmptyLevelsList(void);
-    void EmptyLevel(void);//Clean all BallGame, Newton and Ogre entities to start with new level.
+    void EmptyLevel(void);//Clean all LevelEditor, Newton and Ogre entities to start with new level.
     void ChangeLevel(void);
-    void ImportLevelFromJson(Node *parent, String &nodeNamePrefix, bool isForImport = false);
 
     String Level;
-    String LevelFilename;
     void SetLevel(String &level_name, String &levelFilename);
 
     //Place New Element
@@ -149,16 +250,16 @@ class BallGame : public BaseApplication
 
 	EntityType *ToBePlacedEntityType;
 	SceneNode *ogreThumbnailNode;
-    BallGameEntity *ToBePlacedEntity;
-    BallGameEntity *LastPlacedEntity;
-    BallGameEntity *ToBeDeletedEntity;
+    Entity *ToBePlacedEntity;
+    Entity *LastPlacedEntity;
+    Entity *ToBeDeletedEntity;
     void PlaceNewElement(void);
     void PlaceUnderEditElement(void);
-    void PlaceElement(BallGameEntity *ToBePlacedEntity);
+    void PlaceElement(Entity *ToBePlacedEntity);
     void PrepareNewElement(void);
     inline void UnprepareNewElement(void);
     void DeleteElement(void);
-    inline void PrepareDeleteElement(BallGameEntity *Entity);
+    inline void PrepareDeleteElement(Entity *Entity);
     inline void UnprepareDeleteElement(void);
 
     //Edit Entities
@@ -167,8 +268,8 @@ class BallGame : public BaseApplication
     void RotateEntities(float x, float y, float z);
     void ScaleEntities(float x, float y, float z);
     void MultiSelectionSetEmpty(void);
-    bool ManageMultiSelectionSet(BallGameEntity *entity);
-    std::list<class BallGameEntity*> UnderEditEntites;
+    bool ManageMultiSelectionSet(Entity *entity);
+    std::list<class Entity*> UnderEditEntites;
     //Edit Ball
     void EditBall(BallEntity *Entity);
     BallEntity *UnderEditBall;
@@ -192,70 +293,10 @@ class BallGame : public BaseApplication
 		Editing
     }mode;
     /////////////////////  NEWTON ///////////////////
-    public :
-
-    NewtonWorld* m_world;
-    static void PostUpdateCallback(const NewtonWorld* const world, dFloat timestep);
-    static void OnContactCollision (const NewtonJoint* contactJoint, dFloat timestep, int threadIndex);
-    void UpdatePhysics(dFloat timestep);
-    NewtonWorld* GetNewton(void);
-
-    void CustomListenerPostUpdateCallback(dFloat timestep);
-
     private :
 
-    void SetupNewton(void);
-
-	class GameNewtonListener : public dCustomListener
-	{
-		public :
-    	GameNewtonListener(BallGame *engine) : dCustomListener(engine->GetNewton(), "BallGameListener")
-    	{
-    		Engine = engine;
-    	}
-
-		void PostUpdate(dFloat timestep);
-		BallGame *Engine;
-	};
-
-	GameNewtonListener *listener;
-
-    static void BodySerialization (NewtonBody* const body, void* const bodyUserData, NewtonSerializeCallback serializeCallback, void* const serializeHandle);
-    static void BodyDeserialization (NewtonBody* const body, void* const bodyUserData, NewtonDeserializeCallback deserializecallback, void* const serializeHandle);
-    void SerializedPhysicScene(const String* const name);
-    void DeserializedPhysicScene(const String* const name);
-    BallGameEntity *GetEntity(char *name);
-    bool CheckIfAlreadyColliding(CaseEntity *ToCheck);
-    void AddCaseColliding(CaseEntity *ToAdd);
-    inline void _updatePhysic(dFloat timestep);
-
-    bool m_suspendPhysicsUpdate;
-    unsigned64 m_microsecunds;
-    int m_physicsFramesCount;
-    dFloat m_mainThreadPhysicsTime;
-    dFloat m_mainThreadPhysicsTimeAcc;
-    bool m_asynchronousPhysicsUpdate;
-
-    unsigned long nb_entities;
-    std::list<CaseEntity*> Cases;
-    std::list<BallEntity*> Balls;
-    std::list<GroupEntity*> Groups;
-	std::list<CaseEntity*> CasesUnderCollide;
-	std::list<CaseEntity*> CasesToBeMoved;
-	void AddCaseToBeMoved(CaseEntity *ToAdd);
-	void DelCaseToBeMoved(CaseEntity *ToDel);
-
-	String ImportLevelFilename;
-	String ImportLevelName;
-    std::list<CaseEntity*> ImportLevelCases;
-    std::list<BallEntity*> ImportLevelBalls;
-    std::list<GroupEntity*> ImportLevelGroups;
     inline void ActivateLevelImportInterface(void);
     inline void UnactivateLevelImportInterface(void);
-
-    void CheckforCollides(void);
-    void AddCase(CaseEntity *Entity);
-    void AddBall(BallEntity *Entity);
 
     /////////////////////////////////////////////////
 
@@ -268,15 +309,26 @@ class BallGame : public BaseApplication
 	bool mouseMoved( const OIS::MouseEvent &arg );
     bool mousePressed( const OIS::MouseEvent &arg, OIS::MouseButtonID id );
     bool mouseReleased( const OIS::MouseEvent &arg, OIS::MouseButtonID id );
-    Ogre::SceneManager *getSceneManager(void) { return mSceneMgr; }
 
     private :
 
 	void createScene(void);
     void SetupGame(void);
+    void chooseSceneManager(void);
+    void createCamera(void);
+    void createViewports(void);
 
     //Mouse picking
-	BallGameEntity *LastHighligted;
+	Entity *LastHighligted;
+
+	Ogre::Camera* mThumbnailCamera;
+	Ogre::Camera* mImportLevelCamera;
+	Ogre::SceneManager* mThumbnailSceneMgr;
+	Ogre::SceneManager* mImportLevelSceneMgr;
+	Ogre::TexturePtr pThumbnailtex;
+	Ogre::TexturePtr pImportLeveltex;
+	Ogre::RenderTexture *rThumbnailtex;
+	Ogre::RenderTexture *rImportLeveltex;
     //////////////////////////////////////////////////
 
 
@@ -442,10 +494,9 @@ class BallGame : public BaseApplication
 
     //////////////////////////////////////////////////
 
-    virtual bool frameEnded(const Ogre::FrameEvent& fe);
-    void SetCam(float x, float y, float z);
-    void MoveCam(float x, float y, float z);
+    bool frameEnded(const Ogre::FrameEvent& fe);
 };
 
+}
 
-#endif /* BALLGAME_H_ */
+#endif /* LEVELEDITOR_H_ */

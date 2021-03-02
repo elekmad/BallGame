@@ -1,5 +1,5 @@
 /*
- * BallGame.cpp
+ * LevelEditor.cpp
  *
  *  Created on: 15 nov. 2020
  *      Author: damien
@@ -17,7 +17,7 @@
 //#include <sys/types.h>
 #include <glob.h>
 #include <string.h>
-//Put BallGame.h in last because of Xlib defines (True False Bool None) which must be undef
+//Put LevelEditor.h in last because of Xlib defines (True False Bool None) which must be undef
 #include "Entity.h"
 
 void EquilibrateAABBAroundOrigin(Node *node)
@@ -71,7 +71,9 @@ void EquilibrateAABBAroundOrigin(Node *node)
 	LOG << "After Equilibrate : Group(" << GrpPos.x << ", " << GrpPos.y << ", " << GrpPos.z << ")" << std::endl;
 }
 
-BallGameEntity::BallGameEntity(const dMatrix& matrix) :// m_matrix(matrix),
+namespace BallGame {
+
+Entity::Entity(const dMatrix& matrix) :// m_matrix(matrix),
 	m_curPosition (matrix.m_posit),
 	m_nextPosition (matrix.m_posit),
 	m_curRotation (dQuaternion (matrix)),
@@ -83,7 +85,7 @@ BallGameEntity::BallGameEntity(const dMatrix& matrix) :// m_matrix(matrix),
 	type = Case;
 }
 
-BallGameEntity::BallGameEntity()
+Entity::Entity()
 {
 	OgreEntity = NULL;
 	Body = NULL;
@@ -91,12 +93,12 @@ BallGameEntity::BallGameEntity()
 	type = Case;
 }
 
-void BallGameEntity::DisplaySelectedBox(bool display)
+void Entity::DisplaySelectedBox(bool display)
 {
 	OgreEntity->showBoundingBox(display);
 }
 
-void BallGameEntity::Finalize(void)
+void Entity::Finalize(void)
 {
 	setNewtonBody(NULL);
 	if(OgreEntity != NULL)
@@ -107,7 +109,7 @@ void BallGameEntity::Finalize(void)
 	}
 }
 
-void BallGameEntity::setOgreNode(SceneNode *node)
+void Entity::setOgreNode(SceneNode *node)
 {
 	OgreEntity = node;
 	if(node != NULL)
@@ -122,7 +124,7 @@ void BallGameEntity::setOgreNode(SceneNode *node)
 	}
 }
 
-void BallGameEntity::setNewtonBody(NewtonBody *body)
+void Entity::setNewtonBody(NewtonBody *body)
 {
 	if(Body != NULL)
 		NewtonDestroyBody(Body);
@@ -139,7 +141,7 @@ void BallGameEntity::setNewtonBody(NewtonBody *body)
 	}
 }
 
-void BallGameEntity::SetMatrixUsafe(const dQuaternion& rotation, const dVector& position)
+void Entity::SetMatrixUsafe(const dQuaternion& rotation, const dVector& position)
 {
 	m_curPosition = m_nextPosition;
 	m_curRotation = m_nextRotation;
@@ -154,32 +156,32 @@ void BallGameEntity::SetMatrixUsafe(const dQuaternion& rotation, const dVector& 
 	}
 }
 
-void BallGameEntity::TransformCallback(const NewtonBody* body, const dFloat* matrix, int threadIndex)
+void Entity::TransformCallback(const NewtonBody* body, const dFloat* matrix, int threadIndex)
 {
 //	LOG << "TransformCallback" << std::endl;
-	BallGameEntity* const Entity = (BallGameEntity*) NewtonBodyGetUserData(body);
-	if (Entity)
+	Entity* const Ent = (Entity*) NewtonBodyGetUserData(body);
+	if (Ent)
 	{
-		BallGame* const scene = (BallGame*)NewtonWorldGetUserData(NewtonBodyGetWorld(body));
+		LevelEditor* const scene = (LevelEditor*)NewtonWorldGetUserData(NewtonBodyGetWorld(body));
 		dMatrix transform(matrix);
 		dQuaternion rot;
 		NewtonBodyGetRotation(body, &rot.m_x);
-		Entity->SetMatrixUsafe(rot, transform.m_posit);
+		Ent->SetMatrixUsafe(rot, transform.m_posit);
 
 
-		Vector3 NewPosition(Entity->m_curPosition.m_x, Entity->m_curPosition.m_y, Entity->m_curPosition.m_z);
-		Quaternion NewOrientation(Entity->m_curRotation.m_w, Entity->m_curRotation.m_x, Entity->m_curRotation.m_y, Entity->m_curRotation.m_z);
+		Vector3 NewPosition(Ent->m_curPosition.m_x, Ent->m_curPosition.m_y, Ent->m_curPosition.m_z);
+		Quaternion NewOrientation(Ent->m_curRotation.m_w, Ent->m_curRotation.m_x, Ent->m_curRotation.m_y, Ent->m_curRotation.m_z);
 
 		//scene->Lock(Entity->m_lock);
 		//scene->Unlock(Entity->m_lock);
 //		LOG << "Entity " << Entity->getName() << " transform " << "position {" << NewPosition.x << ", " << NewPosition.y << ", " << NewPosition.z << "}" << std::endl;
 //		LOG << "Entity " << Entity->getName() << " Orientation {" << NewOrientation.w << ", " << NewOrientation.x << ", " << NewOrientation.y << ", " << NewOrientation.z << "}" << std::endl;
-		Entity->OgreEntity->_setDerivedPosition(NewPosition);
-		Entity->OgreEntity->_setDerivedOrientation(NewOrientation);
+		Ent->OgreEntity->_setDerivedPosition(NewPosition);
+		Ent->OgreEntity->_setDerivedOrientation(NewOrientation);
 	}
 }
 
-dMatrix * BallGameEntity::PrepareNewtonBody(dVector &NewtonBodyLocation, dVector &NewtonBodySize)
+dMatrix * Entity::PrepareNewtonBody(dVector &NewtonBodyLocation, dVector &NewtonBodySize)
 {
 	InitialPos = OgreEntity->_getDerivedPosition();
 	InitialScale = OgreEntity->_getDerivedScale();
@@ -188,7 +190,7 @@ dMatrix * BallGameEntity::PrepareNewtonBody(dVector &NewtonBodyLocation, dVector
 	NewtonBodyLocation.m_y = InitialPos.y;
 	NewtonBodyLocation.m_z = InitialPos.z;
 	NewtonBodyLocation.m_w = 1;
-	Entity *ogreEntity = (Ogre::Entity*)OgreEntity->getAttachedObject(0);
+	Ogre::Entity *ogreEntity = (Ogre::Entity*)OgreEntity->getAttachedObject(0);
 	Vector3 AABB(ogreEntity->getBoundingBox().getSize());
 	NewtonBodySize.m_x = AABB.x * InitialScale.x;
 	NewtonBodySize.m_y = AABB.y * InitialScale.y;
@@ -198,7 +200,7 @@ dMatrix * BallGameEntity::PrepareNewtonBody(dVector &NewtonBodyLocation, dVector
 	return new dMatrix(InitialOrientation.getPitch(false).valueRadians(), InitialOrientation.getYaw(false).valueRadians(), InitialOrientation.getRoll(false).valueRadians(), NewtonBodyLocation);
 }
 
-BallEntity::BallEntity(const dMatrix& matrix):BallGameEntity(matrix)
+BallEntity::BallEntity(const dMatrix& matrix):Entity(matrix)
 {
 	InitialMass = 1;
 	type = Ball;
@@ -275,10 +277,10 @@ void BallEntity::setMass(dFloat newMass)
 	NewtonBodySetMassProperties(Body, newMass, collision);
 }
 
-CaseEntity::CaseEntity(const dMatrix& matrix, enum CaseType _type):BallGameEntity(matrix)
+CaseEntity::CaseEntity(const dMatrix& matrix, enum CaseType _type):Entity(matrix)
 {
 	type = _type;
-	this->BallGameEntity::type = Case;
+	this->Entity::type = Case;
 	force_to_apply = NAN;
 	force_direction = NULL;
 	MovementToDo = NULL;
@@ -287,7 +289,7 @@ CaseEntity::CaseEntity(const dMatrix& matrix, enum CaseType _type):BallGameEntit
 CaseEntity::CaseEntity(enum CaseType _type)
 {
 	type = _type;
-	this->BallGameEntity::type = Case;
+	this->Entity::type = Case;
 	force_to_apply = NAN;
 	force_direction = NULL;
 	MovementToDo = NULL;
@@ -667,7 +669,7 @@ void CaseEntity::CreateNewtonBody(NewtonWorld *m_world)
 	dVector NewtonBodySize;
 	NewtonBody *newtonBody;
 
-	Entity *ogreEntity = (Ogre::Entity*)OgreEntity->getAttachedObject(0);
+	Ogre::Entity *ogreEntity = (Ogre::Entity*)OgreEntity->getAttachedObject(0);
 	dMatrix *bodymatrix = PrepareNewtonBody(NewtonBodyLocation, NewtonBodySize);
 
 	NewtonCollision *collision_tree = NULL;
@@ -692,10 +694,10 @@ GroupEntity::GroupEntity(String &name, Ogre::SceneManager* mSceneMgr)
 
 void GroupEntity::Finalize(void)
 {
-	std::list<BallGameEntity*>::iterator iter(childs.begin());
+	std::list<Entity*>::iterator iter(childs.begin());
 	while(iter != childs.end())
 	{
-		BallGameEntity *Entity = *iter;
+		Entity *Entity = *iter;
 		if(Entity != NULL)
 		{
 			Entity->OgreEntity->getParent()->removeChild(Entity->OgreEntity);
@@ -707,7 +709,7 @@ void GroupEntity::Finalize(void)
 	parent->removeAndDestroyChild(OgreEntity->getName());
 }
 
-void GroupEntity::AddChild(BallGameEntity* child)
+void GroupEntity::AddChild(Entity* child)
 {
 	childs.push_back(child);
 	child->Group = this;
@@ -715,7 +717,7 @@ void GroupEntity::AddChild(BallGameEntity* child)
 	equilibrated = false;
 }
 
-bool GroupEntity::DelChild(BallGameEntity* child)
+bool GroupEntity::DelChild(Entity* child)
 {
 	LOG << "Child " << child->getName() << " Removed from Group" << std::endl;
 	child->Group = NULL;
@@ -730,10 +732,10 @@ bool GroupEntity::DelChild(BallGameEntity* child)
 //	LOG << "Child " << child->getName() << " position {" << pos.x << ", " << pos.y << ", " << pos.z << "}" << std::endl;
 //	LOG << "Child " << child->getName() << " absposition {" << abspos.x << ", " << abspos.y << ", " << abspos.z << "}" << std::endl;
 
-	std::list<BallGameEntity*>::iterator iter(childs.begin());
+	std::list<Entity*>::iterator iter(childs.begin());
 	while(iter != childs.end())
 	{
-		BallGameEntity *Entity = *iter;
+		Entity *Entity = *iter;
 		if(Entity == child)
 		{
 			child->OgreEntity->getParent()->removeChild(child->OgreEntity);
@@ -746,12 +748,12 @@ bool GroupEntity::DelChild(BallGameEntity* child)
 	return childs.empty();
 }
 
-void GroupEntity::FillListWithChilds(std::list<BallGameEntity*> &list)
+void GroupEntity::FillListWithChilds(std::list<Entity*> &list)
 {
-	std::list<BallGameEntity*>::iterator iter(childs.begin());
+	std::list<Entity*>::iterator iter(childs.begin());
 	while(iter != childs.end())
 	{
-		BallGameEntity *Entity = *(iter++);
+		Entity *Entity = *(iter++);
 		if(Entity == NULL)
 			continue;
 		list.push_back(Entity);
@@ -762,10 +764,10 @@ void GroupEntity::ComputeChilds(void)
 {
 	if(computed)
 		return;
-	std::list<BallGameEntity*>::iterator iter(childs.begin());
+	std::list<Entity*>::iterator iter(childs.begin());
 	while(iter != childs.end())
 	{
-		BallGameEntity *Entity = *(iter++);
+		Entity *Entity = *(iter++);
 		if(Entity == NULL)
 			continue;
 		Vector3 ChildPos = Entity->getAbsolutePosition();
@@ -871,12 +873,12 @@ inline void MoveNode(Node *node, float x, float y, float z)
 	MoveNode(node, addPos);
 }
 
-void BallGameEntity::Move(float x, float y, float z)
+void Entity::Move(float x, float y, float z)
 {
 	MoveNode(OgreEntity, x, y, z);
 }
 
-void BallGameEntity::Move(Vector3 &addPos)
+void Entity::Move(Vector3 &addPos)
 {
 	MoveNode(OgreEntity, addPos);
 }
@@ -905,22 +907,22 @@ inline void ScaleNode(Node *node, float x, float y, float z)
 	ScaleNode(node, addScale);
 }
 
-void BallGameEntity::Scale(float x, float y, float z)
+void Entity::Scale(float x, float y, float z)
 {
 	ScaleNode(OgreEntity, x, y, z);
 }
 
-void BallGameEntity::Scale(Vector3 &addScale)
+void Entity::Scale(Vector3 &addScale)
 {
 	ScaleNode(OgreEntity, addScale);
 }
 
 void GroupEntity::Scale(float x, float y, float z)
 {
-	std::list<BallGameEntity*>::iterator iter(childs.begin());
+	std::list<Entity*>::iterator iter(childs.begin());
 	while(iter != childs.end())
 	{
-		BallGameEntity *Entity = *(iter++);
+		Entity *Entity = *(iter++);
 		if(Entity == NULL)
 			continue;
 		Vector3 childPos = Entity->getRelativePosition();
@@ -941,7 +943,7 @@ inline void RotateNode(Node *node, float x, float y, float z)
 	node->yaw(Degree(y));
 }
 
-void BallGameEntity::Rotate(float x, float y, float z)
+void Entity::Rotate(float x, float y, float z)
 {
 	RotateNode(OgreEntity, x, y, z);
 }
@@ -955,7 +957,7 @@ void GroupEntity::Rotate(float x, float y, float z)
 
 void BallEntity::ExportToJson(rapidjson::Value &v, rapidjson::Document::AllocatorType& allocator)
 {
-	BallGameEntity::ExportToJson(v, allocator);
+	Entity::ExportToJson(v, allocator);
 	v.AddMember(MASS_JSON_FIELD, InitialMass, allocator);
 }
 
@@ -985,7 +987,7 @@ void BallEntity::ExportToJson(rapidjson::Value &v, rapidjson::Document::Allocato
 
 void CaseEntity::ExportToJson(rapidjson::Value &v, rapidjson::Document::AllocatorType& allocator)
 {
-	BallGameEntity::ExportToJson(v, allocator);
+	Entity::ExportToJson(v, allocator);
 	v.AddMember(CASETYPE_JSON_FIELD, (int)type, allocator);
 	if(isnan(force_to_apply))
 		v.AddMember(FORCEPRESENT_JSON_FIELD, false, allocator);
@@ -1048,7 +1050,7 @@ void CaseEntity::ExportToJson(rapidjson::Value &v, rapidjson::Document::Allocato
 	}
 }
 
-void CaseEntity::CreateFromJson(rapidjson::Value &v, BallGame *Game, NewtonWorld *m_world, Node *parent, String &nodeNamePrefix)
+void CaseEntity::CreateFromJson(rapidjson::Value &v, GameEngine *Game, NewtonWorld *m_world, Node *parent, String &nodeNamePrefix)
 {
 	ImportFromJson(v, Game, parent, nodeNamePrefix);
 
@@ -1061,9 +1063,9 @@ void CaseEntity::CreateFromJson(rapidjson::Value &v, BallGame *Game, NewtonWorld
 		CreateNewtonBody(m_world);
 }
 
-void CaseEntity::ImportFromJson(rapidjson::Value &v, BallGame *Game, Node *parent, String &nodeNamePrefix)
+void CaseEntity::ImportFromJson(rapidjson::Value &v, GameEngine *Game, Node *parent, String &nodeNamePrefix)
 {
-	BallGameEntity::ImportFromJson(v, Game, parent, nodeNamePrefix);
+	Entity::ImportFromJson(v, Game, parent, nodeNamePrefix);
 	float force_json =  NAN;
 	dVector *direction_json = NULL;
 	type = (CaseEntity::CaseType)v[CASETYPE_JSON_FIELD].GetInt();
@@ -1136,7 +1138,7 @@ void CaseEntity::ImportFromJson(rapidjson::Value &v, BallGame *Game, Node *paren
 #define ORIENTATIONZ_JSON_FIELD "OrientationZ"
 #define ORIENTATIONW_JSON_FIELD "OrientationW"
 
-void BallGameEntity::ExportToJson(rapidjson::Value &v, rapidjson::Document::AllocatorType& allocator)
+void Entity::ExportToJson(rapidjson::Value &v, rapidjson::Document::AllocatorType& allocator)
 {
 	Ogre::Entity *entity = (Ogre::Entity*)OgreEntity->getAttachedObject(0);
 	const char *cname = (const char*)entity->getMesh().get()->getName().c_str();
@@ -1167,7 +1169,7 @@ void BallGameEntity::ExportToJson(rapidjson::Value &v, rapidjson::Document::Allo
 	v.AddMember(ORIENTATIONW_JSON_FIELD, InitialOrientation.w, allocator);
 }
 
-void BallEntity::CreateFromJson(rapidjson::Value &v, BallGame *Game, NewtonWorld *m_world, Node *parent, String &nodeNamePrefix)
+void BallEntity::CreateFromJson(rapidjson::Value &v, GameEngine *Game, NewtonWorld *m_world, Node *parent, String &nodeNamePrefix)
 {
 	ImportFromJson(v, Game, parent, nodeNamePrefix);
 
@@ -1175,17 +1177,17 @@ void BallEntity::CreateFromJson(rapidjson::Value &v, BallGame *Game, NewtonWorld
 		CreateNewtonBody(m_world);
 }
 
-void BallEntity::ImportFromJson(rapidjson::Value &v, BallGame *Game, Node *parent, String &nodeNamePrefix)
+void BallEntity::ImportFromJson(rapidjson::Value &v, GameEngine *Game, Node *parent, String &nodeNamePrefix)
 {
-	BallGameEntity::ImportFromJson(v, Game, parent, nodeNamePrefix);
+	Entity::ImportFromJson(v, Game, parent, nodeNamePrefix);
 	InitialMass = v[MASS_JSON_FIELD].GetFloat();
 }
 
-void BallGameEntity::ImportFromJson(rapidjson::Value &v, BallGame *Game, Node *parent, String &nodeNamePrefix)
+void Entity::ImportFromJson(rapidjson::Value &v, GameEngine *Game, Node *parent, String &nodeNamePrefix)
 {
 	const char *meshname = v[MESH_JSON_FIELD].GetString();
 	Ogre::SceneManager *mSceneMgr = Game->getSceneManager();
-	Entity* ogreEntity = mSceneMgr->createEntity(meshname);
+	Ogre::Entity* ogreEntity = mSceneMgr->createEntity(meshname);
 //	LOG << "Mesh Entity Name : '" << ogreEntity->getName() << "'" << std::endl;
 	InitialPos.x = v[POSITIONX_JSON_FIELD].GetFloat();
 	InitialPos.y = v[POSITIONY_JSON_FIELD].GetFloat();
@@ -1217,4 +1219,6 @@ void BallGameEntity::ImportFromJson(rapidjson::Value &v, BallGame *Game, Node *p
 		else
 			LOG << "Pb : Group " << Groupname << " not found !!" << std::endl;
 	}
+}
+
 }

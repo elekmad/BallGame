@@ -14,6 +14,8 @@
 
 #include <BallGame.h>
 
+using namespace BallGame;
+
 #define DEMO_GRAVITY  dFloat(-10.0f)
 //#define DEMO_GRAVITY  dFloat(0.0f)
 
@@ -70,7 +72,7 @@ NewtonMesh* CreateCollisionTreeDoubleFaces (NewtonWorld* world, NewtonCollision*
 
 void GetContactOnBody (NewtonBody* const body);
 void HandlecollisionPoints (NewtonJoint* const contactjoint);
-bool CheckIfEntitiesCollide(const BallGameEntity *const Entity1, const BallGameEntity * const Entity2);
+bool CheckIfEntitiesCollide(const BallGame::Entity *const Ent1, const BallGame::Entity * const Ent2);
 NewtonJoint* CheckIfBodiesCollide (const NewtonBody* const body0, const NewtonBody* const body1);
 
 dCustomJoint* FindJoint(const NewtonBody* const body0, const NewtonBody* const body1);

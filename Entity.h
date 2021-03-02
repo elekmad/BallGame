@@ -42,7 +42,9 @@
 using namespace Ogre;
 using namespace OgreBites;
 
-class BallGame;
+namespace BallGame {
+
+class GameEngine;
 class GroupEntity;
 
 enum BallGameEntityType
@@ -51,17 +53,17 @@ enum BallGameEntityType
 	Ball
 };
 
-class BallGameEntity
+class Entity
 {
 	public :
 
-	BallGameEntity(const dMatrix& matrix);
-	BallGameEntity();
-	~BallGameEntity(){}
+	Entity(const dMatrix& matrix);
+	Entity();
+	~Entity(){}
 	void Finalize(void);
     static void TransformCallback(const NewtonBody* body, const dFloat* matrix, int threadIndex);
     void ExportToJson(rapidjson::Value &v, rapidjson::Document::AllocatorType& allocator);
-    void ImportFromJson(rapidjson::Value &v, BallGame *Game, Node *parent, String &nodeNamePrefix);
+    void ImportFromJson(rapidjson::Value &v, GameEngine *Game, Node *parent, String &nodeNamePrefix);
     void setOgreNode(SceneNode *node);
     void setNewtonBody(NewtonBody *body);
     const NewtonBody *getNewtonBody(void) const { return Body; }
@@ -122,17 +124,17 @@ class BallGameEntity
 	friend class GroupEntity;
 };
 
-class BallEntity : public BallGameEntity
+class BallEntity : public Entity
 {
 	public :
 
 	BallEntity(const dMatrix& matrix);
 	BallEntity();
 	~BallEntity();
-	void CreateFromJson(rapidjson::Value &v, BallGame *Game, NewtonWorld *m_world, Node *parent, String &nodeNamePrefix);
+	void CreateFromJson(rapidjson::Value &v, GameEngine *Game, NewtonWorld *m_world, Node *parent, String &nodeNamePrefix);
 	void AddForceVector(dVector *force);
     void ExportToJson(rapidjson::Value &v, rapidjson::Document::AllocatorType& allocator);
-    void ImportFromJson(rapidjson::Value &v, BallGame *Game, Node *parent, String &nodeNamePrefix);
+    void ImportFromJson(rapidjson::Value &v, GameEngine *Game, Node *parent, String &nodeNamePrefix);
 	dVector *GetForceVector();
 	void CleanupForces(void);
     void CreateNewtonBody(NewtonWorld *m_world);
@@ -147,7 +149,7 @@ class BallEntity : public BallGameEntity
 	float InitialMass;
 };
 
-class CaseEntity : public BallGameEntity
+class CaseEntity : public Entity
 {
 	public :
 
@@ -160,13 +162,13 @@ class CaseEntity : public BallGameEntity
 	CaseEntity(const dMatrix& matrix, enum CaseType _type = typeBox);
 	CaseEntity(enum CaseType _type = typeBox);
 	~CaseEntity();
-	void CreateFromJson(rapidjson::Value &v, BallGame *Game, NewtonWorld *m_world, Node *parent, String &nodeNamePrefix);
+	void CreateFromJson(rapidjson::Value &v, GameEngine *Game, NewtonWorld *m_world, Node *parent, String &nodeNamePrefix);
 //	void AddBallColliding(NewtonBody *ball);
 //	bool CheckIfAlreadyColliding(NewtonBody *ball);
 	void SetForceToApply(float force, dVector *direction);
 	void ApplyForceOnBall(BallEntity *ball);
     void ExportToJson(rapidjson::Value &v, rapidjson::Document::AllocatorType& allocator);
-    void ImportFromJson(rapidjson::Value &v, BallGame *Game, Node *parent, String &nodeNamePrefix);
+    void ImportFromJson(rapidjson::Value &v, GameEngine *Game, Node *parent, String &nodeNamePrefix);
     void CreateNewtonBody(NewtonWorld *m_world);
     float getForce(void) { return force_to_apply; }
     const dVector *getForceDirection(void) { return force_direction; }
@@ -250,11 +252,11 @@ class GroupEntity
 	void Finalize(void);
     void ExportToJson(rapidjson::Value &v, rapidjson::Document::AllocatorType& allocator);
     void ImportFromJson(rapidjson::Value &v, Node *parent, String &nodeNamePrefix);
-	void AddChild(BallGameEntity* child);
-	bool DelChild(BallGameEntity* child);
+	void AddChild(Entity* child);
+	bool DelChild(Entity* child);
 	void ComputeChilds(void);
 	void ComputeAndEquilibrateChilds(void);
-	void FillListWithChilds(std::list<BallGameEntity*> &list);
+	void FillListWithChilds(std::list<Entity*> &list);
     void Move(float x, float y, float z);
     void Rotate(float x, float y, float z);
     void Scale(float x, float y, float z);
@@ -263,10 +265,11 @@ class GroupEntity
 	private :
 
 	SceneNode *OgreEntity;
-	std::list<BallGameEntity*> childs;
+	std::list<Entity*> childs;
 	bool computed;
 	bool equilibrated;
 };
 
+}
 
 #endif /* ENTITY_H_ */

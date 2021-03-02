@@ -25,12 +25,6 @@ BaseApplication::BaseApplication(void)
 	: mRoot(0),
 	mCamera(0),
 	mSceneMgr(0),
-	mThumbnailCamera(0),
-	mThumbnailSceneMgr(0),
-	rThumbnailtex(0),
-	mImportLevelCamera(0),
-	mImportLevelSceneMgr(0),
-	rImportLeveltex(0),
 	mWindow(0),
 	mResourcesCfg(Ogre::StringUtil::BLANK),
 	mPluginsCfg(Ogre::StringUtil::BLANK),
@@ -58,22 +52,6 @@ BaseApplication::~BaseApplication(void)
 	if (mCameraMan) delete mCameraMan;
 	if (mOverlaySystem) delete mOverlaySystem;
 
-	if (mThumbnailCamera) delete mThumbnailCamera;
-	if (mThumbnailSceneMgr)
-	{
-		mThumbnailSceneMgr->getRootSceneNode()->removeAndDestroyAllChildren();
-		delete mThumbnailSceneMgr;
-	}
-	if (rThumbnailtex)delete rThumbnailtex;
-
-	if (mImportLevelCamera) delete mImportLevelCamera;
-	if (mImportLevelSceneMgr)
-	{
-		mImportLevelSceneMgr->getRootSceneNode()->removeAndDestroyAllChildren();
-		delete mImportLevelSceneMgr;
-	}
-	if (rImportLeveltex)delete rImportLeveltex;
-
 	if(mWindow)
 	{
 		//Remove ourself as a Window listener
@@ -97,27 +75,22 @@ bool BaseApplication::configure(void)
 	return true;
 }
 //-------------------------------------------------------------------------------------
+
 void BaseApplication::chooseSceneManager(void)
 {
 	// Get the SceneManager, in this case a generic one
 	mSceneMgr = mRoot->createSceneManager(Ogre::ST_GENERIC);
-	mThumbnailSceneMgr = mRoot->createSceneManager(Ogre::ST_GENERIC);
-	mImportLevelSceneMgr = mRoot->createSceneManager(Ogre::ST_GENERIC);
 
 	// initialize the OverlaySystem (changed for 1.9)
 	mOverlaySystem = new Ogre::OverlaySystem();
     mSceneMgr->addRenderQueueListener(mOverlaySystem);
 }
 //-------------------------------------------------------------------------------------
+
 void BaseApplication::createCamera(void)
 {
 	// Create the camera
 	mCamera = mSceneMgr->createCamera("PlayerCam");
-	mThumbnailCamera = mThumbnailSceneMgr->createCamera("ThumbnailCam");
-	mThumbnailCamera->setNearClipDistance(5);
-
-	mImportLevelCamera = mImportLevelSceneMgr->createCamera("ImportLevelCam");
-	mImportLevelCamera->setNearClipDistance(5);
  
 	// Position it at 500 in Z direction
 	mCamera->setPosition(Ogre::Vector3(0,0,80));
@@ -186,6 +159,7 @@ void BaseApplication::destroyScene(void)
 {
 }
 //-------------------------------------------------------------------------------------
+
 void BaseApplication::createViewports(void)
 {
 	// Create one viewport, entire window
@@ -194,44 +168,6 @@ void BaseApplication::createViewports(void)
  
 	// Alter the camera aspect ratio to match the viewport
 	mCamera->setAspectRatio(
-		Ogre::Real(vp->getActualWidth()) / Ogre::Real(vp->getActualHeight()));
-
-    pThumbnailtex = mRoot->getTextureManager()->createManual(
-        "RTT",
-        Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME,
-        Ogre::TEX_TYPE_2D,
-        512,
-        512,
-        0,
-        Ogre::PF_R8G8B8,
-        Ogre::TU_RENDERTARGET);
-    rThumbnailtex = pThumbnailtex->getBuffer()->getRenderTarget();
-
-
-	vp = rThumbnailtex->addViewport(mThumbnailCamera);
-	vp->setBackgroundColour(Ogre::ColourValue(0,0,0));
-
-	// Alter the camera aspect ratio to match the viewport
-	mThumbnailCamera->setAspectRatio(
-		Ogre::Real(vp->getActualWidth()) / Ogre::Real(vp->getActualHeight()));
-
-    pImportLeveltex = mRoot->getTextureManager()->createManual(
-        "RTT",
-        Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME,
-        Ogre::TEX_TYPE_2D,
-		vp->getActualWidth(),
-		vp->getActualHeight(),
-        0,
-        Ogre::PF_R8G8B8,
-        Ogre::TU_RENDERTARGET);
-    rImportLeveltex = pImportLeveltex->getBuffer()->getRenderTarget();
-
-
-	vp = rImportLeveltex->addViewport(mImportLevelCamera);
-	vp->setBackgroundColour(Ogre::ColourValue(0,0,0));
-
-	// Alter the camera aspect ratio to match the viewport
-	mImportLevelCamera->setAspectRatio(
 		Ogre::Real(vp->getActualWidth()) / Ogre::Real(vp->getActualHeight()));
 }
 //-------------------------------------------------------------------------------------
