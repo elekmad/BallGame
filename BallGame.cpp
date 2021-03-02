@@ -48,6 +48,17 @@ void inline ButtonsSetVisible(std::list<CEGUI::Window*> &list, bool state)
 	}
 }
 
+void inline ButtonsSetMutedState(std::list<CEGUI::Window*> &list, bool state)
+{
+	std::list<CEGUI::Window*>::iterator iter(list.begin());
+	while(iter != list.end())
+	{
+		CEGUI::Window *W = *(iter++);
+		if(W != NULL)
+			W->setMutedState(state);
+	}
+}
+
 void inline ButtonsMoveToFront(std::list<CEGUI::Window*> &list)
 {
 	std::list<CEGUI::Window*>::iterator iter(list.begin());
@@ -633,6 +644,7 @@ void BallGame::SwitchEditMode(void)
 		_StopPhysic();
 		ButtonsSetVisible(EditButtons, true);
 	    GroupElementsB->setVisible(false);
+		MoveEditElementB->setVisible(false);
 	    CaractsEditElementB->setVisible(false);
 	    SimpleEditElementB->setVisible(false);
 		SetMoveNewElement();
@@ -913,6 +925,7 @@ bool BallGame::DeleteElementBCallback(const CEGUI::EventArgs &e)
 	EditElementB->setDisabled(false);
 	SimpleEditElementB->setVisible(false);
 	CaractsEditElementB->setVisible(false);
+	MoveEditElementB->setVisible(false);
 	MoveElementB->setVisible(false);
 	RotateElementB->setVisible(false);
 	ScaleElementB->setVisible(false);
@@ -927,6 +940,7 @@ bool BallGame::PlaceNewElementBCallback(const CEGUI::EventArgs &e)
 	EditElementB->setDisabled(false);
 	SimpleEditElementB->setVisible(false);
 	CaractsEditElementB->setVisible(false);
+	MoveEditElementB->setVisible(false);
 	MoveElementB->setVisible(true);
 	RotateElementB->setVisible(true);
 	ScaleElementB->setVisible(true);
@@ -949,6 +963,7 @@ void BallGame::EditElementSetupButtons(void)
 	EditElementB->setDisabled(true);
 	SimpleEditElementB->setVisible(true);
 	CaractsEditElementB->setVisible(true);
+	MoveEditElementB->setVisible(true);
 	MoveElementB->setVisible(true);
 	RotateElementB->setVisible(true);
 	ScaleElementB->setVisible(true);
@@ -975,6 +990,7 @@ void BallGame::SetMoveElement(void)
 	PlaceNewElementB->setDisabled(false);
 	SimpleEditElementB->setDisabled(true);
 	CaractsEditElementB->setDisabled(false);
+	MoveEditElementB->setDisabled(false);
 	EditElementB->setDisabled(true);
 	MoveElementB->setDisabled(true);
 	RotateElementB->setDisabled(false);
@@ -1016,6 +1032,7 @@ bool BallGame::SimpleEditElementBCallback(const CEGUI::EventArgs &e)
 	EditCase(UnderEditCase);
 	CaractsEditElementB->setEnabled(true);
 	SimpleEditElementB->setEnabled(false);
+	MoveEditElementB->setEnabled(true);
 
 	MoveElementB->setVisible(true);
 	MoveElementB->setEnabled(true);
@@ -1032,15 +1049,16 @@ bool BallGame::MoveEditElementBCallback(const CEGUI::EventArgs &e)
 	EntityEditAction = Move;
 	EditBall(UnderEditBall);
 	EditCase(UnderEditCase);
-	CaractsEditElementB->setEnabled(false);
+	CaractsEditElementB->setEnabled(true);
 	SimpleEditElementB->setEnabled(true);
+	MoveEditElementB->setEnabled(false);
 
 	MoveElementB->setVisible(true);
-	MoveElementB->setEnabled(true);
+	MoveElementB->setEnabled(false);
 	RotateElementB->setVisible(true);
-	RotateElementB->setEnabled(false);
+	RotateElementB->setEnabled(true);
 	ScaleElementB->setVisible(true);
-	ScaleElementB->setEnabled(false);
+	ScaleElementB->setEnabled(true);
 	return true;
 }
 
@@ -1051,6 +1069,7 @@ bool BallGame::CaractsEditElementBCallback(const CEGUI::EventArgs &e)
 	EditCase(UnderEditCase);
 	CaractsEditElementB->setEnabled(false);
 	SimpleEditElementB->setEnabled(true);
+	MoveEditElementB->setEnabled(true);
 
 	MoveElementB->setVisible(false);
 	RotateElementB->setVisible(false);
@@ -1756,7 +1775,7 @@ void BallGame::SetupGUI(void)
     SimpleEditElementB = CreateNewGUIComponent<CEGUI::PushButton>("OgreTray/Button");
     SimpleEditElementB->setText("S");
     SimpleEditElementB->setTooltipText("Simple Edit Element.");
-    SimpleEditElementB->setSize(CEGUI::USize(CEGUI::UDim(0, 75), CEGUI::UDim(0, 30)));
+    SimpleEditElementB->setSize(CEGUI::USize(CEGUI::UDim(0, 50), CEGUI::UDim(0, 30)));
     SimpleEditElementB->setVerticalAlignment(CEGUI::VA_TOP);
     SimpleEditElementB->setHorizontalAlignment(CEGUI::HA_RIGHT);
 
@@ -1766,11 +1785,10 @@ void BallGame::SetupGUI(void)
     MainLayout->addChild(SimpleEditElementB);
     ButtonSetAddButton(EditButtons, SimpleEditElementB);
 
-    /*
     MoveEditElementB = CreateNewGUIComponent<CEGUI::PushButton>("OgreTray/Button");
     MoveEditElementB->setText("M");
     MoveEditElementB->setTooltipText("Moves Edit Element.");
-    MoveEditElementB->setSize(CEGUI::USize(CEGUI::UDim(0, 75), CEGUI::UDim(0, 30)));
+    MoveEditElementB->setSize(CEGUI::USize(CEGUI::UDim(0, 50), CEGUI::UDim(0, 30)));
     MoveEditElementB->setVerticalAlignment(CEGUI::VA_TOP);
     MoveEditElementB->setHorizontalAlignment(CEGUI::HA_RIGHT);
 
@@ -1779,12 +1797,11 @@ void BallGame::SetupGUI(void)
 
     MainLayout->addChild(MoveEditElementB);
     ButtonSetAddButton(EditButtons, MoveEditElementB);
-    */
 
     CaractsEditElementB = CreateNewGUIComponent<CEGUI::PushButton>("OgreTray/Button");
     CaractsEditElementB->setText("C");
     CaractsEditElementB->setTooltipText("Caracts Edit Element.");
-    CaractsEditElementB->setSize(CEGUI::USize(CEGUI::UDim(0, 75), CEGUI::UDim(0, 30)));
+    CaractsEditElementB->setSize(CEGUI::USize(CEGUI::UDim(0, 50), CEGUI::UDim(0, 30)));
     CaractsEditElementB->setVerticalAlignment(CEGUI::VA_TOP);
     CaractsEditElementB->setHorizontalAlignment(CEGUI::HA_RIGHT);
 
@@ -1854,6 +1871,7 @@ void BallGame::SetupGUI(void)
     SetWindowsPosNearToOther(DeleteElementB, EditElementB, 0, 1);
     SetWindowsPosNearToOther(SimpleEditElementB, DeleteElementB, 0, 1);
     SetWindowsPosNearToOther(CaractsEditElementB, SimpleEditElementB, -1, 0);
+    SetWindowsPosNearToOther(MoveEditElementB, CaractsEditElementB, -1, 0);
     SetWindowsPosNearToOther(ScaleElementB, SimpleEditElementB, 0, 1);
     SetWindowsPosNearToOther(RotateElementB, ScaleElementB, -1, 0);
     SetWindowsPosNearToOther(MoveElementB, RotateElementB, -1, 0);
@@ -1879,8 +1897,10 @@ void BallGame::SetupGUI(void)
     CaseForceValueEditB->setSize(CEGUI::USize(CEGUI::UDim(0, 50), CEGUI::UDim(0, 30)));
     CaseForceValueEditB->setVerticalAlignment(CEGUI::VA_BOTTOM);
     CaseForceValueEditB->setHorizontalAlignment(CEGUI::HA_CENTRE);
-    String numRegex("^(\\-?[0-9]*(\\.[0-9]*)?)?");
-    CaseForceValueEditB->setValidationString(numRegex);
+    String FloatingNumRegex("^(\\-?[0-9]*(\\.[0-9]*)?|NAN)?");
+    CaseForceValueEditB->setValidationString(FloatingNumRegex);
+    String IntegerNumRegex("^(\\-?[0-9]*(\\.[0-9]*)?)?");
+    CaseForceValueEditB->setValidationString(FloatingNumRegex);
 
     CaseForceValueEditB->subscribeEvent(CEGUI::Editbox::EventTextAccepted,
 			CEGUI::Event::Subscriber(&BallGame::CaseForceValueEditBCallback, this));
@@ -1907,7 +1927,7 @@ void BallGame::SetupGUI(void)
     CaseForceDirectionXValueEditB->setSize(CEGUI::USize(CEGUI::UDim(0, 50), CEGUI::UDim(0, 30)));
     CaseForceDirectionXValueEditB->setVerticalAlignment(CEGUI::VA_BOTTOM);
     CaseForceDirectionXValueEditB->setHorizontalAlignment(CEGUI::HA_CENTRE);
-    CaseForceDirectionXValueEditB->setValidationString(numRegex);
+    CaseForceDirectionXValueEditB->setValidationString(FloatingNumRegex);
 
     CaseForceDirectionXValueEditB->subscribeEvent(CEGUI::Editbox::EventMouseWheel,
 			CEGUI::Event::Subscriber(&BallGame::CaseForceDirectionXValueEditBMouseWheelCallback, this));
@@ -1920,7 +1940,7 @@ void BallGame::SetupGUI(void)
     CaseForceDirectionYValueEditB->setSize(CEGUI::USize(CEGUI::UDim(0, 50), CEGUI::UDim(0, 30)));
     CaseForceDirectionYValueEditB->setVerticalAlignment(CEGUI::VA_BOTTOM);
     CaseForceDirectionYValueEditB->setHorizontalAlignment(CEGUI::HA_CENTRE);
-    CaseForceDirectionYValueEditB->setValidationString(numRegex);
+    CaseForceDirectionYValueEditB->setValidationString(FloatingNumRegex);
 
     CaseForceDirectionYValueEditB->subscribeEvent(CEGUI::Editbox::EventMouseWheel,
 			CEGUI::Event::Subscriber(&BallGame::CaseForceDirectionYValueEditBMouseWheelCallback, this));
@@ -1933,7 +1953,7 @@ void BallGame::SetupGUI(void)
     CaseForceDirectionZValueEditB->setSize(CEGUI::USize(CEGUI::UDim(0, 50), CEGUI::UDim(0, 30)));
     CaseForceDirectionZValueEditB->setVerticalAlignment(CEGUI::VA_BOTTOM);
     CaseForceDirectionZValueEditB->setHorizontalAlignment(CEGUI::HA_CENTRE);
-    CaseForceDirectionZValueEditB->setValidationString(numRegex);
+    CaseForceDirectionZValueEditB->setValidationString(FloatingNumRegex);
 
     CaseForceDirectionZValueEditB->subscribeEvent(CEGUI::Editbox::EventMouseWheel,
 			CEGUI::Event::Subscriber(&BallGame::CaseForceDirectionZValueEditBMouseWheelCallback, this));
@@ -1973,6 +1993,132 @@ void BallGame::SetupGUI(void)
     SetWindowsPosNearToOther(CaseForceDirectionYValueEditB, CaseForceDirectionXValueEditB, 1, 0);
     SetWindowsPosNearToOther(CaseForceDirectionZValueEditB, CaseForceDirectionYValueEditB, 1, 0);
     SetWindowsPosNearToOther(NormalizeCaseForceDirectionPushB, CaseForceDirectionZValueEditB, 1, 0);
+
+    /// Edit Moves GUI
+
+    AddMoveStepPushB = CreateNewGUIComponent<CEGUI::PushButton>("OgreTray/Button");
+    AddMoveStepPushB->setText("+");
+    AddMoveStepPushB->setSize(CEGUI::USize(CEGUI::UDim(0, 30), CEGUI::UDim(0, 30)));
+    AddMoveStepPushB->setVerticalAlignment(CEGUI::VA_TOP);
+    AddMoveStepPushB->setHorizontalAlignment(CEGUI::HA_RIGHT);
+    AddMoveStepPushB->subscribeEvent(CEGUI::PushButton::EventClicked,
+    		CEGUI::Event::Subscriber(&BallGame::AddMoveStepPushBCallback, this));
+
+    MainLayout->addChild(AddMoveStepPushB);
+    ButtonSetAddButton(EditMovesButtons, AddMoveStepPushB);
+
+    DelMoveStepPushB = CreateNewGUIComponent<CEGUI::PushButton>("OgreTray/Button");
+    DelMoveStepPushB->setText("-");
+    DelMoveStepPushB->setSize(CEGUI::USize(CEGUI::UDim(0, 30), CEGUI::UDim(0, 30)));
+    DelMoveStepPushB->setVerticalAlignment(CEGUI::VA_TOP);
+    DelMoveStepPushB->setHorizontalAlignment(CEGUI::HA_RIGHT);
+    DelMoveStepPushB->subscribeEvent(CEGUI::PushButton::EventClicked,
+    		CEGUI::Event::Subscriber(&BallGame::DelMoveStepPushBCallback, this));
+
+    MainLayout->addChild(DelMoveStepPushB);
+    ButtonSetAddButton(EditMovesButtons, DelMoveStepPushB);
+
+    ChooseMoveComboB = CreateNewGUIComponent<CEGUI::Combobox>("OgreTray/Combobox");
+    ChooseMoveComboB->setReadOnly(true);
+    ChooseMoveComboB->setVerticalAlignment(CEGUI::VA_TOP);
+    ChooseMoveComboB->setHorizontalAlignment(CEGUI::HA_RIGHT);
+    ChooseMoveComboB->setSize(CEGUI::USize(CEGUI::UDim(0, 150), CEGUI::UDim(0, 30)));
+
+
+    ChooseMoveComboB->subscribeEvent(CEGUI::Combobox::EventListSelectionAccepted,
+    		CEGUI::Event::Subscriber(&BallGame::ChooseMoveComboBCallback, this));
+    MainLayout->addChild(ChooseMoveComboB);
+    ButtonSetAddButton(EditMovesButtons, ChooseMoveComboB);
+
+    MoveTSpeedTitleB = CreateNewGUIComponent<CEGUI::Titlebar>("OgreTray/Title");
+    MoveTSpeedTitleB->setText("Translate speed");
+    MoveTSpeedTitleB->setSize(CEGUI::USize(CEGUI::UDim(0, 150), CEGUI::UDim(0, 30)));
+    MoveTSpeedTitleB->setVerticalAlignment(CEGUI::VA_TOP);
+    MoveTSpeedTitleB->setHorizontalAlignment(CEGUI::HA_RIGHT);
+
+    MainLayout->addChild(MoveTSpeedTitleB);
+    ButtonSetAddButton(EditMovesButtons, MoveTSpeedTitleB);
+
+    MoveTSpeedEditB = CreateNewGUIComponent<CEGUI::Editbox>("OgreTray/Editbox");
+    MoveTSpeedEditB->setSize(CEGUI::USize(CEGUI::UDim(0, 150), CEGUI::UDim(0, 30)));
+    MoveTSpeedEditB->setVerticalAlignment(CEGUI::VA_TOP);
+    MoveTSpeedEditB->setHorizontalAlignment(CEGUI::HA_RIGHT);
+    MoveTSpeedEditB->setValidationString(FloatingNumRegex);
+
+    MainLayout->addChild(MoveTSpeedEditB);
+    ButtonSetAddButton(EditMovesButtons, MoveTSpeedEditB);
+
+    MoveRSpeedTitleB = CreateNewGUIComponent<CEGUI::Titlebar>("OgreTray/Title");
+    MoveRSpeedTitleB->setText("Rotate speed");
+    MoveRSpeedTitleB->setSize(CEGUI::USize(CEGUI::UDim(0, 150), CEGUI::UDim(0, 30)));
+    MoveRSpeedTitleB->setVerticalAlignment(CEGUI::VA_TOP);
+    MoveRSpeedTitleB->setHorizontalAlignment(CEGUI::HA_RIGHT);
+
+    MainLayout->addChild(MoveRSpeedTitleB);
+    ButtonSetAddButton(EditMovesButtons, MoveRSpeedTitleB);
+
+    MoveRSpeedEditB = CreateNewGUIComponent<CEGUI::Editbox>("OgreTray/Editbox");
+    MoveRSpeedEditB->setSize(CEGUI::USize(CEGUI::UDim(0, 150), CEGUI::UDim(0, 30)));
+    MoveRSpeedEditB->setVerticalAlignment(CEGUI::VA_TOP);
+    MoveRSpeedEditB->setHorizontalAlignment(CEGUI::HA_RIGHT);
+    MoveRSpeedEditB->setValidationString(FloatingNumRegex);
+
+    MainLayout->addChild(MoveRSpeedEditB);
+    ButtonSetAddButton(EditMovesButtons, MoveRSpeedEditB);
+
+    MoveWaitTimeTitleB = CreateNewGUIComponent<CEGUI::Titlebar>("OgreTray/Title");
+    MoveWaitTimeTitleB->setText("Wait time");
+    MoveWaitTimeTitleB->setSize(CEGUI::USize(CEGUI::UDim(0, 150), CEGUI::UDim(0, 30)));
+    MoveWaitTimeTitleB->setVerticalAlignment(CEGUI::VA_TOP);
+    MoveWaitTimeTitleB->setHorizontalAlignment(CEGUI::HA_RIGHT);
+
+    MainLayout->addChild(MoveWaitTimeTitleB);
+    ButtonSetAddButton(EditMovesButtons, MoveWaitTimeTitleB);
+
+    MoveWaitTimeEditB = CreateNewGUIComponent<CEGUI::Editbox>("OgreTray/Editbox");
+    MoveWaitTimeEditB->setSize(CEGUI::USize(CEGUI::UDim(0, 150), CEGUI::UDim(0, 30)));
+    MoveWaitTimeEditB->setVerticalAlignment(CEGUI::VA_TOP);
+    MoveWaitTimeEditB->setHorizontalAlignment(CEGUI::HA_RIGHT);
+    MoveWaitTimeEditB->setValidationString(IntegerNumRegex);
+
+    MainLayout->addChild(MoveWaitTimeEditB);
+    ButtonSetAddButton(EditMovesButtons, MoveWaitTimeEditB);
+
+    ApplyToMoveStepPushB = CreateNewGUIComponent<CEGUI::PushButton>("OgreTray/Button");
+    ApplyToMoveStepPushB->setText("Modify");
+    ApplyToMoveStepPushB->setSize(CEGUI::USize(CEGUI::UDim(0, 75), CEGUI::UDim(0, 30)));
+    ApplyToMoveStepPushB->setVerticalAlignment(CEGUI::VA_TOP);
+    ApplyToMoveStepPushB->setHorizontalAlignment(CEGUI::HA_RIGHT);
+    ApplyToMoveStepPushB->subscribeEvent(CEGUI::PushButton::EventClicked,
+    		CEGUI::Event::Subscriber(&BallGame::ApplyToMoveStepPushBCallback, this));
+
+    MainLayout->addChild(ApplyToMoveStepPushB);
+    ButtonSetAddButton(EditMovesButtons, ApplyToMoveStepPushB);
+
+    IsMoveTriggeredToggleB = CreateNewGUIComponent<CEGUI::ToggleButton>("OgreTray/Checkbox");
+    IsMoveTriggeredToggleB->setText("Move triggered ?");
+    IsMoveTriggeredToggleB->setSelected(false);
+    IsMoveTriggeredToggleB->setSize(CEGUI::USize(CEGUI::UDim(0, 200), CEGUI::UDim(0, 30)));
+    IsMoveTriggeredToggleB->setVerticalAlignment(CEGUI::VA_TOP);
+    IsMoveTriggeredToggleB->setHorizontalAlignment(CEGUI::HA_RIGHT);
+
+	IsMoveTriggeredToggleB->subscribeEvent(CEGUI::ToggleButton::EventSelectStateChanged,
+			CEGUI::Event::Subscriber(&BallGame::IsMoveTriggeredToggleBCallback, this));
+
+    MainLayout->addChild(IsMoveTriggeredToggleB);
+    ButtonSetAddButton(EditMovesButtons, IsMoveTriggeredToggleB);
+
+    SetWindowsPosNearToOther(ChooseMoveComboB, ScaleElementB, 0, 1);
+    SetWindowsPosNearToOther(DelMoveStepPushB, ChooseMoveComboB, 0, 1);
+    SetWindowsPosNearToOther(AddMoveStepPushB, DelMoveStepPushB, -1, 0);
+    SetWindowsPosNearToOther(MoveTSpeedEditB, ChooseMoveComboB, -1, 0);
+    SetWindowsPosNearToOther(MoveTSpeedTitleB, MoveTSpeedEditB, -1, 0);
+    SetWindowsPosNearToOther(MoveRSpeedEditB, MoveTSpeedEditB, 0, 1);
+    SetWindowsPosNearToOther(MoveRSpeedTitleB, MoveRSpeedEditB, -1, 0);
+    SetWindowsPosNearToOther(MoveWaitTimeEditB, MoveRSpeedEditB, 0, 1);
+    SetWindowsPosNearToOther(MoveWaitTimeTitleB, MoveWaitTimeEditB, -1, 0);
+    SetWindowsPosNearToOther(ApplyToMoveStepPushB, MoveWaitTimeEditB, 0, 1);
+    SetWindowsPosNearToOther(IsMoveTriggeredToggleB, ApplyToMoveStepPushB, 0, 1);
 
     /// Edit Ball GUI
 
@@ -2115,6 +2261,109 @@ void BallGame::AddCaseToBeMoved(CaseEntity *ToAdd)
 			return;
 	}
 	CasesToBeMoved.push_back(ToAdd);
+}
+
+void BallGame::DelCaseToBeMoved(CaseEntity *ToDel)
+{
+	if(ToDel == NULL)
+		return;
+	std::list<CaseEntity*>::iterator iter(CasesToBeMoved.begin());
+	while(iter != CasesToBeMoved.end())
+	{
+		CaseEntity *Case = *iter;
+		if(Case == ToDel)
+		{
+			iter = CasesToBeMoved.erase(iter);
+			return;
+		}
+		iter++;
+	}
+}
+
+
+bool BallGame::ChooseMoveComboBCallback(const CEGUI::EventArgs &e)
+{
+	if(UnderEditCase == NULL)
+		return true;
+	CEGUI::ListboxTextItem *item = (CEGUI::ListboxTextItem*)ChooseMoveComboB->getSelectedItem();
+	if(item == NULL)
+		return true;
+	UnderEditCase->DisplaySelectedMove(item->getUserData(), MoveTSpeedEditB, MoveRSpeedEditB, MoveWaitTimeEditB);
+	ApplyToMoveStepPushB->setEnabled(true);
+	DelMoveStepPushB->setEnabled(true);
+	return true;
+}
+
+bool BallGame::IsMoveTriggeredToggleBCallback(const CEGUI::EventArgs &e)
+{
+	if(UnderEditCase == NULL || UnderEditCase->CaseToMove() == false)
+		return true;
+	UnderEditCase->SetMoveTriggered(IsMoveTriggeredToggleB->isSelected());
+	return true;
+}
+
+bool BallGame::AddMoveStepPushBCallback(const CEGUI::EventArgs &e)
+{
+	AddMoveStep();
+	return true;
+}
+
+bool BallGame::ApplyToMoveStepPushBCallback(const CEGUI::EventArgs &e)
+{
+	CEGUI::ListboxTextItem *item = (CEGUI::ListboxTextItem*)ChooseMoveComboB->getSelectedItem();
+	if(item == NULL)
+		return true;
+	Vector3 GoalPos = UnderEditCase->getAbsolutePosition();
+	Quaternion GoalAngle = UnderEditCase->getAbsoluteOrientation();
+	float TranslationSpeed = CEGUI::PropertyHelper<float>::fromString(MoveTSpeedEditB->getText());
+	float RotateSpeed = CEGUI::PropertyHelper<float>::fromString(MoveRSpeedEditB->getText());
+	unsigned64 waittime = CEGUI::PropertyHelper<uint64>::fromString(MoveWaitTimeEditB->getText());
+	UnderEditCase->UpdateSelectedMove(item->getUserData(), GoalPos, TranslationSpeed, GoalAngle, RotateSpeed, waittime);
+	return true;
+}
+
+void BallGame::AddMoveStep(void)
+{
+	if(UnderEditCase == NULL)
+		return;
+	Vector3 GoalPos = UnderEditCase->getAbsolutePosition();
+	Quaternion GoalAngle = UnderEditCase->getAbsoluteOrientation();
+	float TranslationSpeed = CEGUI::PropertyHelper<float>::fromString(MoveTSpeedEditB->getText());
+	float RotateSpeed = CEGUI::PropertyHelper<float>::fromString(MoveRSpeedEditB->getText());
+	unsigned64 waittime = CEGUI::PropertyHelper<uint64>::fromString(MoveWaitTimeEditB->getText());
+	if(UnderEditCase->CaseToMove() == false)// For the moment no Moves !
+		UnderEditCase->AddMovePoint(UnderEditCase->getInitialPosition(), TranslationSpeed, waittime, UnderEditCase->getInitialOrientation(), RotateSpeed);
+	if(IsMoveTriggeredToggleB->isSelected() == true)
+		UnderEditCase->AddTriggeredMovePoint(GoalPos, TranslationSpeed, waittime, GoalAngle, RotateSpeed);
+	else
+		UnderEditCase->AddMovePoint(GoalPos, TranslationSpeed, waittime, GoalAngle, RotateSpeed);
+	UnderEditCase->FillComboboxWithMoves(ChooseMoveComboB);
+	ApplyToMoveStepPushB->setEnabled(false);
+	DelMoveStepPushB->setEnabled(false);
+
+	if(UnderEditCase->CaseToMove() == true)
+		AddCaseToBeMoved(UnderEditCase);
+}
+
+bool BallGame::DelMoveStepPushBCallback(const CEGUI::EventArgs &e)
+{
+	DelMoveStep();
+	return true;
+}
+
+void BallGame::DelMoveStep(void)
+{
+	if(UnderEditCase == NULL)
+		return;
+	CEGUI::ListboxTextItem *item = (CEGUI::ListboxTextItem*)ChooseMoveComboB->getSelectedItem();
+	UnderEditCase->DeletedMove(item->getUserData());
+	UnderEditCase->FillComboboxWithMoves(ChooseMoveComboB);
+	UnderEditCase->ResetToInitial();
+	ApplyToMoveStepPushB->setEnabled(false);
+	DelMoveStepPushB->setEnabled(false);
+
+	if(UnderEditCase->CaseToMove() == false)
+		DelCaseToBeMoved(UnderEditCase);
 }
 
 void BallGame::AddCaseColliding(CaseEntity *ToAdd)
@@ -2514,46 +2763,75 @@ void BallGame::EditCase(CaseEntity *Entity)
 	}
 	UnderEditCase = Entity;
 
-	if(UnderEditCase != NULL && LevelEditMode == Edit && EntityEditMode == Caracts)
+	ButtonsSetMutedState(EditCaseButtons, true);
+	ButtonsSetMutedState(EditMovesButtons, true);
+	if(UnderEditCase != NULL)
 	{
-		const dVector *case_force_direction = UnderEditCase->getForceDirection();
-		CaseHasForceToggleB->setMutedState(true);
-		CaseHasForceDirectionToggleB->setMutedState(true);
-
-		UnderEditCase->DisplaySelectedBox(true);
-		UnderEditCaseForce = UnderEditCase->getForce();
-		if(isnan(UnderEditCaseForce))
+		if(LevelEditMode == Edit)
 		{
-			LOG << "EditCase Force not present" << std::endl;
-			CaseHasForce = false;
+			if(EntityEditMode == Caracts)
+			{
+				const dVector *case_force_direction = UnderEditCase->getForceDirection();
+
+				UnderEditCase->DisplaySelectedBox(true);
+				UnderEditCaseForce = UnderEditCase->getForce();
+				if(isnan(UnderEditCaseForce))
+				{
+					LOG << "EditCase Force not present" << std::endl;
+					CaseHasForce = false;
+				}
+				else
+				{
+					LOG << "EditCase Force present" << std::endl;
+					CaseHasForce = true;
+				}
+				if(case_force_direction == NULL)
+				{
+					LOG << "EditCase Force not directed" << std::endl;
+					force_directed = false;
+				}
+				else
+				{
+					LOG << "EditCase Force directed" << std::endl;
+					force_directed = true;
+					force_direction.m_x = case_force_direction->m_x;
+					force_direction.m_y = case_force_direction->m_y;
+					force_direction.m_z = case_force_direction->m_z;
+					ForcesArrows = UnderEditCase->CreateForceArrows(mSceneMgr);
+				}
+				LOG << "Update buttons by Mouse Pressed" << std::endl;
+				UpdateEditButtons();
+			}
+			else
+				ButtonsSetVisible(EditCaseButtons, false);
+
+			if(EntityEditMode == Moves)
+			{
+				UnderEditCase->FillComboboxWithMoves(ChooseMoveComboB);
+				MoveTSpeedEditB->setText(std::to_string(DEFAULT_ENTITY_MOVE_TRANSLATION_SPEED));
+				MoveRSpeedEditB->setText(std::to_string(DEFAULT_ENTITY_MOVE_ROTATION_SPEED));
+				MoveWaitTimeEditB->setText(std::to_string(DEFAULT_ENTITY_MOVE_WAIT_TIME));
+				IsMoveTriggeredToggleB->setSelected(UnderEditCase->MoveTriggered());
+				ButtonsSetVisible(EditMovesButtons, true);
+				ApplyToMoveStepPushB->setEnabled(false);
+				DelMoveStepPushB->setEnabled(false);
+			}
+			else
+				ButtonsSetVisible(EditMovesButtons, false);
 		}
 		else
 		{
-			LOG << "EditCase Force present" << std::endl;
-			CaseHasForce = true;
+			ButtonsSetVisible(EditCaseButtons, false);
+			ButtonsSetVisible(EditMovesButtons, false);
 		}
-		if(case_force_direction == NULL)
-		{
-			LOG << "EditCase Force not directed" << std::endl;
-			force_directed = false;
-		}
-		else
-		{
-			LOG << "EditCase Force directed" << std::endl;
-			force_directed = true;
-			force_direction.m_x = case_force_direction->m_x;
-			force_direction.m_y = case_force_direction->m_y;
-			force_direction.m_z = case_force_direction->m_z;
-			ForcesArrows = UnderEditCase->CreateForceArrows(mSceneMgr);
-		}
-		LOG << "Update buttons by Mouse Pressed" << std::endl;
-		UpdateEditButtons();
-
-		CaseHasForceDirectionToggleB->setMutedState(false);
-		CaseHasForceToggleB->setMutedState(false);
 	}
 	else
+	{
 		ButtonsSetVisible(EditCaseButtons, false);
+		ButtonsSetVisible(EditMovesButtons, false);
+	}
+	ButtonsSetMutedState(EditMovesButtons, false);
+	ButtonsSetMutedState(EditCaseButtons, false);
 }
 
 bool BallGame::ApplyMassChangesToBallPushBCallback(const CEGUI::EventArgs &event)
@@ -2576,6 +2854,7 @@ void BallGame::EditBall(BallEntity *Entity)
 	}
 	UnderEditBall = Entity;
 
+	ButtonsSetMutedState(EditBallButtons, true);
 	if(UnderEditBall != NULL && LevelEditMode == Edit && EntityEditMode == Caracts)
 	{
 		UnderEditBall->DisplaySelectedBox(true);
@@ -2587,6 +2866,7 @@ void BallGame::EditBall(BallEntity *Entity)
 	}
 	else
 		ButtonsSetVisible(EditBallButtons, false);
+	ButtonsSetMutedState(EditBallButtons, false);
 }
 
 void BallGame::MultiSelectionSetEmpty(void)
@@ -3184,6 +3464,7 @@ bool BallGame::keyPressed(const OIS::KeyEvent &arg)
 					PlaceUnderEditElement();
 					break;
 				case Moves :
+					AddMoveStep();
 					break;
 				}
 				break;
@@ -3191,8 +3472,23 @@ bool BallGame::keyPressed(const OIS::KeyEvent &arg)
 		}
 		break;
 	case OIS::KeyCode::KC_DELETE:
-		if(mode == Editing && MouseOverButton == false && EntityEditMode != Caracts)
-			DeleteElement();
+		if(mode == Editing && MouseOverButton == false)
+		{
+			switch(LevelEditMode)
+			{
+			case Edit :
+				switch(EntityEditMode)
+				{
+				case Moves :
+					DelMoveStep();
+					break;
+				}
+				break;
+			case Delete :
+				DeleteElement();
+				break;
+			}
+		}
 		break;
 	case OIS::KeyCode::KC_M:
 		if(mode == Editing)

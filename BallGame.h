@@ -243,6 +243,7 @@ class BallGame : public BaseApplication
 	std::list<CaseEntity*> CasesUnderCollide;
 	std::list<CaseEntity*> CasesToBeMoved;
 	void AddCaseToBeMoved(CaseEntity *ToAdd);
+	void DelCaseToBeMoved(CaseEntity *ToDel);
 
 	String ImportLevelFilename;
 	String ImportLevelName;
@@ -385,6 +386,26 @@ class BallGame : public BaseApplication
     CEGUI::ToggleButton *GroupElementsB;
     bool GroupElementsBCallback(const CEGUI::EventArgs &e);
 
+    //Edit Entities's moves
+    std::list<CEGUI::Window*> EditMovesButtons;
+    CEGUI::PushButton *AddMoveStepPushB;
+    bool AddMoveStepPushBCallback(const CEGUI::EventArgs &e);
+    void AddMoveStep(void);
+    CEGUI::PushButton *DelMoveStepPushB;
+    bool DelMoveStepPushBCallback(const CEGUI::EventArgs &e);
+    void DelMoveStep(void);
+    CEGUI::Combobox *ChooseMoveComboB;
+    bool ChooseMoveComboBCallback(const CEGUI::EventArgs &e);
+    CEGUI::Titlebar *MoveTSpeedTitleB;
+    CEGUI::Editbox *MoveTSpeedEditB;
+    CEGUI::Titlebar *MoveRSpeedTitleB;
+    CEGUI::Editbox *MoveRSpeedEditB;
+    CEGUI::Titlebar *MoveWaitTimeTitleB;
+    CEGUI::Editbox *MoveWaitTimeEditB;
+    CEGUI::PushButton *ApplyToMoveStepPushB;
+    bool ApplyToMoveStepPushBCallback(const CEGUI::EventArgs &e);
+    CEGUI::ToggleButton *IsMoveTriggeredToggleB;
+    bool IsMoveTriggeredToggleBCallback(const CEGUI::EventArgs &e);
 
     //Edit Ball Buttons & Callbacks
     std::list<CEGUI::Window*> EditBallButtons;

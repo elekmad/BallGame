@@ -322,6 +322,89 @@ void CaseEntity::AddMovePoint(const Vector3 &GoalPos, float speed, unsigned64 wa
 	MovementToDo->Moves.push_back(step);
 }
 
+void CaseEntity::SetMoveTriggered(bool trigger)
+{
+	if(MovementToDo != NULL)
+	{
+		MovementToDo->is_launched_by_collide = trigger;
+		LOG << "Move is " << String(trigger == false ? "not " : "") << "triggered" << std::endl;
+	}
+}
+
+void CaseEntity::FillComboboxWithMoves(CEGUI::Combobox *box)
+{
+	while (box->getItemCount())
+	{
+		CEGUI::ListboxTextItem *item = (CEGUI::ListboxTextItem*)box->getListboxItemFromIndex(0);
+		box->removeItem(item);
+	}
+	box->setText("");
+	if(MovementToDo != NULL)
+	{
+		int cmpt = 0;
+		std::list<struct MovementStep*>::iterator iter(MovementToDo->Moves.begin());
+		while(iter != MovementToDo->Moves.end())
+		{
+			struct MovementStep *step = *(iter++);
+			if(step == NULL)
+				continue;
+			CEGUI::ListboxTextItem *item = new CEGUI::ListboxTextItem(String("Step - ") + std::to_string(cmpt++));
+			item->setUserData(step);
+			box->addItem(item);
+		}
+	}
+
+	box->setSize(CEGUI::USize(CEGUI::UDim(0, 150), CEGUI::UDim(0, 40 * (box->getItemCount() + 1))));
+}
+
+void CaseEntity::DisplaySelectedMove(void *vstep, CEGUI::Editbox *TSpeed, CEGUI::Editbox *RSpeed, CEGUI::Editbox *WaitTime)
+{
+	struct MovementStep *step = (struct MovementStep*)vstep;
+	setAbsolutePosition(step->Position);
+	setAbsoluteOrientation(step->Orientation);
+
+	TSpeed->setText(std::to_string(step->TranslateSpeed));
+	RSpeed->setText(std::to_string(step->RotateSpeed));
+	WaitTime->setText(std::to_string(step->waittime));
+}
+
+void CaseEntity::UpdateSelectedMove(void *vstep, const Vector3 &GoalPos, float TSpeed, const Quaternion &GoalAngle, float RSpeed, unsigned64 WaitTime)
+{
+	struct MovementStep *step = (struct MovementStep*)vstep;
+	step->Position = GoalPos;
+	step->TranslateSpeed = TSpeed;
+	step->Orientation = GoalAngle;
+	step->RotateSpeed = RSpeed;
+	step->waittime = WaitTime;
+}
+
+void CaseEntity::DeletedMove(void *vstep)
+{
+	struct MovementStep *step_to_del = (struct MovementStep*)vstep;
+	if(MovementToDo != NULL)
+	{
+		std::list<struct MovementStep*>::iterator iter(MovementToDo->Moves.begin());
+		while(iter != MovementToDo->Moves.end())
+		{
+			struct MovementStep *step = *iter;
+			if(step != NULL)
+			{
+				if(step == step_to_del)
+				{
+					iter = MovementToDo->Moves.erase(iter);
+					break;
+				}
+			}
+			iter++;
+		}
+		if(MovementToDo->Moves.empty() == true)
+		{
+			delete MovementToDo;
+			MovementToDo = NULL;
+		}
+	}
+}
+
 void CaseEntity::CaseMove(unsigned64 microseconds, dFloat timestep)
 {
 	if(MovementToDo == NULL)

@@ -35,6 +35,10 @@
 #include <CEGUI/CEGUI.h>
 #include <CEGUI/RendererModules/Ogre/Renderer.h>
 
+#define DEFAULT_ENTITY_MOVE_TRANSLATION_SPEED 10
+#define DEFAULT_ENTITY_MOVE_ROTATION_SPEED 0.1
+#define DEFAULT_ENTITY_MOVE_WAIT_TIME 0
+
 using namespace Ogre;
 using namespace OgreBites;
 
@@ -171,12 +175,19 @@ class CaseEntity : public BallGameEntity
 	Ogre::SceneNode *CreateForceArrows(Ogre::SceneManager *Scene);
 	void CaseMove(unsigned64 microseconds, dFloat timestep);
 	bool CaseToMove(void) { return MovementToDo != NULL; }
+	bool MoveTriggered(void) { return MovementToDo != NULL && MovementToDo->is_launched_by_collide; }
 	void AddMovePoint(const Vector3 &GoalPos, float speed, unsigned64 waittime, const Quaternion &GoalAngle = Ogre::Quaternion::IDENTITY, float RotateSpeed = NAN);
 	void AddTriggeredMovePoint(const Vector3 &GoalPos, float speed, unsigned64 waittime, const Quaternion &GoalAngle = Ogre::Quaternion::IDENTITY, float RotateSpeed = NAN)
 	{
 		AddMovePoint(GoalPos, speed, waittime, GoalAngle, RotateSpeed);
-		MovementToDo->is_launched_by_collide = true;
+		SetMoveTriggered(true);
 	}
+	void SetMoveTriggered(bool trigger);
+
+	void FillComboboxWithMoves(CEGUI::Combobox *box);
+	void DisplaySelectedMove(void *step, CEGUI::Editbox *, CEGUI::Editbox *, CEGUI::Editbox *);
+	void UpdateSelectedMove(void *step, const Vector3 &GoalPos, float TSpeed, const Quaternion &GoalAngle, float RSpeed, unsigned64 WaitTime);
+	void DeletedMove(void *step);
 
 	protected :
 
