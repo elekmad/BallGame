@@ -1,5 +1,5 @@
 /*
- * BallGame.h
+ * Entity.h
  *
  *  Created on: 15 nov. 2020
  *      Author: damien
