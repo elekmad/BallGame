@@ -71,6 +71,16 @@ void EquilibrateAABBAroundOrigin(Node *node)
 	LOG << "After Equilibrate : Group(" << GrpPos.x << ", " << GrpPos.y << ", " << GrpPos.z << ")" << std::endl;
 }
 
+inline float Normalize(float v1, float v2, float v3)
+{
+	return sqrtf(v1 * v1 + v2 * v2 + v3 * v3);
+}
+
+inline double Normalize(double v1, double v2, double v3)
+{
+	return sqrt(v1 * v1 + v2 * v2 + v3 * v3);
+}
+
 namespace BallGame {
 
 Entity::Entity(const dMatrix& matrix) :// m_matrix(matrix),
@@ -162,7 +172,6 @@ void Entity::TransformCallback(const NewtonBody* body, const dFloat* matrix, int
 	Entity* const Ent = (Entity*) NewtonBodyGetUserData(body);
 	if (Ent)
 	{
-		LevelEditor* const scene = (LevelEditor*)NewtonWorldGetUserData(NewtonBodyGetWorld(body));
 		dMatrix transform(matrix);
 		dQuaternion rot;
 		NewtonBodyGetRotation(body, &rot.m_x);

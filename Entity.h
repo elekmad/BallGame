@@ -13,7 +13,7 @@
 #include <OgreMath.h>
 #include <iostream>
 #include "BaseApplication.h"
-#include "BallGame.h"
+#include "GameEngine.h"
 
 
 #include <Newton.h>
@@ -41,6 +41,9 @@
 
 using namespace Ogre;
 using namespace OgreBites;
+
+inline float Normalize(float v1, float v2, float v3);
+inline double Normalize(double v1, double v2, double v3);
 
 namespace BallGame {
 

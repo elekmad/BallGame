@@ -12,7 +12,7 @@
 #ifndef __PHYSICS_UTIL__
 #define __PHYSICS_UTIL__
 
-#include <BallGame.h>
+#include <GameEngine.h>
 
 using namespace BallGame;
 

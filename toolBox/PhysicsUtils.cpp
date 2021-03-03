@@ -10,7 +10,6 @@
 */
 
 #include "toolbox_stdafx.h"
-#include <BallGame.h>
 #include "PhysicsUtils.h"
 #include "OpenGlUtil.h"
 #include "DebugDisplay.h"
