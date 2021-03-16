@@ -20,107 +20,67 @@
 //Put LevelEditor.h in last because of Xlib defines (True False Bool None) which must be undef
 #include "Entity.h"
 
-void EquilibrateAABBAroundOrigin(Node *node)
-{
-	Vector3 min(NAN, NAN, NAN), max(NAN, NAN, NAN);
-	Node::ChildNodeIterator ite(node->getChildIterator());
-	while ( ite.hasMoreElements() )
-	{
-	       SceneNode* child = static_cast<SceneNode*>(ite.getNext());
-	       Vector3 childmin = child->_getWorldAABB().getMinimum();
-	       Vector3 childmax = child->_getWorldAABB().getMaximum();
-
-	       if(min.isNaN())
-	    	   min = childmin;
-	       if(max.isNaN())
-	    	   max = childmax;
-
-	       min.x = std::min<Ogre::Real>(min.x, childmin.x);
-	       min.y = std::min<Ogre::Real>(min.y, childmin.y);
-	       min.z = std::min<Ogre::Real>(min.z, childmin.z);
-
-	       max.x = std::max<Ogre::Real>(max.x, childmax.x);
-	       max.y = std::max<Ogre::Real>(max.y, childmax.y);
-	       max.z = std::max<Ogre::Real>(max.z, childmax.z);
-//	       LOG << "child min " << childmin.x << ", " << childmin.y << ", " << childmin.z << std::endl;
-//	       LOG << "child max " << childmax.x << ", " << childmax.y << ", " << childmax.z << std::endl;
-//	       LOG << "=> min " << min.x << ", " << min.y << ", " << min.z << std::endl;
-//	       LOG << "=> max " << max.x << ", " << max.y << ", " << max.z << std::endl;
-	}
-
-//	Vector3 pos = node->getPosition();
-//	LOG << "Node " << pos.x << ", " << pos.y << ", " << pos.z << std::endl;
-	node->translate((min + max) / 2);
-//	pos = node->getPosition();
-//	LOG << "After Compute Node " << pos.x << ", " << pos.y << ", " << pos.z << std::endl;
-
-	Node::ChildNodeIterator ite2(node->getChildIterator());
-	while ( ite2.hasMoreElements() )
-	{
-		   SceneNode* child = static_cast<SceneNode*>(ite2.getNext());
-		   child->translate(-1 * (min + max) / 2);
-		   Vector3 pos = child->getPosition(), abspos = child->_getDerivedPosition();
-		   LOG << "child " << child->getName() << " (" << child << ") Position : {" << pos.x << ", " << pos.y << ", " << pos.z << "}" << std::endl;
-		   LOG << "child " << child->getName() << " (" << child << ") AbsPosition : {" << abspos.x << ", " << abspos.y << ", " << abspos.z << "}" << std::endl;
-//	       Vector3 childmin = child->_getWorldAABB().getMinimum();
-//	       Vector3 childmax = child->_getWorldAABB().getMaximum();
-//	       LOG << "child min " << childmin.x << ", " << childmin.y << ", " << childmin.z << std::endl;
-//	       LOG << "child max " << childmax.x << ", " << childmax.y << ", " << childmax.z << std::endl;
-	}
-	Vector3 GrpPos = node->getPosition();
-	LOG << "After Equilibrate : Group(" << GrpPos.x << ", " << GrpPos.y << ", " << GrpPos.z << ")" << std::endl;
-}
-
 inline float Normalize(float v1, float v2, float v3)
 {
 	return sqrtf(v1 * v1 + v2 * v2 + v3 * v3);
 }
 
-inline double Normalize(double v1, double v2, double v3)
-{
-	return sqrt(v1 * v1 + v2 * v2 + v3 * v3);
-}
-
 namespace BallGame {
 
-Entity::Entity(const dMatrix& matrix) :// m_matrix(matrix),
+BaseEntity::BaseEntity()
+{
+	Engine = NULL;
+	OgreEntity = NULL;
+	GroupPtr = NULL;
+	type = Case;
+}
+
+Entity::Entity(const dMatrix& matrix) :
 	m_curPosition (matrix.m_posit),
 	m_nextPosition (matrix.m_posit),
 	m_curRotation (dQuaternion (matrix)),
 	m_nextRotation (dQuaternion (matrix))
 {
 	OgreEntity = NULL;
-	Group = NULL;
+	GroupPtr = NULL;
 	Body = NULL;
-	type = Case;
 }
 
 Entity::Entity()
 {
-	OgreEntity = NULL;
 	Body = NULL;
-	Group = NULL;
-	type = Case;
 }
 
-void Entity::DisplaySelectedBox(bool display)
+void BaseEntity::DisplaySelectedBox(bool display)
 {
 	OgreEntity->showBoundingBox(display);
+}
+
+void BaseEntity::Finalize(void)
+{
+	setOgreNode(NULL);
 }
 
 void Entity::Finalize(void)
 {
 	setNewtonBody(NULL);
+	BaseEntity::Finalize();
+}
+
+const AxisAlignedBox &BaseEntity::getWorldAABB(void) const
+{
+	LOG << "AABB Base" << std::endl;
+	return OgreEntity->_getWorldAABB();
+}
+
+void BaseEntity::setOgreNode(SceneNode *node)
+{
 	if(OgreEntity != NULL)
 	{
 		LOG << "Remove Ogre " << OgreEntity->getName() << std::endl;
 		SceneNode *parent = (SceneNode*)OgreEntity->getParent();
 		parent->removeAndDestroyChild(OgreEntity->getName());
 	}
-}
-
-void Entity::setOgreNode(SceneNode *node)
-{
 	OgreEntity = node;
 	if(node != NULL)
 	{
@@ -130,7 +90,17 @@ void Entity::setOgreNode(SceneNode *node)
 //		LOG << "Entity" << this << "set scale {" << InitialScale.x << ", " << InitialScale.y << ", " << InitialScale.z << "}" << std::endl;
 		node->_setDerivedOrientation(InitialOrientation);
 //		LOG << "Entity" << this << "set orientation {" << InitialOrientation.x << ", " << InitialOrientation.y << ", " << InitialOrientation.z << ", " << InitialOrientation.w << "}" << std::endl;
-		((Ogre::Entity*)node->getAttachedObject(0))->getUserObjectBindings().setUserAny(Ogre::Any(this));
+	}
+}
+
+inline void BaseEntity::ResetToInitial(void)
+{
+	if(OgreEntity != NULL)
+	{
+		LOG << "Reset " << getName() << " To " << InitialPos << " / " << InitialOrientation << " / " << InitialScale << std::endl;
+		setRelativeScale(InitialScale);
+		setAbsolutePosition(InitialPos);
+		setAbsoluteOrientation(InitialOrientation);
 	}
 }
 
@@ -184,17 +154,26 @@ void Entity::TransformCallback(const NewtonBody* body, const dFloat* matrix, int
 		//scene->Lock(Entity->m_lock);
 		//scene->Unlock(Entity->m_lock);
 //		LOG << "Entity " << Entity->getName() << " transform " << "position {" << NewPosition.x << ", " << NewPosition.y << ", " << NewPosition.z << "}" << std::endl;
-//		LOG << "Entity " << Entity->getName() << " Orientation {" << NewOrientation.w << ", " << NewOrientation.x << ", " << NewOrientation.y << ", " << NewOrientation.z << "}" << std::endl;
+//		LOG << "Entity " << Entity->getName() << " RelativeOrientation {" << NewOrientation.w << ", " << NewOrientation.x << ", " << NewOrientation.y << ", " << NewOrientation.z << "}" << std::endl;
 		Ent->OgreEntity->_setDerivedPosition(NewPosition);
 		Ent->OgreEntity->_setDerivedOrientation(NewOrientation);
 	}
 }
 
+void BaseEntity::copyOgreToInitial(void)
+{
+	if(OgreEntity != NULL)
+	{
+		InitialPos = getAbsolutePosition();
+		InitialOrientation = getAbsoluteOrientation();
+		InitialScale = getAbsoluteScale();
+		LOG << getName() << " InitialPos=" << InitialPos << ", InitialOrientation=" << InitialOrientation << ", InitialScale=" << InitialScale << std::endl;
+	}
+}
+
 dMatrix * Entity::PrepareNewtonBody(dVector &NewtonBodyLocation, dVector &NewtonBodySize)
 {
-	InitialPos = OgreEntity->_getDerivedPosition();
-	InitialScale = OgreEntity->_getDerivedScale();
-	InitialOrientation = OgreEntity->_getDerivedOrientation();
+	copyOgreToInitial();
 	NewtonBodyLocation.m_x = InitialPos.x;
 	NewtonBodyLocation.m_y = InitialPos.y;
 	NewtonBodyLocation.m_z = InitialPos.z;
@@ -289,19 +268,21 @@ void BallEntity::setMass(dFloat newMass)
 CaseEntity::CaseEntity(const dMatrix& matrix, enum CaseType _type):Entity(matrix)
 {
 	type = _type;
-	this->Entity::type = Case;
+	this->BaseEntity::type = Case;
 	force_to_apply = NAN;
 	force_direction = NULL;
 	MovementToDo = NULL;
+	RefMove = NULL;
 }
 
 CaseEntity::CaseEntity(enum CaseType _type)
 {
 	type = _type;
-	this->Entity::type = Case;
+	this->BaseEntity::type = Case;
 	force_to_apply = NAN;
 	force_direction = NULL;
 	MovementToDo = NULL;
+	RefMove = NULL;
 }
 
 CaseEntity::~CaseEntity()
@@ -324,13 +305,15 @@ void CaseEntity::AddMovePoint(const Vector3 &GoalPos, float speed, unsigned64 wa
 {
 	if(MovementToDo == NULL)
 		MovementToDo = new struct Movement;
+	MovementToDo->is_computed = false;
 	struct MovementStep *step = new struct MovementStep;
-	step->Position = GoalPos;
+	step->RelativePosition = GoalPos;
 	step->TranslateSpeed = speed;
 	step->waittime = waittime;
-	step->Orientation = GoalAngle;
+	step->RelativeOrientation = GoalAngle;
 	step->RotateSpeed = RotateSpeed;
 	MovementToDo->Moves.push_back(step);
+	LOG << "Case " << getName() << " Add Move Point" << std::endl;
 }
 
 void CaseEntity::SetMoveTriggered(bool trigger)
@@ -371,8 +354,8 @@ void CaseEntity::FillComboboxWithMoves(CEGUI::Combobox *box)
 void CaseEntity::DisplaySelectedMove(void *vstep, CEGUI::Editbox *TSpeed, CEGUI::Editbox *RSpeed, CEGUI::Editbox *WaitTime)
 {
 	struct MovementStep *step = (struct MovementStep*)vstep;
-	setAbsolutePosition(step->Position);
-	setAbsoluteOrientation(step->Orientation);
+	setRelativePosition(step->RelativePosition);
+	setRelativeOrientation(step->RelativeOrientation);
 
 	TSpeed->setText(std::to_string(step->TranslateSpeed));
 	RSpeed->setText(std::to_string(step->RotateSpeed));
@@ -382,11 +365,12 @@ void CaseEntity::DisplaySelectedMove(void *vstep, CEGUI::Editbox *TSpeed, CEGUI:
 void CaseEntity::UpdateSelectedMove(void *vstep, const Vector3 &GoalPos, float TSpeed, const Quaternion &GoalAngle, float RSpeed, unsigned64 WaitTime)
 {
 	struct MovementStep *step = (struct MovementStep*)vstep;
-	step->Position = GoalPos;
+	step->RelativePosition = GoalPos;
 	step->TranslateSpeed = TSpeed;
-	step->Orientation = GoalAngle;
+	step->RelativeOrientation = GoalAngle;
 	step->RotateSpeed = RSpeed;
 	step->waittime = WaitTime;
+	MovementToDo->is_computed = false;
 }
 
 void CaseEntity::DeletedMove(void *vstep)
@@ -416,11 +400,45 @@ void CaseEntity::DeletedMove(void *vstep)
 	}
 }
 
+inline void CaseEntity::setRefMove(GroupEntity *Grp)
+{
+	RefMove = Grp;
+	RefMove->setisRefMove(true);
+}
+
+void CaseEntity::ComputeMove(void)
+{
+	if(MovementToDo->is_computed == true)
+		return;
+
+	Quaternion ActuOri = getAbsoluteOrientation();
+	Vector3 ActuPos = getAbsolutePosition();
+
+	std::list<struct MovementStep*>::iterator iter(MovementToDo->Moves.begin());
+	while(iter != MovementToDo->Moves.end())
+	{
+		struct MovementStep *step = *(iter++);
+		if(step != NULL)
+		{
+			setRelativePosition(step->RelativePosition);
+			setRelativeOrientation(step->RelativeOrientation);
+			step->AbsolutePosition = getAbsolutePosition();
+			step->AbsoluteOrientation = getAbsoluteOrientation();
+		}
+	}
+
+	setAbsolutePosition(ActuPos);
+	setAbsoluteOrientation(ActuOri);
+
+	MovementToDo->is_computed = true;
+}
+
 void CaseEntity::CaseMove(unsigned64 microseconds, dFloat timestep)
 {
 	if(MovementToDo == NULL)
 		return;
 
+	ComputeMove();
 	bool MoveToNextPoint = false;
 	bool MustTranslate = false;
 	bool MustRotate = false;
@@ -443,11 +461,12 @@ void CaseEntity::CaseMove(unsigned64 microseconds, dFloat timestep)
 			MovementToDo->actual = *(MovementToDo->Moves.begin());
 			MovementToDo->foreignedtime = 0;
 		}
-		ToReachPos = &MovementToDo->actual->Position;
-		ToReachRot = &MovementToDo->actual->Orientation;
+		ToReachPos = &MovementToDo->actual->AbsolutePosition;
+		ToReachRot = &MovementToDo->actual->AbsoluteOrientation;
 	}
 	else
 		return;
+
 
 	if(ToReachPos != NULL)
 	{
@@ -458,6 +477,9 @@ void CaseEntity::CaseMove(unsigned64 microseconds, dFloat timestep)
 			MovePos[0] = ToReachPos->x - getAbsolutePosition().x;
 			MovePos[1] = ToReachPos->y - getAbsolutePosition().y;
 			MovePos[2] = ToReachPos->z - getAbsolutePosition().z;
+			LOG << "TranslatePos = {" << MovePos[0] << ", " << MovePos[1] << ", " << MovePos[2] << "}"
+					<< " From " << getAbsolutePosition() << " To " << *ToReachPos
+					<< std::endl;
 			if (MovePos[0] > 0.01)
 			{
 				MovePos[0] = MovementToDo->actual->TranslateSpeed;
@@ -497,10 +519,26 @@ void CaseEntity::CaseMove(unsigned64 microseconds, dFloat timestep)
 		}
 		if(!isnanf(MovementToDo->actual->RotateSpeed))
 		{
-			RotatePos[0] = ToReachRot->x - getAbsoluteOrientation().x;
-			RotatePos[1] = ToReachRot->y - getAbsoluteOrientation().y;
-			RotatePos[2] = ToReachRot->z - getAbsoluteOrientation().z;
-//			LOG << "RotatePos = {" << RotatePos[0] << ", " << RotatePos[1] << ", " << RotatePos[2] << "}" << std::endl;
+			RotatePos[0] = ToReachRot->getRoll(false).valueRadians() - getAbsoluteOrientation().getRoll(false).valueRadians();
+			RotatePos[1] = ToReachRot->getPitch(false).valueRadians() - getAbsoluteOrientation().getPitch(false).valueRadians();
+			RotatePos[2] = ToReachRot->getYaw(false).valueRadians() - getAbsoluteOrientation().getYaw(false).valueRadians();
+			LOG << "RotatePos = {" << RotatePos[0] << ", " << RotatePos[1] << ", " << RotatePos[2] << "}"
+					<< " From " << getRelativeOrientation() << " To " << *ToReachRot
+					<< std::endl;
+			LOG << "Rotate from {" << getAbsoluteOrientation().getRoll(false).valueDegrees()
+					<< ", " << getAbsoluteOrientation().getPitch(false).valueDegrees()
+					<< ", " << getAbsoluteOrientation().getYaw(false).valueDegrees()
+					<< "} To {"	<< ToReachRot->getRoll(false).valueDegrees()
+					<< ", " << ToReachRot->getPitch(false).valueDegrees()
+					<< ", " << ToReachRot->getYaw(false).valueDegrees()
+					<< "}" << std::endl;
+			LOG << "Rotate from {" << getAbsoluteOrientation().getRoll().valueDegrees()
+					<< ", " << getAbsoluteOrientation().getPitch().valueDegrees()
+					<< ", " << getAbsoluteOrientation().getYaw().valueDegrees()
+					<< "} To {"	<< ToReachRot->getRoll().valueDegrees()
+					<< ", " << ToReachRot->getPitch().valueDegrees()
+					<< ", " << ToReachRot->getYaw().valueDegrees()
+					<< "}" << std::endl;
 			if (RotatePos[0] > 0.01)
 			{
 				RotatePos[0] = MovementToDo->actual->RotateSpeed;
@@ -681,6 +719,15 @@ void CaseEntity::CreateNewtonBody(NewtonWorld *m_world)
 	Ogre::Entity *ogreEntity = (Ogre::Entity*)OgreEntity->getAttachedObject(0);
 	dMatrix *bodymatrix = PrepareNewtonBody(NewtonBodyLocation, NewtonBodySize);
 
+	if(MovementToDo != NULL)//Case will move, so Group is the relative move's ref
+	{
+		GroupPtr->setInitialPosition(InitialPos);
+		setAbsolutePosition(InitialPos);
+		GroupPtr->setInitialOrientation(InitialOrientation);
+		setAbsoluteOrientation(InitialOrientation);
+		MovementToDo->is_computed = false;
+	}
+
 	NewtonCollision *collision_tree = NULL;
 	Matrix4 ogre_matrix;
 
@@ -697,152 +744,349 @@ void CaseEntity::CreateNewtonBody(NewtonWorld *m_world)
 GroupEntity::GroupEntity(String &name, Ogre::SceneManager* mSceneMgr)
 {
 	OgreEntity = (SceneNode*)mSceneMgr->getRootSceneNode()->createChild(name);
+	type = Group;
 	computed = false;
 	equilibrated = false;
+	isRefMove = false;
+}
+
+void GroupEntity::CreateNewtonBody(NewtonWorld *m_world)
+{
+	std::list<BaseEntity*>::iterator iter(childs.begin());
+	while(iter != childs.end())
+	{
+		BaseEntity *Entity = *(iter++);
+		if(Entity != NULL)
+			Entity->CreateNewtonBody(m_world);
+	}
 }
 
 void GroupEntity::Finalize(void)
 {
-	std::list<Entity*>::iterator iter(childs.begin());
+	std::list<BaseEntity*>::iterator iter(childs.begin());
 	while(iter != childs.end())
 	{
-		Entity *Entity = *iter;
+		BaseEntity *Entity = *iter;
 		if(Entity != NULL)
-		{
-			Entity->OgreEntity->getParent()->removeChild(Entity->OgreEntity);
-			OgreEntity->getParent()->addChild(Entity->OgreEntity);
-		}
+			Entity->changeOgreParent((SceneNode*)OgreEntity->getParent());
 		iter = childs.erase(iter);
 	}
-	SceneNode *parent = (SceneNode*)OgreEntity->getParent();
-	parent->removeAndDestroyChild(OgreEntity->getName());
+	BaseEntity::Finalize();
 }
 
-void GroupEntity::AddChild(Entity* child)
+void GroupEntity::AddChild(BaseEntity* child)
 {
+	LOG << "Add " << child->getName() << " to " << getName() << std::endl;
 	childs.push_back(child);
-	child->Group = this;
+	child->setGroup(this);
 	computed = false;
 	equilibrated = false;
 }
 
-bool GroupEntity::DelChild(Entity* child)
+bool GroupEntity::DelChild(BaseEntity* child)
 {
 	LOG << "Child " << child->getName() << " Removed from Group" << std::endl;
-	child->Group = NULL;
-	Quaternion ChildOrientation = child->getAbsoluteOrientation();
-	child->OgreEntity->setOrientation(ChildOrientation);
-	Vector3 ChildPosition = child->getAbsolutePosition();
-	child->OgreEntity->setPosition(ChildPosition);
-	Vector3 ChildScale = child->getAbsoluteScale();
-	child->OgreEntity->setScale(ChildScale);
+	Vector3 childpos = child->getAbsolutePosition();
+	Vector3 childscale = child->getAbsoluteScale();
+	Quaternion childori = child->getAbsoluteOrientation();
+	child->setGroup(NULL);
 
 //	Vector3 pos = child->getRelativePosition(), abspos = child->getAbsolutePosition();
 //	LOG << "Child " << child->getName() << " position {" << pos.x << ", " << pos.y << ", " << pos.z << "}" << std::endl;
 //	LOG << "Child " << child->getName() << " absposition {" << abspos.x << ", " << abspos.y << ", " << abspos.z << "}" << std::endl;
 
-	std::list<Entity*>::iterator iter(childs.begin());
+	std::list<BaseEntity*>::iterator iter(childs.begin());
 	while(iter != childs.end())
 	{
-		Entity *Entity = *iter;
+		BaseEntity *Entity = *iter;
 		if(Entity == child)
 		{
-			child->OgreEntity->getParent()->removeChild(child->OgreEntity);
-			OgreEntity->getParent()->addChild(child->OgreEntity);
+			Entity->changeOgreParent((SceneNode*)OgreEntity->getParent());
 			childs.erase(iter);
 			break;
 		}
 		iter++;
 	}
+	child->setAbsoluteOrientation(childori);
+	child->setAbsolutePosition(childpos);
+	child->setRelativeScale(childscale);
 	return childs.empty();
 }
 
-void GroupEntity::FillListWithChilds(std::list<Entity*> &list)
+bool GroupEntity::HasChild(BaseEntity* child)
 {
-	std::list<Entity*>::iterator iter(childs.begin());
+	std::list<BaseEntity*>::iterator iter(childs.begin());
 	while(iter != childs.end())
 	{
-		Entity *Entity = *(iter++);
+		BaseEntity *Entity = *(iter++);
+		if(Entity == child)
+			return true;
+	}
+	return false;
+}
+
+void GroupEntity::FillListWithChilds(std::list<BaseEntity*> &list)
+{
+	std::list<BaseEntity*>::iterator iter(childs.begin());
+	while(iter != childs.end())
+	{
+		BaseEntity *Entity = *(iter++);
 		if(Entity == NULL)
 			continue;
 		list.push_back(Entity);
 	}
 }
 
-void GroupEntity::ComputeChilds(void)
+void GroupEntity::ResetToInitial(void)
 {
-	if(computed)
-		return;
-	std::list<Entity*>::iterator iter(childs.begin());
+	BaseEntity::ResetToInitial();
+	std::list<BaseEntity*>::iterator iter(childs.begin());
 	while(iter != childs.end())
 	{
-		Entity *Entity = *(iter++);
+		BaseEntity *Entity = *(iter++);
+		if(Entity != NULL)
+			Entity->ResetToInitial();
+	}
+}
+
+void GroupEntity::copyOgreToInitial(void)
+{
+	BaseEntity::copyOgreToInitial();
+	std::list<BaseEntity*>::iterator iter(childs.begin());
+	while(iter != childs.end())
+	{
+		BaseEntity *Entity = *(iter++);
+		if(Entity != NULL)
+			Entity->copyOgreToInitial();
+	}
+}
+
+void GroupEntity::ResetToInitial(bool with_childs)
+{
+	BaseEntity::ResetToInitial();
+	if(with_childs == false)
+		return;
+	std::list<BaseEntity*>::iterator iter(childs.begin());
+	while(iter != childs.end())
+	{
+		BaseEntity *Entity = *(iter++);
+		if(Entity != NULL)
+			Entity->ResetToInitial();
+	}
+}
+
+void GroupEntity::copyOgreToInitial(bool with_childs)
+{
+	BaseEntity::copyOgreToInitial();
+	if(with_childs == false)
+		return;
+	std::list<BaseEntity*>::iterator iter(childs.begin());
+	while(iter != childs.end())
+	{
+		BaseEntity *Entity = *(iter++);
+		if(Entity != NULL)
+			Entity->copyOgreToInitial();
+	}
+}
+
+void _DisplayChilds(SceneNode *node)
+{
+	Node::ChildNodeIterator ite(node->getChildIterator());
+	if(ite.hasMoreElements())
+	{
+		LOG << "Display childs of " << node->getName() << std::endl;
+		while ( ite.hasMoreElements() )
+		{
+			SceneNode* child = static_cast<SceneNode*>(ite.getNext());
+			if(child != NULL)
+			{
+				LOG << child->getName() << " Parent is " << child->getParent()->getName() << std::endl;
+				_DisplayChilds(child);
+			}
+		}
+		LOG << "End Display for " << node->getName() << std::endl;
+	}
+	else
+		LOG << node->getName() << " Has no childs !" << std::endl;
+}
+
+void GroupEntity::ComputeChilds(void)
+{
+	if(computed == true)
+		return;
+	std::list<BaseEntity*>::iterator iter(childs.begin());
+	while(iter != childs.end())
+	{
+		BaseEntity *Entity = *(iter++);
 		if(Entity == NULL)
 			continue;
-		Vector3 ChildPos = Entity->getAbsolutePosition();
+		if(Entity->getType() == BaseEntity::Types::Group)
+			((GroupEntity*)Entity)->ComputeChilds();
 		LOG << "Child " << Entity->getName() << " (" << Entity << ") Added to Group" << std::endl;
-		Entity->OgreEntity->getParentSceneNode()->removeChild(Entity->OgreEntity);
-		OgreEntity->addChild(Entity->OgreEntity);
-		Entity->setAbsolutePosition(ChildPos);//Must conserve position will adding into group !!!!
+		Entity->changeOgreParent(OgreEntity);
+		Entity->ResetToInitial();
 	}
+//	_DisplayChilds(OgreEntity);
 	computed = true;
+}
+
+void GroupEntity::setForceRecomputeChilds(bool force_compute)
+{
+	if(force_compute)
+		computed = false;
+	equilibrated = false;
+	std::list<BaseEntity*>::iterator iter(childs.begin());
+	while(iter != childs.end())
+	{
+		BaseEntity *Ent = *(iter++);
+		if(Ent != NULL && Ent->getType() == BaseEntity::Types::Group)
+		{
+			GroupEntity *Grp =(GroupEntity*)Ent;
+			Grp->setForceRecomputeChilds(force_compute);
+		}
+	}
+}
+
+const AxisAlignedBox &GroupEntity::getWorldAABB(void) const
+{
+	LOG << "AABB Group" << std::endl;
+	return AABB;
+}
+
+void GroupEntity::computeWorldAABB(void)
+{
+	LOG << "Group " << getName() << " Compute AABB" << std::endl;
+	std::list<BaseEntity*>::iterator iter(childs.begin());
+	AABB.setMinimum(INFINITY, INFINITY, INFINITY);
+	AABB.setMaximum(-INFINITY, -INFINITY, -INFINITY);
+	while(iter != childs.end())
+	{
+		BaseEntity *Ent = *(iter++);
+		if(Ent != NULL)
+		{
+			const Ogre::AxisAlignedBox &childAABB = Ent->getWorldAABB();
+			if(childAABB.getMinimum().x < AABB.getMinimum().x)
+			{
+				AABB.setMinimumX(childAABB.getMinimum().x);
+				LOG << "Set MinX to " << childAABB.getMinimum().x << std::endl;
+			}
+			if(childAABB.getMinimum().y < AABB.getMinimum().y)
+			{
+				AABB.setMinimumY(childAABB.getMinimum().y);
+				LOG << "Set MinY to " << childAABB.getMinimum().y << std::endl;
+			}
+			if(childAABB.getMinimum().z < AABB.getMinimum().z)
+			{
+				AABB.setMinimumZ(childAABB.getMinimum().z);
+				LOG << "Set MinZ to " << childAABB.getMinimum().z << std::endl;
+			}
+			if(childAABB.getMaximum().x > AABB.getMaximum().x)
+			{
+				AABB.setMaximumX(childAABB.getMaximum().x);
+				LOG << "Set MaxX to " << childAABB.getMaximum().x << std::endl;
+			}
+			if(childAABB.getMaximum().y > AABB.getMaximum().y)
+			{
+				AABB.setMaximumY(childAABB.getMaximum().y);
+				LOG << "Set MaxY to " << childAABB.getMaximum().y << std::endl;
+			}
+			if(childAABB.getMaximum().z > AABB.getMaximum().z)
+			{
+				AABB.setMaximumZ(childAABB.getMaximum().z);
+				LOG << "Set MaxZ to " << childAABB.getMaximum().z << std::endl;
+			}
+		}
+	}
 }
 
 void GroupEntity::ComputeAndEquilibrateChilds(void)
 {
 	ComputeChilds();
-	if(equilibrated == false)
+	EquilibrateAABBAroundOrigin();
+}
+
+void GroupEntity::EquilibrateAABBAroundOrigin(void)
+{
+	if(equilibrated == true)
+		return;
+
+	if(isRefMove == true)
 	{
-		EquilibrateAABBAroundOrigin((Node*)OgreEntity);
+		BaseEntity *child = *(childs.begin());
+		LOG << "Is a RefMove, set Position to " << child->getInitialPosition() << " and Orientation to " << child->getInitialOrientation() << std::endl;
+		setInitialPosition(child->getInitialPosition());
+		setInitialOrientation(child->getInitialOrientation());
+		Vector3 scale(1.0, 1.0, 1.0);
+		setInitialScale(scale);
+		BaseEntity::ResetToInitial();
+		child->ResetToInitial();
+		computeWorldAABB();
 		equilibrated = true;
+		return;
 	}
+
+	Vector3 min(NAN, NAN, NAN), max(NAN, NAN, NAN);
+	std::list<BaseEntity*>::iterator Eiter(childs.begin());
+	while(Eiter != childs.end())
+	{
+		BaseEntity *Ent = *(Eiter++);
+		if(Ent == NULL)
+			continue;
+		if(Ent->getType() == BaseEntity::Types::Group)
+			((GroupEntity*)Ent)->EquilibrateAABBAroundOrigin();
+		Ent->ResetToInitial();
+		const AxisAlignedBox &EntAABB = Ent->getWorldAABB();
+		Vector3 childmin = EntAABB.getMinimum();
+		Vector3 childmax = EntAABB.getMaximum();
+
+		if(min.isNaN())
+		   min = childmin;
+		if(max.isNaN())
+		   max = childmax;
+
+		min.x = std::min<Ogre::Real>(min.x, childmin.x);
+		min.y = std::min<Ogre::Real>(min.y, childmin.y);
+		min.z = std::min<Ogre::Real>(min.z, childmin.z);
+
+		max.x = std::max<Ogre::Real>(max.x, childmax.x);
+		max.y = std::max<Ogre::Real>(max.y, childmax.y);
+		max.z = std::max<Ogre::Real>(max.z, childmax.z);
+//		LOG << Ent->getName() << " child min " << childmin.x << ", " << childmin.y << ", " << childmin.z << std::endl;
+//		LOG << Ent->getName() << " child max " << childmax.x << ", " << childmax.y << ", " << childmax.z << std::endl;
+//		LOG << "=> min " << min.x << ", " << min.y << ", " << min.z << std::endl;
+//		LOG << "=> max " << max.x << ", " << max.y << ", " << max.z << std::endl;
+	}
+
+	Vector3 pos = OgreEntity->getPosition();
+//	LOG << "Node " << pos.x << ", " << pos.y << ", " << pos.z << std::endl;
+	OgreEntity->translate((min + max) / 2);
+	pos = OgreEntity->getPosition();
+//	LOG << "After Compute Node " << pos.x << ", " << pos.y << ", " << pos.z << std::endl;
+
+	std::list<BaseEntity*>::iterator Eiter2(childs.begin());
+	while(Eiter2 != childs.end())
+	{
+		BaseEntity *Ent = *(Eiter2++);
+		if(Ent == NULL)
+			continue;
+		Ent->ResetToInitial();
+	}
+	Vector3 GrpPos = OgreEntity->getPosition();
+//	LOG << "After Equilibrate : Group(" << GrpPos.x << ", " << GrpPos.y << ", " << GrpPos.z << ")" << std::endl;
+	copyOgreToInitial(false);
+	computeWorldAABB();
+	equilibrated = true;
 }
 
-void GroupEntity::ExportToJson(rapidjson::Value &v, rapidjson::Document::AllocatorType& allocator)
+void GroupEntity::DisplaySelectedBox(bool display)
 {
-	rapidjson::Value name;
-	const char *ogrename = (const char*)OgreEntity->getName().c_str();
-	name.SetString(ogrename, allocator);
-	v.AddMember("NodeName", name, allocator);
-	const Vector3 &InitialPos = OgreEntity->getPosition();
-	const Vector3 &InitialScale = OgreEntity->getScale();
-	const Quaternion &InitialOrientation = OgreEntity->getOrientation();
-
-	v.AddMember("PosX", InitialPos.x, allocator);
-	v.AddMember("PosY", InitialPos.y, allocator);
-	v.AddMember("PosZ", InitialPos.z, allocator);
-	v.AddMember("ScaleX", InitialScale.x, allocator);
-	v.AddMember("ScaleY", InitialScale.y, allocator);
-	v.AddMember("ScaleZ", InitialScale.z, allocator);
-	v.AddMember("OrientationX", InitialOrientation.x, allocator);
-	v.AddMember("OrientationY", InitialOrientation.y, allocator);
-	v.AddMember("OrientationZ", InitialOrientation.z, allocator);
-	v.AddMember("OrientationW", InitialOrientation.w, allocator);
-}
-
-void GroupEntity::ImportFromJson(rapidjson::Value &v, Node *parent, String &nodeNamePrefix)
-{
-	Vector3 InitialPos, InitialScale;
-	Quaternion InitialOrientation;
-	InitialPos.x = v["PosX"].GetFloat();
-	InitialPos.y = v["PosY"].GetFloat();
-	InitialPos.z = v["PosZ"].GetFloat();
-	InitialScale.x = v["ScaleX"].GetFloat();
-	InitialScale.y = v["ScaleY"].GetFloat();
-	InitialScale.z = v["ScaleZ"].GetFloat();
-	InitialOrientation.x = v["OrientationX"].GetFloat();
-	InitialOrientation.y = v["OrientationY"].GetFloat();
-	InitialOrientation.z = v["OrientationZ"].GetFloat();
-	InitialOrientation.w = v["OrientationW"].GetFloat();
-
-	const char *nodename_c = v["NodeName"].GetString();
-	String nodeName = nodeNamePrefix;
-	nodeName += nodename_c;
-	OgreEntity = (Ogre::SceneNode*)parent->createChild(nodeName, InitialPos);
-//	LOG << "Group " << OgreEntity->getName() << " (" << OgreEntity << ") set Position {" << InitialPos.x << ", " << InitialPos.y << ", " << InitialPos.z << "}" << std::endl;
-	OgreEntity->setPosition(InitialPos);
-	OgreEntity->setScale(InitialScale);
-	OgreEntity->setOrientation(InitialOrientation);
+	std::list<BaseEntity*>::iterator iter(childs.begin());
+	while(iter != childs.end())
+	{
+		BaseEntity *Ent = *(iter++);
+		if(Ent != NULL)
+			Ent->DisplaySelectedBox(display);
+	}
 }
 
 Ogre::SceneNode *CaseEntity::CreateForceArrows(Ogre::SceneManager *Scene)
@@ -868,9 +1112,8 @@ Ogre::SceneNode *CaseEntity::CreateForceArrows(Ogre::SceneManager *Scene)
 	return node;
 }
 
-inline void MoveNode(Node *node, Vector3 &addPos)
+inline void MoveNode(Node *node, const Ogre::Vector3 &addPos)
 {
-	LOG << "Move Node " << node->getName() << " by " << addPos.x << ", " << addPos.y << ", " << addPos.z << std::endl;
 	Vector3 pos = node->getPosition();
 	pos += addPos;
 	node->setPosition(pos);
@@ -882,24 +1125,34 @@ inline void MoveNode(Node *node, float x, float y, float z)
 	MoveNode(node, addPos);
 }
 
-void Entity::Move(float x, float y, float z)
+void GroupEntity::DisplayChilds(void)
+{
+	LOG << getName() << " Pos " << getAbsolutePosition() << " / " << getRelativePosition() << std::endl;
+	std::list<BaseEntity*>::iterator iter(childs.begin());
+	while(iter != childs.end())
+	{
+		BaseEntity *E = *(iter++);
+		if(E != NULL)
+		{
+			LOG << E->getName() << " Pos " << E->getAbsolutePosition() << " / " << E->getRelativePosition() << std::endl;
+			if(E->getType() == BaseEntity::Types::Group)
+				((GroupEntity*)E)->DisplayChilds();
+		}
+	}
+}
+
+void BaseEntity::Move(float x, float y, float z)
 {
 	MoveNode(OgreEntity, x, y, z);
 }
 
-void Entity::Move(Vector3 &addPos)
+void BaseEntity::Move(const Vector3 &addPos)
 {
 	MoveNode(OgreEntity, addPos);
 }
 
-void GroupEntity::Move(float x, float y, float z)
+inline void ScaleNode(Node *node, const Ogre::Vector3 &addScale)
 {
-	MoveNode(OgreEntity, x, y, z);
-}
-
-inline void ScaleNode(Node *node, Vector3 &addScale)
-{
-	LOG << "Scale Node " << node << " by " << addScale.x << ", " << addScale.y << ", " << addScale.z << std::endl;
 	Vector3 sc = node->getScale();
 	sc += addScale;
 	node->setScale(sc);
@@ -916,22 +1169,22 @@ inline void ScaleNode(Node *node, float x, float y, float z)
 	ScaleNode(node, addScale);
 }
 
-void Entity::Scale(float x, float y, float z)
+void BaseEntity::Scale(float x, float y, float z)
 {
 	ScaleNode(OgreEntity, x, y, z);
 }
 
-void Entity::Scale(Vector3 &addScale)
+void BaseEntity::Scale(const Vector3 &addScale)
 {
 	ScaleNode(OgreEntity, addScale);
 }
 
 void GroupEntity::Scale(float x, float y, float z)
 {
-	std::list<Entity*>::iterator iter(childs.begin());
+	std::list<BaseEntity*>::iterator iter(childs.begin());
 	while(iter != childs.end())
 	{
-		Entity *Entity = *(iter++);
+		BaseEntity *Entity = *(iter++);
 		if(Entity == NULL)
 			continue;
 		Vector3 childPos = Entity->getRelativePosition();
@@ -939,7 +1192,10 @@ void GroupEntity::Scale(float x, float y, float z)
 		childPos.x *= x / childScale.x;
 		childPos.y *= y / childScale.y;
 		childPos.z *= z / childScale.z;
-		Entity->Scale(x, y, z);
+		if(Entity->getType() != BaseEntity::Types::Group)
+			Entity->Scale(x, y, z);
+		else
+			((GroupEntity*)Entity)->Scale(x, y, z);
 		//As scale parent is a factor and here we add scaling, not multiply it, we must do it ourself by scaling child and moving it consequently by the same factor (newscale / odlscale) !
 		Entity->Move(childPos);
 	}
@@ -952,12 +1208,7 @@ inline void RotateNode(Node *node, float x, float y, float z)
 	node->yaw(Degree(y));
 }
 
-void Entity::Rotate(float x, float y, float z)
-{
-	RotateNode(OgreEntity, x, y, z);
-}
-
-void GroupEntity::Rotate(float x, float y, float z)
+void BaseEntity::Rotate(float x, float y, float z)
 {
 	RotateNode(OgreEntity, x, y, z);
 }
@@ -1033,9 +1284,9 @@ void CaseEntity::ExportToJson(rapidjson::Value &v, rapidjson::Document::Allocato
 			if(!isnanf(step->TranslateSpeed))
 			{
 				Step.AddMember(MOVESTEPPOSITIONPRESENT_JSON_FIELD, true, allocator);
-				Step.AddMember(MOVESTEPPOSITIONX_JSON_FIELD, step->Position.x, allocator);
-				Step.AddMember(MOVESTEPPOSITIONY_JSON_FIELD, step->Position.y, allocator);
-				Step.AddMember(MOVESTEPPOSITIONZ_JSON_FIELD, step->Position.z, allocator);
+				Step.AddMember(MOVESTEPPOSITIONX_JSON_FIELD, step->RelativePosition.x, allocator);
+				Step.AddMember(MOVESTEPPOSITIONY_JSON_FIELD, step->RelativePosition.y, allocator);
+				Step.AddMember(MOVESTEPPOSITIONZ_JSON_FIELD, step->RelativePosition.z, allocator);
 				Step.AddMember(MOVESTEPTRANSLATIONSPEED_JSON_FIELD, step->TranslateSpeed, allocator);
 			}
 			else
@@ -1043,10 +1294,10 @@ void CaseEntity::ExportToJson(rapidjson::Value &v, rapidjson::Document::Allocato
 			if(!isnanf(step->RotateSpeed))
 			{
 				Step.AddMember(MOVESTEPROTATIONPRESENT_JSON_FIELD, true, allocator);
-				Step.AddMember(MOVESTEPROTATIONX_JSON_FIELD, step->Orientation.x, allocator);
-				Step.AddMember(MOVESTEPROTATIONY_JSON_FIELD, step->Orientation.y, allocator);
-				Step.AddMember(MOVESTEPROTATIONZ_JSON_FIELD, step->Orientation.z, allocator);
-				Step.AddMember(MOVESTEPROTATIONW_JSON_FIELD, step->Orientation.w, allocator);
+				Step.AddMember(MOVESTEPROTATIONX_JSON_FIELD, step->RelativeOrientation.x, allocator);
+				Step.AddMember(MOVESTEPROTATIONY_JSON_FIELD, step->RelativeOrientation.y, allocator);
+				Step.AddMember(MOVESTEPROTATIONZ_JSON_FIELD, step->RelativeOrientation.z, allocator);
+				Step.AddMember(MOVESTEPROTATIONW_JSON_FIELD, step->RelativeOrientation.w, allocator);
 				Step.AddMember(MOVESTEPROTATIONSPEED_JSON_FIELD, step->RotateSpeed, allocator);
 			}
 			else
@@ -1099,6 +1350,9 @@ void CaseEntity::ImportFromJson(rapidjson::Value &v, GameEngine *Game, Node *par
 		delete MovementToDo;
 	if(v[MOVEPRESENT_JSON_FIELD].GetBool() == true)
 	{
+		setRefMove(GroupPtr);
+		LOG << "Entity " << getName() << " Moves is present, set RefMove to " << GroupPtr << std::endl;
+		assert(GroupPtr != NULL);
 		struct Movement *Movement = new struct Movement;
 		Movement->is_launched_by_collide = v[MOVEISTRIGGERED_JSON_FIELD].GetBool();
 		for(int cmpt = 0; cmpt < v[MOVES_JSON_FIELD].GetArray().Size(); cmpt++)
@@ -1108,19 +1362,19 @@ void CaseEntity::ImportFromJson(rapidjson::Value &v, GameEngine *Game, Node *par
 			Step->waittime = (unsigned64)Stepjson[MOVESTEPWAITTIME_JSON_FIELD].GetUint64();
 			if(Stepjson[MOVESTEPPOSITIONPRESENT_JSON_FIELD].GetBool() == true)
 			{
-				Step->Position.x = Stepjson[MOVESTEPPOSITIONX_JSON_FIELD].GetFloat();
-				Step->Position.y = Stepjson[MOVESTEPPOSITIONY_JSON_FIELD].GetFloat();
-				Step->Position.z = Stepjson[MOVESTEPPOSITIONZ_JSON_FIELD].GetFloat();
+				Step->RelativePosition.x = Stepjson[MOVESTEPPOSITIONX_JSON_FIELD].GetFloat();
+				Step->RelativePosition.y = Stepjson[MOVESTEPPOSITIONY_JSON_FIELD].GetFloat();
+				Step->RelativePosition.z = Stepjson[MOVESTEPPOSITIONZ_JSON_FIELD].GetFloat();
 				Step->TranslateSpeed = Stepjson[MOVESTEPTRANSLATIONSPEED_JSON_FIELD].GetFloat();
 			}
 			else
 				Step->TranslateSpeed = NAN;
 			if(Stepjson[MOVESTEPROTATIONPRESENT_JSON_FIELD].GetBool() == true)
 			{
-				Step->Orientation.x = Stepjson[MOVESTEPROTATIONX_JSON_FIELD].GetFloat();
-				Step->Orientation.y = Stepjson[MOVESTEPROTATIONY_JSON_FIELD].GetFloat();
-				Step->Orientation.z = Stepjson[MOVESTEPROTATIONZ_JSON_FIELD].GetFloat();
-				Step->Orientation.w = Stepjson[MOVESTEPROTATIONW_JSON_FIELD].GetFloat();
+				Step->RelativeOrientation.x = Stepjson[MOVESTEPROTATIONX_JSON_FIELD].GetFloat();
+				Step->RelativeOrientation.y = Stepjson[MOVESTEPROTATIONY_JSON_FIELD].GetFloat();
+				Step->RelativeOrientation.z = Stepjson[MOVESTEPROTATIONZ_JSON_FIELD].GetFloat();
+				Step->RelativeOrientation.w = Stepjson[MOVESTEPROTATIONW_JSON_FIELD].GetFloat();
 				Step->RotateSpeed = Stepjson[MOVESTEPROTATIONSPEED_JSON_FIELD].GetFloat();
 			}
 			else
@@ -1147,25 +1401,22 @@ void CaseEntity::ImportFromJson(rapidjson::Value &v, GameEngine *Game, Node *par
 #define ORIENTATIONZ_JSON_FIELD "OrientationZ"
 #define ORIENTATIONW_JSON_FIELD "OrientationW"
 
-void Entity::ExportToJson(rapidjson::Value &v, rapidjson::Document::AllocatorType& allocator)
+void BaseEntity::ExportToJson(rapidjson::Value &v, rapidjson::Document::AllocatorType& allocator)
 {
-	Ogre::Entity *entity = (Ogre::Entity*)OgreEntity->getAttachedObject(0);
-	const char *cname = (const char*)entity->getMesh().get()->getName().c_str();
 	rapidjson::Value name;
-	name.SetString(cname, allocator);
-	v.AddMember(MESH_JSON_FIELD, name, allocator);
 	const char *ogrename = (const char*)OgreEntity->getName().c_str();
 	name.SetString(ogrename, allocator);
 	v.AddMember(NODENAME_JSON_FIELD, name, allocator);
-	if(Group != NULL)
+	if(GroupPtr != NULL)
 	{
 		rapidjson::Value gname;
-		const char *groupname = (const char*)Group->getName().c_str();
+		const char *groupname = (const char*)GroupPtr->getName().c_str();
 		gname.SetString(groupname, allocator);
 		v.AddMember(GROUPNAME_JSON_FIELD, gname, allocator);
 	}
 	else
 		v.AddMember(GROUPNAME_JSON_FIELD, "", allocator);
+	LOG << getName() << " InitialPos=" << InitialPos << ", InitialOrientation=" << InitialOrientation << ", InitialScale=" << InitialScale << std::endl;
 	v.AddMember(POSITIONX_JSON_FIELD, InitialPos.x, allocator);
 	v.AddMember(POSITIONY_JSON_FIELD, InitialPos.y, allocator);
 	v.AddMember(POSITIONZ_JSON_FIELD, InitialPos.z, allocator);
@@ -1176,6 +1427,16 @@ void Entity::ExportToJson(rapidjson::Value &v, rapidjson::Document::AllocatorTyp
 	v.AddMember(ORIENTATIONY_JSON_FIELD, InitialOrientation.y, allocator);
 	v.AddMember(ORIENTATIONZ_JSON_FIELD, InitialOrientation.z, allocator);
 	v.AddMember(ORIENTATIONW_JSON_FIELD, InitialOrientation.w, allocator);
+}
+
+void Entity::ExportToJson(rapidjson::Value &v, rapidjson::Document::AllocatorType& allocator)
+{
+	Ogre::Entity *entity = (Ogre::Entity*)OgreEntity->getAttachedObject(0);
+	const char *cname = (const char*)entity->getMesh().get()->getName().c_str();
+	rapidjson::Value name;
+	name.SetString(cname, allocator);
+	v.AddMember(MESH_JSON_FIELD, name, allocator);
+	BaseEntity::ExportToJson(v, allocator);
 }
 
 void BallEntity::CreateFromJson(rapidjson::Value &v, GameEngine *Game, NewtonWorld *m_world, Node *parent, String &nodeNamePrefix)
@@ -1194,9 +1455,16 @@ void BallEntity::ImportFromJson(rapidjson::Value &v, GameEngine *Game, Node *par
 
 void Entity::ImportFromJson(rapidjson::Value &v, GameEngine *Game, Node *parent, String &nodeNamePrefix)
 {
+	BaseEntity::ImportFromJson(v, Game, parent, nodeNamePrefix);
 	const char *meshname = v[MESH_JSON_FIELD].GetString();
 	Ogre::SceneManager *mSceneMgr = Game->getSceneManager();
 	Ogre::Entity* ogreEntity = mSceneMgr->createEntity(meshname);
+	OgreEntity->attachObject(ogreEntity);
+	((Ogre::Entity*)OgreEntity->getAttachedObject(0))->getUserObjectBindings().setUserAny(Ogre::Any(this));
+}
+
+void BaseEntity::ImportFromJson(rapidjson::Value &v, GameEngine *Game, Node *parent, String &nodeNamePrefix)
+{
 //	LOG << "Mesh Entity Name : '" << ogreEntity->getName() << "'" << std::endl;
 	InitialPos.x = v[POSITIONX_JSON_FIELD].GetFloat();
 	InitialPos.y = v[POSITIONY_JSON_FIELD].GetFloat();
@@ -1214,19 +1482,21 @@ void Entity::ImportFromJson(rapidjson::Value &v, GameEngine *Game, Node *parent,
 	String nodeName = nodeNamePrefix;
 	nodeName += nodename_c;
 	ogreNode = (SceneNode*)parent->createChild(nodeName, InitialPos);
-	ogreNode->attachObject(ogreEntity);
 	setOgreNode(ogreNode);
 	const char *Groupname = v[GROUPNAME_JSON_FIELD].GetString();
 	if(strcmp(Groupname, "") != 0)
 	{
-		GroupEntity *Grp = Game->findGroup(Groupname);
+		String GrpName = nodeNamePrefix;
+		GrpName += Groupname;
+		bool is_for_import = nodeNamePrefix.empty() == false;
+		GroupEntity *Grp = Game->findGroup(GrpName, is_for_import);
 		if(Grp != NULL)
 		{
-			LOG << "Add Child " << nodeName << " (" << nodename_c << ") to Group " << Groupname << std::endl;
+			LOG << "Add Child " << nodeName << " (" << nodename_c << ") to Group " << GrpName << std::endl;
 			Grp->AddChild(this);
 		}
 		else
-			LOG << "Pb : Group " << Groupname << " not found !!" << std::endl;
+			LOG << "Pb : Group " << GrpName << " not found !!" << std::endl;
 	}
 }
 

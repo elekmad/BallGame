@@ -78,7 +78,7 @@ void GameEngine::BodyDeserialization (NewtonBody* const body, void* const bodyUs
 	NewtonBodySetUserData (body, Entity);
 	Entity->setNewtonBody(body);
 	NewtonBodySetTransformCallback(body, Entity::TransformCallback);
-	if(Entity->getType() == Ball)
+	if(Entity->getType() == Entity::Types::Ball)
 		NewtonBodySetForceAndTorqueCallback(body, PhysicsAddForceAndGravity);
 	else
 		NewtonBodySetForceAndTorqueCallback(body, PhysicsApplyGravityForce);
@@ -321,22 +321,22 @@ void GameEngine::OnContactCollision (const NewtonJoint* contactJoint, dFloat tim
 	CaseEntity *CaseToCheck = NULL;
 	switch(Entity0->getType())
 	{
-	case Ball :
+	case Entity::Types::Ball :
 //		LOG << "Ball " << Entity0 << " Colliding with ";
 		BallToCheck = (BallEntity*)Entity0;
 		break;
-	case Case :
+	case Entity::Types::Case :
 //		LOG << "Case " << Entity0 << " Colliding with ";
 		CaseToCheck = (CaseEntity*)Entity0;
 		break;
 	}
 	switch(Entity1->getType())
 	{
-	case Ball :
+	case Entity::Types::Ball :
 //		LOG << "Ball " << Entity1 << std::endl;
 		BallToCheck = (BallEntity*)Entity1;
 		break;
-	case Case :
+	case Entity::Types::Case :
 //		LOG << "Case " << Entity1 << std::endl;
 		CaseToCheck = (CaseEntity*)Entity1;
 		break;
@@ -345,7 +345,31 @@ void GameEngine::OnContactCollision (const NewtonJoint* contactJoint, dFloat tim
 	{
 		CaseToCheck->AddBallColliding(BallToCheck);
 		Game->AddCaseColliding(CaseToCheck);
-		Game->AddCaseToBeMoved(CaseToCheck);
+	}
+}
+
+void GameEngine::BuildRefMove(CaseEntity *ToAdd)
+{
+	if(ToAdd->getRefMove() == NULL)
+	{
+		Vector3 ActuPos = ToAdd->getAbsolutePosition();
+		Quaternion ActuAngle = ToAdd->getAbsoluteOrientation();
+		String name("MoveRef-" + ToAdd->getName() + "-Group");
+		GroupEntity *Grp = new GroupEntity(name, mSceneMgr);
+		GroupEntity *OldGroup = ToAdd->getGroup();
+		LOG << "Entity " << ToAdd->getName() << " Add RefMove " << name << std::endl;
+		Grp->AddChild(ToAdd);
+		ToAdd->setRefMove(Grp);
+		Grp->setisRefMove(true);
+		Grp->ComputeAndEquilibrateChilds();
+		AddGroup(Grp);
+		if(OldGroup != NULL)
+		{
+			OldGroup->AddChild(Grp);
+			OldGroup->ComputeAndEquilibrateChilds();
+		}
+		ToAdd->setAbsolutePosition(ActuPos);
+		ToAdd->setAbsoluteOrientation(ActuAngle);
 	}
 }
 
@@ -353,6 +377,7 @@ void GameEngine::AddCaseToBeMoved(CaseEntity *ToAdd)
 {
 	if(ToAdd == NULL)
 		return;
+	BuildRefMove(ToAdd);
 	std::list<CaseEntity*>::iterator iter(CasesToBeMoved.begin());
 	while(iter != CasesToBeMoved.end())
 	{
@@ -373,6 +398,18 @@ void GameEngine::DelCaseToBeMoved(CaseEntity *ToDel)
 		CaseEntity *Case = *iter;
 		if(Case == ToDel)
 		{
+			GroupEntity *RefMove = Case->getRefMove();
+			if(RefMove != NULL)
+			{
+				GroupEntity *NewGroup = RefMove->getGroup();
+				if(NewGroup != NULL)
+				{
+					NewGroup->DelChild(RefMove);
+					NewGroup->AddChild(Case);
+					NewGroup->ComputeAndEquilibrateChilds();
+				}
+				DeleteGroup(RefMove);
+			}
 			iter = CasesToBeMoved.erase(iter);
 			return;
 		}
@@ -420,6 +457,7 @@ void GameEngine::AddGroup(GroupEntity *group)
 	if(group == NULL)
 		return;
 	Groups.push_back(group);
+	group->setEngine(this);
 	nb_entities++;
 }
 
@@ -428,6 +466,7 @@ void GameEngine::AddBall(BallEntity *ball)
 	if(ball == NULL)
 		return;
 	Balls.push_back(ball);
+	ball->setEngine(this);
 	nb_entities++;
 }
 
@@ -436,6 +475,7 @@ void GameEngine::AddCase(CaseEntity *Wcase)
 	if(Wcase == NULL)
 		return;
 	Cases.push_back(Wcase);
+	Wcase->setEngine(this);
 	nb_entities++;
 }
 
@@ -503,11 +543,27 @@ bool GameEngine::frameEnded(const Ogre::FrameEvent& fe)
     return true;
 }
 
-void GameEngine::DeleteGroup(GroupEntity *Entity, std::list<GroupEntity*>::iterator *iter)
+inline void GameEngine::DeleteGroup(GroupEntity *Grp)
 {
+	do
+	{
+		Grp = DeleteGroup(Grp, NULL);
+	}
+	while(Grp != NULL);
+}
+
+GroupEntity *GameEngine::DeleteGroup(GroupEntity *Entity, std::list<GroupEntity*>::iterator *iter)
+{
+	GroupEntity *Sup = Entity->getGroup();
+	if(Sup != NULL)
+	{
+		if(Sup->DelChild(Entity) == false)
+			Sup = NULL;
+	}
 	RemoveGroup(Entity, iter);
 	Entity->Finalize();
 	delete Entity;
+	return Sup;
 }
 
 void GameEngine::RemoveGroup(GroupEntity *Entity, std::list<GroupEntity*>::iterator *iter)
@@ -530,17 +586,29 @@ void GameEngine::RemoveGroup(GroupEntity *Entity, std::list<GroupEntity*>::itera
 	}
 }
 
-GroupEntity *GameEngine::findGroup(const char * const name_c)
+GroupEntity *GameEngine::findGroup(String &name, bool is_for_import)
 {
-	String name(name_c);
-	std::list<GroupEntity*>::iterator it(Groups.begin());
-	while(it != Groups.end())
+	std::list<GroupEntity*> *GrpList;
+	if(is_for_import == false)
+		GrpList = &Groups;
+	else
+		GrpList = &ImportLevelGroups;
+
+	std::list<GroupEntity*>::iterator it(GrpList->begin());
+	while(it != GrpList->end())
 	{
 		GroupEntity *B = *(it++);
 		if(B != NULL && B->getName() == name)
 			return B;
 	}
+
 	return NULL;
+}
+
+inline GroupEntity *GameEngine::findGroup(const char * const name_c, bool is_for_import)
+{
+	String name(name_c);
+	return findGroup(name, is_for_import);
 }
 
 void GameEngine::DeleteBall(BallEntity *Ent, std::list<BallEntity*>::iterator *iter)
@@ -593,6 +661,7 @@ void GameEngine::DeleteCase(CaseEntity *Ent, std::list<CaseEntity*>::iterator *i
 
 void GameEngine::RemoveCase(CaseEntity *Entity, std::list<CaseEntity*>::iterator *iter)
 {
+	DelCaseToBeMoved(Entity);
 	if(iter != NULL)
 		*iter = Cases.erase(*iter);
 	else
@@ -680,7 +749,7 @@ void GameEngine::ImportLevelFromJson(Node *parent, String &nodeNamePrefix, bool 
 	{
 		GroupEntity *newGroup = new GroupEntity();
 		rapidjson::Value &groupjson = in[GROUPS_JSON_FIELD].GetArray()[cmpt];
-		newGroup->ImportFromJson(groupjson, parent, nodeNamePrefix);
+		newGroup->ImportFromJson(groupjson, this, parent, nodeNamePrefix);
 		if(isForImport)
 			ImportLevelGroups.push_back(newGroup);
 		else
@@ -700,10 +769,10 @@ void GameEngine::ImportLevelFromJson(Node *parent, String &nodeNamePrefix, bool 
 		{
 			newCase->CreateFromJson(casejson, this, m_world, parent, nodeNamePrefix);
 			AddCase(newCase);
-		}
 
-		if(newCase->CaseToMove() == true)
-			AddCaseToBeMoved(newCase);
+			if(newCase->CaseToMove() == true)
+				AddCaseToBeMoved(newCase);
+		}
 	}
 	//Parsing Balls
 	for(int cmpt = 0; cmpt < in[BALLS_JSON_FIELD].GetArray().Size(); cmpt++)

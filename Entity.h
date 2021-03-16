@@ -43,88 +43,107 @@ using namespace Ogre;
 using namespace OgreBites;
 
 inline float Normalize(float v1, float v2, float v3);
-inline double Normalize(double v1, double v2, double v3);
 
 namespace BallGame {
 
 class GameEngine;
 class GroupEntity;
 
-enum BallGameEntityType
+class BaseEntity
 {
-	Case,
-	Ball
+	public :
+
+	enum Types
+	{
+		Case,
+		Ball,
+		Group
+	};
+
+	BaseEntity();
+	virtual ~BaseEntity(){}
+	virtual void Finalize(void);
+	virtual void setOgreNode(SceneNode *node);
+    virtual void CreateNewtonBody(NewtonWorld *m_world) = 0;
+	virtual void ExportToJson(rapidjson::Value &v, rapidjson::Document::AllocatorType& allocator);
+	virtual void ImportFromJson(rapidjson::Value &v, GameEngine *Game, Node *parent, String &nodeNamePrefix);
+	virtual const SceneNode *getOgreEntity(void) const { return OgreEntity; }
+	virtual const AxisAlignedBox &getWorldAABB(void) const;
+	virtual const Ogre::Vector3 &getRelativePosition(void) const { return OgreEntity->getPosition(); }
+	virtual const Ogre::Vector3 &getAbsolutePosition(void) const { return OgreEntity->_getDerivedPosition(); }
+    virtual void setRelativePosition(const Ogre::Vector3 &NewPosition) { OgreEntity->setPosition(NewPosition); }
+    virtual void setAbsolutePosition(const Ogre::Vector3 &NewPosition) { OgreEntity->_setDerivedPosition(NewPosition); }
+    virtual const Ogre::Quaternion &getRelativeOrientation(void) const { return OgreEntity->getOrientation(); }
+    virtual const Ogre::Quaternion &getAbsoluteOrientation(void) const { return OgreEntity->_getDerivedOrientation(); }
+    virtual void setRelativeOrientation(const Ogre::Quaternion &NewOrient) { OgreEntity->setOrientation(NewOrient); }
+    virtual void setAbsoluteOrientation(const Ogre::Quaternion &NewOrient) { OgreEntity->_setDerivedOrientation(NewOrient); }
+    virtual const Ogre::Vector3 &getRelativeScale(void) const { return OgreEntity->getScale(); }
+    virtual const Ogre::Vector3 &getAbsoluteScale(void) const { return OgreEntity->_getDerivedScale(); }
+    virtual void setRelativeScale(const Ogre::Vector3 &NewScale) { OgreEntity->setScale(NewScale); }
+    virtual const Ogre::Vector3 &getInitialPosition(void) const { return InitialPos; }
+    virtual void setInitialPosition(const Ogre::Vector3 &NewPosition) { InitialPos = NewPosition; }
+    virtual const Ogre::Quaternion &getInitialOrientation(void) const { return InitialOrientation; }
+    virtual void setInitialOrientation(const Ogre::Quaternion &NewOrient) { InitialOrientation = NewOrient; }
+    virtual const Ogre::Vector3 &getInitialScale(void) const { return InitialScale; }
+    virtual void setInitialScale(const Ogre::Vector3 &NewScale) { InitialScale = NewScale; }
+    virtual void Move(float x, float y, float z);
+    virtual void Move(const Ogre::Vector3 &);
+    virtual void Rotate(float x, float y, float z);
+    virtual void Scale(float x, float y, float z);
+    virtual void Scale(const Ogre::Vector3 &);
+    virtual const Ogre::String &getName(void) const { return OgreEntity->getName(); }
+    virtual GroupEntity *getGroup(void) { return GroupPtr; }
+    virtual void setGroup(GroupEntity *Grp) { GroupPtr = Grp; }
+    virtual void setEngine(GameEngine *E) { Engine = E; }
+    virtual const GameEngine *getEngine(void) const { return Engine; }
+    virtual void DisplaySelectedBox(bool display);
+    virtual enum Types getType(void) { return type; }
+    virtual void changeOgreParent(SceneNode *newparent)
+    {
+		OgreEntity->getParent()->removeChild(OgreEntity);
+		newparent->addChild(OgreEntity);
+    }
+    virtual inline void ResetToInitial(void);
+    virtual void copyOgreToInitial(void);
+
+	protected :
+
+    enum Types type;
+	SceneNode *OgreEntity;
+	GroupEntity *GroupPtr;
+	//We need to have initial pos, scale and orientation appart from ogre's one because we can edit level during physic move, so export level with ogre's one can be impossible !
+	Ogre::Vector3 InitialPos;
+	Ogre::Vector3 InitialScale;
+	Ogre::Quaternion InitialOrientation;
+	GameEngine *Engine;
 };
 
-class Entity
+class Entity : public BaseEntity
 {
 	public :
 
 	Entity(const dMatrix& matrix);
 	Entity();
-	~Entity(){}
 	void Finalize(void);
-    static void TransformCallback(const NewtonBody* body, const dFloat* matrix, int threadIndex);
     void ExportToJson(rapidjson::Value &v, rapidjson::Document::AllocatorType& allocator);
     void ImportFromJson(rapidjson::Value &v, GameEngine *Game, Node *parent, String &nodeNamePrefix);
-    void setOgreNode(SceneNode *node);
+    static void TransformCallback(const NewtonBody* body, const dFloat* matrix, int threadIndex);
     void setNewtonBody(NewtonBody *body);
     const NewtonBody *getNewtonBody(void) const { return Body; }
-    const SceneNode *getOgreEntity(void) const { return OgreEntity; }
     dMatrix *PrepareNewtonBody(dVector &NewtonBodyLocation, dVector &NewtonBodySize);
-    void DisplaySelectedBox(bool display);
-    const Ogre::Vector3 &getInitialPosition(void) const { return InitialPos; }
-    const Ogre::Vector3 &getRelativePosition(void) const { return OgreEntity->getPosition(); }
-    const Ogre::Vector3 &getAbsolutePosition(void) const { return OgreEntity->_getDerivedPosition(); }
-    void setInitialPosition(const Ogre::Vector3 &NewPosition) { InitialPos = NewPosition; }
-    void setRelativePosition(const Ogre::Vector3 &NewPosition) { OgreEntity->setPosition(NewPosition); }
-    void setAbsolutePosition(const Ogre::Vector3 &NewPosition) { OgreEntity->_setDerivedPosition(NewPosition); }
-    const Ogre::Quaternion &getInitialOrientation(void) const { return InitialOrientation; }
-    const Ogre::Quaternion &getRelativeOrientation(void) const { return OgreEntity->getOrientation(); }
-    const Ogre::Quaternion &getAbsoluteOrientation(void) const { return OgreEntity->_getDerivedOrientation(); }
-    void setInitialOrientation(const Ogre::Quaternion &NewOrient) { InitialOrientation = NewOrient; }
-    void setRelativeOrientation(const Ogre::Quaternion &NewOrient) { OgreEntity->setOrientation(NewOrient); }
-    void setAbsoluteOrientation(const Ogre::Quaternion &NewOrient) { OgreEntity->_setDerivedOrientation(NewOrient); }
-    const Ogre::Vector3 &getInitialScale(void) const { return InitialScale; }
-    const Ogre::Vector3 &getRelativeScale(void) const { return OgreEntity->getScale(); }
-    const Ogre::Vector3 &getAbsoluteScale(void) const { return OgreEntity->_getDerivedScale(); }
-    void setInitialScale(const Ogre::Vector3 &NewScale) { InitialScale = NewScale; }
-    void setRelativeScale(const Ogre::Vector3 &NewScale) { OgreEntity->setScale(NewScale); }
-    const Ogre::String &getName(void) const { return OgreEntity->getName(); }
-    void Move(float x, float y, float z);
-    void Move(Vector3 &);
-    void Rotate(float x, float y, float z);
-    void Scale(float x, float y, float z);
-    void Scale(Vector3 &);
+    virtual void CreateNewtonBody(NewtonWorld *m_world) = 0;
     void getVelocity(dFloat *Velocity) { NewtonBodyGetVelocity(Body, Velocity); }
-    enum BallGameEntityType getType(void) { return type; }
-    GroupEntity *getGroup(void) { return Group; }
-    void ResetToInitial(void)
-    {
-    	setRelativeScale(InitialScale);
-    	setAbsolutePosition(InitialPos);
-    	setAbsoluteOrientation(InitialOrientation);
-    }
 
 	protected :
 
-    enum BallGameEntityType type;
 	//mutable dMatrix m_matrix;			// interpolated matrix
 	dVector m_curPosition;				// position one physics simulation step in the future
 	dVector m_nextPosition;             // position at the current physics simulation step
 	dQuaternion m_curRotation;          // rotation one physics simulation step in the future
 	dQuaternion m_nextRotation;         // rotation at the current physics simulation step
-	SceneNode *OgreEntity;
 	NewtonBody *Body;
-	GroupEntity *Group;
-	//We need to have initial pos, scale and orientation appart from ogre's one because we can edit level during physic move, so export level with ogre's one can be impossible !
-	Ogre::Vector3 InitialPos;
-	Ogre::Vector3 InitialScale;
-	Ogre::Quaternion InitialOrientation;
 
     void SetMatrixUsafe(const dQuaternion& rotation, const dVector& position);
-
-	friend class GroupEntity;
 };
 
 class BallEntity : public Entity
@@ -193,6 +212,9 @@ class CaseEntity : public Entity
 	void DisplaySelectedMove(void *step, CEGUI::Editbox *, CEGUI::Editbox *, CEGUI::Editbox *);
 	void UpdateSelectedMove(void *step, const Vector3 &GoalPos, float TSpeed, const Quaternion &GoalAngle, float RSpeed, unsigned64 WaitTime);
 	void DeletedMove(void *step);
+	inline void setRefMove(GroupEntity *Grp);
+	GroupEntity *getRefMove(void) { return RefMove; }
+	void ComputeMove(void);
 
 	protected :
 
@@ -202,9 +224,13 @@ class CaseEntity : public Entity
 
 	struct MovementStep
 	{
-		Vector3 Position;
+		//Relative members are present because we must have a reference when we move Group
+		Vector3 RelativePosition;
+		Quaternion RelativeOrientation;
+		//Absolute members are present because when computing the move, relative move depend of group orientation and so move can be inverted !
+		Vector3 AbsolutePosition;
+		Quaternion AbsoluteOrientation;
 		float TranslateSpeed;
-		Quaternion Orientation;
 		float RotateSpeed;
 		unsigned64 waittime;
 		MovementStep()
@@ -217,6 +243,7 @@ class CaseEntity : public Entity
 	struct Movement
 	{
 		bool is_launched_by_collide;
+		bool is_computed;
 		std::list<struct MovementStep*> Moves;
 		struct MovementStep *actual;
 		unsigned64 foreignedtime;
@@ -225,6 +252,7 @@ class CaseEntity : public Entity
 			actual = NULL;
 			is_launched_by_collide = false;
 			foreignedtime = 0;
+			is_computed = false;
 		}
 		~Movement()
 		{
@@ -240,37 +268,48 @@ class CaseEntity : public Entity
 	};
 
 	struct Movement *MovementToDo;
+	GroupEntity *RefMove;
 
 	float force_to_apply;
 	dVector *force_direction;
 };
 
-class GroupEntity
+class GroupEntity : public BaseEntity
 {
 	public :
 
 	GroupEntity(String &name, Ogre::SceneManager* mSceneMgr);
-	GroupEntity(){ OgreEntity = NULL; computed = false; equilibrated = false; };
-	~GroupEntity(){};
+	GroupEntity(){ type = Group; computed = false; equilibrated = false; isRefMove = false; };
+    void CreateNewtonBody(NewtonWorld *m_world);
 	void Finalize(void);
-    void ExportToJson(rapidjson::Value &v, rapidjson::Document::AllocatorType& allocator);
-    void ImportFromJson(rapidjson::Value &v, Node *parent, String &nodeNamePrefix);
-	void AddChild(Entity* child);
-	bool DelChild(Entity* child);
+	void AddChild(BaseEntity* child);
+	bool DelChild(BaseEntity* child);
+	bool HasChild(BaseEntity* child);
+	bool getisRefMove(void) { return isRefMove; }
+	void setisRefMove(bool ref) { isRefMove = ref; }
+	const AxisAlignedBox &getWorldAABB(void) const;
+	void computeWorldAABB(void);
+	void setForceRecomputeChilds(bool force_compute = false);
 	void ComputeChilds(void);
 	void ComputeAndEquilibrateChilds(void);
-	void FillListWithChilds(std::list<Entity*> &list);
-    void Move(float x, float y, float z);
-    void Rotate(float x, float y, float z);
+	void EquilibrateAABBAroundOrigin(void);
+	void FillListWithChilds(std::list<BaseEntity*> &list);
     void Scale(float x, float y, float z);
-    const Ogre::String &getName(void) const { return OgreEntity->getName(); }
+    void DisplayChilds(void);
+    virtual void DisplaySelectedBox(bool display);
+    virtual void ResetToInitial(void);
+    virtual void copyOgreToInitial(void);
+    virtual void ResetToInitial(bool with_childs);
+    virtual void copyOgreToInitial(bool with_childs);
 
 	private :
 
-	SceneNode *OgreEntity;
-	std::list<Entity*> childs;
+    Ogre::AxisAlignedBox AABB;
+
+	std::list<BaseEntity*> childs;
 	bool computed;
 	bool equilibrated;
+	bool isRefMove;
 };
 
 }

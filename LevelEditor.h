@@ -32,10 +32,10 @@ class LevelEditor : public GameEngine
 	{
 	public :
 
-    	EntityType(){ InitialMass = 0.0; Type= Case; }
+    	EntityType(){ InitialMass = 0.0; Type= Entity::Types::Case; }
     	~EntityType(){}
 		String Name;
-		enum BallGameEntityType Type;
+		enum Entity::Types Type;
 		String MeshName;
 		Vector3 InitialPos;
 		Vector3 InitialScale;
@@ -57,6 +57,7 @@ class LevelEditor : public GameEngine
     void ChangeLevel(void);
 
     String Level;
+    bool is_new_level;
     void SetLevel(String &level_name, String &levelFilename);
 
     //Place New Element
@@ -101,8 +102,10 @@ class LevelEditor : public GameEngine
     void RotateEntities(float x, float y, float z);
     void ScaleEntities(float x, float y, float z);
     void MultiSelectionSetEmpty(void);
-    bool ManageMultiSelectionSet(Entity *entity);
-    std::list<class Entity*> UnderEditEntites;
+    bool ManageMultiSelectionSet(BaseEntity *entity);
+    void FillMultiselectionSetWithGroup(GroupEntity *Grp);
+    inline void ReSetUnderEditEntities(void);
+    std::list<class BaseEntity*> UnderEditEntites;
     //Edit Ball
     void EditBall(BallEntity *Entity);
     BallEntity *UnderEditBall;
@@ -152,7 +155,11 @@ class LevelEditor : public GameEngine
     void createViewports(void);
 
     //Mouse picking
-	Entity *LastHighligted;
+	Entity *LastHighlighted;
+	GroupEntity *LastHighlightedGroup;
+	void AddGroupToBeEquilibrated(GroupEntity *Grp);
+	std::list<GroupEntity*> GroupsToBeEquilibrated;
+	std::list<GroupEntity*> GroupsToEquilibrate;
 
 	Ogre::Camera* mThumbnailCamera;
 	Ogre::Camera* mImportLevelCamera;
@@ -324,10 +331,12 @@ class LevelEditor : public GameEngine
     /////////////////// RapidJson ////////////////////
 
     void ExportLevelIntoJson(String &export_str);
+    bool ExportGroupIntoJson(GroupEntity *G, rapidjson::Value &JGroup, rapidjson::Document::AllocatorType& allocator, std::list<GroupEntity*> &GroupsAlreadyExported);
 
     //////////////////////////////////////////////////
 
     bool frameEnded(const Ogre::FrameEvent& fe);
+    bool frameStarted(const Ogre::FrameEvent& fe);
 };
 
 }

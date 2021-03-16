@@ -84,7 +84,8 @@ class GameEngine : public BaseApplication
 	GameEngine();
     ~GameEngine();
 
-    GroupEntity *findGroup(const char * const name);
+    inline GroupEntity *findGroup(const char * const name, bool is_for_import = false);
+    virtual GroupEntity *findGroup(String &name, bool is_for_import = false);
     void AddGroup(GroupEntity *Entity);
 
 	protected :
@@ -95,7 +96,8 @@ class GameEngine : public BaseApplication
     void RemoveCase(CaseEntity *Entity, std::list<CaseEntity*>::iterator *iter = NULL);
     void DeleteBall(BallEntity *Entity, std::list<BallEntity*>::iterator *iter = NULL);
     void RemoveBall(BallEntity *Entity, std::list<BallEntity*>::iterator *iter = NULL);
-    void DeleteGroup(GroupEntity *Entity, std::list<GroupEntity*>::iterator *iter = NULL);
+    void DeleteGroup(GroupEntity *Entity);
+    inline GroupEntity *DeleteGroup(GroupEntity *Entity, std::list<GroupEntity*>::iterator *iter);
     void RemoveGroup(GroupEntity *Entity, std::list<GroupEntity*>::iterator *iter = NULL);
     void EmptyLevel(void);//Clean all Engine, Newton and Ogre entities to start with new level.
     void ImportLevelFromJson(Node *parent, String &nodeNamePrefix, bool isForImport = false);
@@ -176,6 +178,7 @@ class GameEngine : public BaseApplication
 	std::list<CaseEntity*> CasesUnderCollide;
 	std::list<CaseEntity*> CasesToBeMoved;
 	void AddCaseToBeMoved(CaseEntity *ToAdd);
+	void BuildRefMove(CaseEntity *ToAdd);
 	void DelCaseToBeMoved(CaseEntity *ToDel);
 
     void CheckforCollides(void);

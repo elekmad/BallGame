@@ -168,7 +168,11 @@ LevelEditor::LevelEditor() :
 	mRenderer = NULL;
 
 	mWindow = NULL;
-	LastHighligted = NULL;
+	ThumbnailWindow = NULL;
+	ImportLevelWindow = NULL;
+	MainLayout = NULL;
+	LastHighlighted = NULL;
+	LastHighlightedGroup = NULL;
 	UnderEditCase = NULL;
 	ForcesArrows = NULL;
 	UnderEditBall = NULL;
@@ -177,23 +181,69 @@ LevelEditor::LevelEditor() :
 	ToBePlacedEntityType = NULL;
 	ToBeDeletedEntity = NULL;
 	ogreThumbnailNode = NULL;
+	LoadStatePushB = NULL;
+	ChooseStateToLoadB = NULL;
+	DelStatePushB = NULL;
+	SaveStatePushB = NULL;
+	StatesBanner = NULL;
 	LevelEditMode = Place;
 	EntityEditMode = Simple;
 	EntityEditAction = Move;
 	LevelNameBanner = NULL;
+	ImportLevelPushB = NULL;
+	ImportLevelActivateInterfacePushB = NULL;
+	ChooseLevelToImportComboB = NULL;
+	EditingModeTitleBanner = NULL;
 	MoveElementB = NULL;
+	ScaleElementB = NULL;
+	RotateElementB = NULL;
+	EditElementB = NULL;
+	PlaceNewElementB = NULL;
+	DeleteElementB = NULL;
+	GroupElementsB = NULL;
+	CaractsEditElementB = NULL;
+	SimpleEditElementB = NULL;
+	MoveEditElementB = NULL;
+	AddElementTitleBanner = NULL;
+	ChooseTypeOfElementToAddB = NULL;
+	ChooseMoveComboB = NULL;
+	AddMoveStepPushB = NULL;
+	DelMoveStepPushB = NULL;
+	MoveRSpeedEditB = NULL;
+	MoveRSpeedTitleB = NULL;
+	MoveTSpeedEditB = NULL;
+	MoveTSpeedTitleB = NULL;
 	MoveWaitTimeEditB = NULL;
 	MoveWaitTimeTitleB = NULL;
+	IsMoveTriggeredToggleB = NULL;
+	ApplyToMoveStepPushB = NULL;
 	UnderEditBall = NULL;
 	UnderEditBallMass = NAN;
+	BallMassValueEditB = NULL;
+	ApplyMassChangesToBallPushB = NULL;
+	ApplyForceChangesToCasePushB = NULL;
+	NormalizeCaseForceDirectionPushB = NULL;
+	UnderEditCaseForce = NAN;
+	CaseHasForce = NULL;
 	CaseForceValueEditB = NULL;
 	CaseHasForceToggleB = NULL;
 	CaseHasForceDirectionToggleB = NULL;
+	CaseForceDirectionXValueEditB = NULL;
+	CaseForceDirectionYValueEditB = NULL;
+	CaseForceDirectionZValueEditB = NULL;
 	StopPhysicPushB = NULL;
+	StatesModePushB = NULL;
+	EditModePushB = NULL;
+	ChooseLevelComboB = NULL;
+	NewLevelEditB = NULL;
+	NewLevelCreateB = NULL;
+	SaveLevelPushB = NULL;
+	QuitPushB = NULL;
 	MultiSelectionMode = false;
 	mode = Running;
 	MouseOverButton = false;
-	// create the newton world
+	force_directed = false;
+	is_new_level = false;
 }
 
 void LevelEditor::chooseSceneManager(void)
@@ -323,7 +373,7 @@ void LevelEditor::LoadBallGameEntityTypes(void)
 
 		EntityType *type = new EntityType;
 		type->Name = name;
-		type->Type = strcmp(in["Type"].GetString(), "Case") == 0 ? Case : Ball;
+		type->Type = strcmp(in["Type"].GetString(), "Case") == 0 ? Entity::Types::Case : Entity::Types::Ball;
 		type->MeshName = in["Mesh"].GetString();
 		type->InitialPos.x = in["InitialPosX"].GetFloat();
 		type->InitialPos.y = in["InitialPosY"].GetFloat();
@@ -475,14 +525,20 @@ void LevelEditor::SwitchEditMode(void)
 	    CaractsEditElementB->setVisible(false);
 	    SimpleEditElementB->setVisible(false);
 		SetMoveNewElement();
+		SaveLevelPushB->setEnabled(true);
 	}
 	else
 	{
 		LOG << "Running Mode" << std::endl;
-		if(LastHighligted != NULL)
+		if(LastHighlighted != NULL)
 		{
-			LastHighligted->DisplaySelectedBox(false);
-			LastHighligted = NULL;
+			LastHighlighted->DisplaySelectedBox(false);
+			LastHighlighted = NULL;
+			if(LastHighlightedGroup != NULL)
+			{
+				LastHighlightedGroup->DisplaySelectedBox(false);
+				LastHighlightedGroup = NULL;
+			}
 		}
 		LastPlacedEntity = NULL;
 		UnprepareNewElement();
@@ -494,6 +550,7 @@ void LevelEditor::SwitchEditMode(void)
 		ButtonsSetVisible(EditButtons, false);
 		ButtonsSetVisible(EditCaseButtons, false);
 		ButtonsSetVisible(EditBallButtons, false);
+		ogreThumbnailNode->removeAndDestroyAllChildren();
 	}
 }
 
@@ -512,18 +569,18 @@ void LevelEditor::BuildImportLevelWindowContent(Node *parent)
 	std::list<CaseEntity*>::iterator Citer(ImportLevelCases.begin());
 	while(Citer != ImportLevelCases.end())
 	{
-		CaseEntity *Grp = *Citer;
-		if(Grp != NULL)
-			delete Grp;
+		CaseEntity *CaseE = *Citer;
+		if(CaseE != NULL)
+			delete CaseE;
 		Citer = ImportLevelCases.erase(Citer);
 	}
 
 	std::list<BallEntity*>::iterator Biter(ImportLevelBalls.begin());
 	while(Biter != ImportLevelBalls.end())
 	{
-		BallEntity *Grp = *Biter;
-		if(Grp != NULL)
-			delete Grp;
+		BallEntity *BallE = *Biter;
+		if(BallE != NULL)
+			delete BallE;
 		Biter = ImportLevelBalls.erase(Biter);
 	}
 
@@ -583,7 +640,10 @@ bool LevelEditor::ImportLevelPushBCallback(const CEGUI::EventArgs &e)
 	GrpName += ":ImportGroup";
 	GroupEntity *ImportGroup = new GroupEntity(GrpName, mSceneMgr);
 
-	std::list<CaseEntity*> selected;
+	LOG << "Create " << GrpName << " Group for the Import" << std::endl;
+
+	AddGroup(ImportGroup);
+
 	std::list<CaseEntity*>::iterator Citer(ImportLevelCases.begin());
 	while(Citer != ImportLevelCases.end())
 	{
@@ -591,22 +651,29 @@ bool LevelEditor::ImportLevelPushBCallback(const CEGUI::EventArgs &e)
 		if(Case != NULL)
 		{
 //			LOG << "Import of Case " << Case << " '" << Case->getName() << "'" << std::endl;
+			LOG << "Case " << Case->getName() << " Pos " << Case->getAbsolutePosition() << " Ori " << Case->getAbsoluteOrientation() << std::endl;
+			GroupEntity *refMove = Case->getRefMove();
 			Case->CreateNewtonBody(m_world);
 			AddCase(Case);
-			ImportGroup->AddChild(Case);
-			selected.push_back(Case);
+			if(refMove == NULL)
+				ImportGroup->AddChild(Case);
+			else
+			{
+				AddGroup(refMove);
+				ImportGroup->AddChild(refMove);
+				ImportLevelGroups.remove(refMove);
+				AddCaseToBeMoved(Case);
+			}
+			LOG << "Case " << Case->getName() << " Pos " << Case->getAbsolutePosition() << " Ori " << Case->getAbsoluteOrientation() << std::endl;
 		}
 		Citer = ImportLevelCases.erase(Citer);
 	}
-
-	ImportGroup->ComputeAndEquilibrateChilds();
-	AddGroup(ImportGroup);
 
 	std::list<GroupEntity*>::iterator Giter(ImportLevelGroups.begin());
 	while(Giter != ImportLevelGroups.end())
 	{
 		GroupEntity *Group = *Giter;
-		if(Group != NULL)
+		if(Group != NULL && Group->getisRefMove() == false)
 		{
 			Group->Finalize();
 			delete Group;
@@ -629,15 +696,20 @@ bool LevelEditor::ImportLevelPushBCallback(const CEGUI::EventArgs &e)
 	UnactivateLevelImportInterface();
 	MouseOverButton = false;
 	EditElementSetupButtons();
-	std::list<CaseEntity*>::iterator Siter(selected.begin());
-	while(Siter != selected.end())
-	{
-		CaseEntity *Case = *Siter;
-		if(Case != NULL)
-			ManageMultiSelectionSet((Entity*)Case);
-		Siter = selected.erase(Siter);
-	}
+
+	LastHighlightedGroup = ImportGroup;
+	ImportGroup->ComputeAndEquilibrateChilds();
+	AddGroupToBeEquilibrated(ImportGroup);
+
+	FillMultiselectionSetWithGroup(LastHighlightedGroup);
+	LOG << "Import Finished !!!!!" << std::endl;
 	return true;
+}
+
+void LevelEditor::AddGroupToBeEquilibrated(GroupEntity *Grp)
+{
+	Grp->setForceRecomputeChilds();
+	GroupsToBeEquilibrated.push_back(Grp);//AABB is only up to date after the SceneManager has called _update.
 }
 
 bool LevelEditor::ChooseLevelToImportComboBCallback(const CEGUI::EventArgs &e)
@@ -694,33 +766,39 @@ void LevelEditor::DeleteElement(void)
 	if(ToBeDeletedEntity != NULL)
 	{
 		LOG << "Delete Entity : " << ToBeDeletedEntity->getName() << std::endl;
-		if(ToBeDeletedEntity == LastHighligted)
-			LastHighligted = NULL;
+		if(ToBeDeletedEntity == LastHighlighted)
+		{
+			LastHighlighted = NULL;
+			LastHighlightedGroup = NULL;
+		}
 		switch(ToBeDeletedEntity->getType())
 		{
-		case Ball :
+		case Entity::Types::Ball :
 			DeleteBall((BallEntity*)ToBeDeletedEntity);
 			break;
-		case Case :
+		case Entity::Types::Case :
 			DeleteCase((CaseEntity*)ToBeDeletedEntity);
 			break;
 		}
 		ToBeDeletedEntity = NULL;
 	}
-	std::list<Entity*>::iterator delIter(UnderEditEntites.begin());
+	std::list<BaseEntity*>::iterator delIter(UnderEditEntites.begin());
 	while(delIter != UnderEditEntites.end())
 	{
-		Entity *Entity = *delIter;
+		BaseEntity *Entity = *delIter;
 		if(Entity != NULL)
 		{
-			if(Entity == LastHighligted)
-				LastHighligted = NULL;
+			if(Entity == LastHighlighted)
+			{
+				LastHighlighted = NULL;
+				LastHighlightedGroup = NULL;
+			}
 			switch(Entity->getType())
 			{
-			case Ball :
+			case Entity::Types::Ball :
 				DeleteBall((BallEntity*)Entity);
 				break;
-			case Case :
+			case Entity::Types::Case :
 				DeleteCase((CaseEntity*)Entity);
 				break;
 			}
@@ -734,6 +812,7 @@ void LevelEditor::DeleteElement(void)
 
 bool LevelEditor::DeleteElementBCallback(const CEGUI::EventArgs &e)
 {
+	ButtonsSetMutedState(EditButtons, true);
 	switch(LevelEditMode)
 	{
 	case Edit :
@@ -757,11 +836,16 @@ bool LevelEditor::DeleteElementBCallback(const CEGUI::EventArgs &e)
 	RotateElementB->setVisible(false);
 	ScaleElementB->setVisible(false);
 	GroupElementsB->setVisible(false);
+	ChooseTypeOfElementToAddB->setEnabled(false);
+	ThumbnailWindow->setEnabled(false);
+	ButtonsSetMutedState(EditButtons, false);
+
 	return true;
 }
 
 bool LevelEditor::PlaceNewElementBCallback(const CEGUI::EventArgs &e)
 {
+	ButtonsSetMutedState(EditButtons, true);
 	DeleteElementB->setDisabled(false);
 	PlaceNewElementB->setDisabled(true);
 	EditElementB->setDisabled(false);
@@ -772,8 +856,11 @@ bool LevelEditor::PlaceNewElementBCallback(const CEGUI::EventArgs &e)
 	RotateElementB->setVisible(true);
 	ScaleElementB->setVisible(true);
 	GroupElementsB->setVisible(false);
+	ChooseTypeOfElementToAddB->setEnabled(true);
+	ThumbnailWindow->setEnabled(true);
 	UnprepareNewElement();
 	SetMoveNewElement();
+	ButtonsSetMutedState(EditButtons, false);
 	return true;
 }
 
@@ -785,6 +872,7 @@ bool LevelEditor::EditElementBCallback(const CEGUI::EventArgs &e)
 
 void LevelEditor::EditElementSetupButtons(void)
 {
+	ButtonsSetMutedState(EditButtons, true);
 	DeleteElementB->setDisabled(false);
 	PlaceNewElementB->setDisabled(false);
 	EditElementB->setDisabled(true);
@@ -795,11 +883,15 @@ void LevelEditor::EditElementSetupButtons(void)
 	RotateElementB->setVisible(true);
 	ScaleElementB->setVisible(true);
 	GroupElementsB->setVisible(false);
+	ChooseTypeOfElementToAddB->setEnabled(false);
+	ThumbnailWindow->setEnabled(false);
 	SetMoveElement();
+	ButtonsSetMutedState(EditButtons, false);
 }
 
 void LevelEditor::SetMoveElement(void)
 {
+	ButtonsSetMutedState(EditButtons, true);
 	switch(LevelEditMode)
 	{
 	case Place :
@@ -822,10 +914,12 @@ void LevelEditor::SetMoveElement(void)
 	MoveElementB->setDisabled(true);
 	RotateElementB->setDisabled(false);
 	ScaleElementB->setDisabled(false);
+	ButtonsSetMutedState(EditButtons, false);
 }
 
 void LevelEditor::SetMoveNewElement(void)
 {
+	ButtonsSetMutedState(EditButtons, true);
 	switch(LevelEditMode)
 	{
 	case Edit :
@@ -849,33 +943,53 @@ void LevelEditor::SetMoveNewElement(void)
 	MoveElementB->setDisabled(true);
 	RotateElementB->setDisabled(false);
 	ScaleElementB->setDisabled(false);
+	ButtonsSetMutedState(EditButtons, false);
+}
+
+inline void LevelEditor::ReSetUnderEditEntities(void)
+{
+	EditBall(UnderEditBall);
+	EditCase(UnderEditCase);
+	MultiSelectionSetEmpty();
+	BaseEntity *UnderEdit = (BaseEntity*)UnderEditBall;
+	if(UnderEdit == NULL)
+		UnderEdit = (BaseEntity*)UnderEditCase;
+	if(UnderEdit != NULL)
+	{
+		GroupEntity *Grp = UnderEdit->getGroup();
+		if(UnderEdit->getType() == BaseEntity::Types::Case && ((CaseEntity*)UnderEdit)->getRefMove() != NULL)
+			Grp = Grp->getGroup();
+		if(Grp != NULL)
+			FillMultiselectionSetWithGroup(Grp);
+	}
 }
 
 bool LevelEditor::SimpleEditElementBCallback(const CEGUI::EventArgs &e)
 {
+	ButtonsSetMutedState(EditButtons, true);
 	EntityEditMode = Simple;
 	EntityEditAction = Move;
-	EditBall(UnderEditBall);
-	EditCase(UnderEditCase);
+	ReSetUnderEditEntities();
 	CaractsEditElementB->setEnabled(true);
 	SimpleEditElementB->setEnabled(false);
 	MoveEditElementB->setEnabled(true);
 
 	MoveElementB->setVisible(true);
-	MoveElementB->setEnabled(true);
+	MoveElementB->setEnabled(false);
 	RotateElementB->setVisible(true);
-	RotateElementB->setEnabled(false);
+	RotateElementB->setEnabled(true);
 	ScaleElementB->setVisible(true);
-	ScaleElementB->setEnabled(false);
+	ScaleElementB->setEnabled(true);
+	ButtonsSetMutedState(EditButtons, false);
 	return true;
 }
 
 bool LevelEditor::MoveEditElementBCallback(const CEGUI::EventArgs &e)
 {
+	ButtonsSetMutedState(EditButtons, true);
 	EntityEditMode = Moves;
 	EntityEditAction = Move;
-	EditBall(UnderEditBall);
-	EditCase(UnderEditCase);
+	ReSetUnderEditEntities();
 	CaractsEditElementB->setEnabled(true);
 	SimpleEditElementB->setEnabled(true);
 	MoveEditElementB->setEnabled(false);
@@ -886,14 +1000,15 @@ bool LevelEditor::MoveEditElementBCallback(const CEGUI::EventArgs &e)
 	RotateElementB->setEnabled(true);
 	ScaleElementB->setVisible(true);
 	ScaleElementB->setEnabled(true);
+	ButtonsSetMutedState(EditButtons, false);
 	return true;
 }
 
 bool LevelEditor::CaractsEditElementBCallback(const CEGUI::EventArgs &e)
 {
+	ButtonsSetMutedState(EditButtons, true);
 	EntityEditMode = Caracts;
-	EditBall(UnderEditBall);
-	EditCase(UnderEditCase);
+	ReSetUnderEditEntities();
 	CaractsEditElementB->setEnabled(false);
 	SimpleEditElementB->setEnabled(true);
 	MoveEditElementB->setEnabled(true);
@@ -901,6 +1016,7 @@ bool LevelEditor::CaractsEditElementBCallback(const CEGUI::EventArgs &e)
 	MoveElementB->setVisible(false);
 	RotateElementB->setVisible(false);
 	ScaleElementB->setVisible(false);
+	ButtonsSetMutedState(EditButtons, false);
 	return true;
 }
 
@@ -961,7 +1077,7 @@ inline void LevelEditor::UnprepareDeleteElement(void)
 {
 	if(ToBeDeletedEntity != NULL)
 	{
-		if(ToBeDeletedEntity != LastHighligted)
+		if(ToBeDeletedEntity != LastHighlighted)
 			ToBeDeletedEntity->DisplaySelectedBox(false);
 		ToBeDeletedEntity = NULL;
 	}
@@ -993,10 +1109,10 @@ void LevelEditor::PrepareNewElement(void)
 	LOG << "Placing new element ?" << std::endl;
 	switch(ToBePlacedEntityType->Type)
 	{
-	case Case :
+	case Entity::Types::Case :
 		ToBePlacedEntity = new CaseEntity();
 		break;
-	case Ball :
+	case Entity::Types::Ball :
 		ToBePlacedEntity = new BallEntity();
 		((BallEntity*)ToBePlacedEntity)->setInitialMass(ToBePlacedEntityType->InitialMass);
 		break;
@@ -1024,6 +1140,8 @@ void LevelEditor::PrepareNewElement(void)
 	LOG << "New Entity prepared : " << Name << std::endl;
 	ogreNode = mSceneMgr->getRootSceneNode()->createChildSceneNode(Name, Pos);
 	ogreNode->attachObject(ogreEntity);
+
+	((Ogre::Entity*)ogreNode->getAttachedObject(0))->getUserObjectBindings().setUserAny(Ogre::Any(ToBePlacedEntity));
 	ToBePlacedEntity->setOgreNode(ogreNode);
 	ToBePlacedEntity->DisplaySelectedBox(true);
 }
@@ -1038,21 +1156,40 @@ void LevelEditor::PlaceUnderEditElement(void)
 
 	if(UnderEditEntites.empty() == false)
 	{
-		std::list<Entity*>::iterator iter(UnderEditEntites.begin());
+		std::list<GroupEntity*> GroupsToBeMoved;
+		std::list<BaseEntity*>::iterator iter(UnderEditEntites.begin());
 		while(iter != UnderEditEntites.end())
 		{
-			Entity *Entity = *(iter++);
+			GroupEntity *Grp;
+			BaseEntity *Entity = *(iter++);
 			if(Entity == NULL)
 				continue;
-			switch(Entity->getType())
+			Entity->copyOgreToInitial();
+			Grp = Entity->getGroup();
+			if(Grp != NULL)
 			{
-			case Case :
-				((CaseEntity*)Entity)->CreateNewtonBody(m_world);
-				break;
-			case Ball :
-				((BallEntity*)Entity)->CreateNewtonBody(m_world);
-				break;
+				bool found = false;
+				std::list<GroupEntity*>::iterator Giter(GroupsToBeMoved.begin());
+				while(Giter != GroupsToBeMoved.end())
+				{
+					GroupEntity *G = *(Giter++);
+					if(G == Grp)
+					{
+						found = true;
+						break;
+					}
+				}
+				if(found == false)
+					GroupsToBeMoved.push_back(Grp);
 			}
+			Entity->CreateNewtonBody(m_world);
+		}
+		std::list<GroupEntity*>::iterator iterG(GroupsToBeMoved.begin());
+		while(iterG != GroupsToBeMoved.end())
+		{
+			GroupEntity *Grp = *(iterG++);
+			if(Grp != NULL)
+				Grp->copyOgreToInitial();
 		}
 	}
 }
@@ -1074,11 +1211,11 @@ void LevelEditor::PlaceElement(Entity *ToBePlaced)
 
 	switch(ToBePlaced->getType())
 	{
-	case Case :
+	case Entity::Types::Case :
 		((CaseEntity*)ToBePlaced)->CreateNewtonBody(m_world);
 		AddCase((CaseEntity*)ToBePlaced);
 		break;
-	case Ball :
+	case Entity::Types::Ball :
 		((BallEntity*)ToBePlaced)->CreateNewtonBody(m_world);
 		AddBall((BallEntity*)ToBePlaced);
 		break;
@@ -1097,15 +1234,24 @@ bool LevelEditor::GroupElementsBCallback(const CEGUI::EventArgs &e)
 	}
 	else
 		LOG << "Toggle is not selected" << std::endl;
-	std:list<Entity*>::iterator iter(UnderEditEntites.begin());
+	std:list<BaseEntity*>::iterator iter(UnderEditEntites.begin());
 	while(iter != UnderEditEntites.end())
 	{
-		Entity *Entity = *(iter++);
+		BaseEntity *Entity = *(iter++);
 		GroupEntity *old;
 		if(Entity == NULL)
 			continue;
 		if((old = Entity->getGroup()) != NULL)
 		{
+			if(Entity->getType() == BaseEntity::Types::Case)
+			{
+				if(((CaseEntity*)Entity)->getRefMove() == old)
+				{
+					if(Grp != NULL)
+						Grp->AddChild(old);
+					continue;
+				}
+			}
 			bool tobedel = old->DelChild(Entity);
 			if(tobedel)
 				DeleteGroup(old);
@@ -1327,6 +1473,7 @@ void LevelEditor::SetupGUI(void)
     SaveLevelPushB = CreateNewGUIComponent<CEGUI::PushButton>("OgreTray/Button");
     SaveLevelPushB->setText("Save");
     SaveLevelPushB->setSize(CEGUI::USize(CEGUI::UDim(0, 150), CEGUI::UDim(0, 30)));
+    SaveLevelPushB->setEnabled(false);
 
     MainLayout->addChild(SaveLevelPushB);
     ButtonSetAddButton(MainMenuButtons, SaveLevelPushB);
@@ -1418,9 +1565,12 @@ void LevelEditor::SetupGUI(void)
     SetWindowsPosNearToOther(SaveStatePushB, DelStatePushB, 0, 1);
 
     //Now LevelNameBanner exist, we can call SetLevel !
-    String levelname(actuallevel->getText().c_str());
-    String *levelfilename = (String*)actuallevel->getUserData();
-    SetLevel(levelname, *levelfilename);
+    if(actuallevel != NULL)
+    {
+		String levelname(actuallevel->getText().c_str());
+		String *levelfilename = (String*)actuallevel->getUserData();
+		SetLevel(levelname, *levelfilename);
+    }
 
 
     //Edit GUI
@@ -1702,7 +1852,7 @@ void LevelEditor::SetupGUI(void)
     SetWindowsPosNearToOther(ScaleElementB, SimpleEditElementB, 0, 1);
     SetWindowsPosNearToOther(RotateElementB, ScaleElementB, -1, 0);
     SetWindowsPosNearToOther(MoveElementB, RotateElementB, -1, 0);
-    SetWindowsPosNearToOther(GroupElementsB, ScaleElementB, 0, 1);
+    SetWindowsPosNearToOther(GroupElementsB, DeleteElementB, -1, 2);
 
 
     /// Edit Case GUI
@@ -2068,13 +2218,23 @@ void LevelEditor::AddMoveStep(void)
 {
 	if(UnderEditCase == NULL)
 		return;
-	Vector3 GoalPos = UnderEditCase->getAbsolutePosition();
-	Quaternion GoalAngle = UnderEditCase->getAbsoluteOrientation();
+
+	BuildRefMove(UnderEditCase);
+	Vector3 GoalPos = UnderEditCase->getRelativePosition();
+	Quaternion GoalAngle = UnderEditCase->getRelativeOrientation();
+	GroupEntity *RefMove = UnderEditCase->getRefMove();
+	LOG << "RefMove Pos " << RefMove->getAbsolutePosition() << ", Angle " << RefMove->getAbsoluteOrientation() << std::endl;
+	LOG << "Add Move step GoalPos " << GoalPos << ", GoalAngle " << GoalAngle << std::endl;
 	float TranslationSpeed = CEGUI::PropertyHelper<float>::fromString(MoveTSpeedEditB->getText());
 	float RotateSpeed = CEGUI::PropertyHelper<float>::fromString(MoveRSpeedEditB->getText());
 	unsigned64 waittime = CEGUI::PropertyHelper<uint64>::fromString(MoveWaitTimeEditB->getText());
 	if(UnderEditCase->CaseToMove() == false)// For the moment no Moves !
-		UnderEditCase->AddMovePoint(UnderEditCase->getInitialPosition(), TranslationSpeed, waittime, UnderEditCase->getInitialOrientation(), RotateSpeed);
+	{
+		UnderEditCase->ResetToInitial();
+		UnderEditCase->AddMovePoint(UnderEditCase->getRelativePosition(), TranslationSpeed, waittime, UnderEditCase->getRelativeOrientation(), RotateSpeed);
+		UnderEditCase->setRelativePosition(GoalPos);
+		UnderEditCase->setRelativeOrientation(GoalAngle);
+	}
 	if(IsMoveTriggeredToggleB->isSelected() == true)
 		UnderEditCase->AddTriggeredMovePoint(GoalPos, TranslationSpeed, waittime, GoalAngle, RotateSpeed);
 	else
@@ -2108,15 +2268,43 @@ void LevelEditor::DelMoveStep(void)
 		DelCaseToBeMoved(UnderEditCase);
 }
 
+bool LevelEditor::frameStarted(const Ogre::FrameEvent& fe)
+{
+	std::list<GroupEntity*>::iterator iter(GroupsToBeEquilibrated.begin());
+	while(iter != GroupsToBeEquilibrated.end())
+	{
+		GroupEntity *G = *iter;
+		if(G != NULL)
+		{
+			LOG << "Pre Frame Computing " << G << std::endl;
+			GroupsToEquilibrate.push_back(G);
+		}
+		iter = GroupsToBeEquilibrated.erase(iter);
+	}
+    return true;
+}
+
 bool LevelEditor::frameEnded(const Ogre::FrameEvent& fe)
 {
 	// Needed for tool tips ? For the moment doesn't work and if uncommented, all buttons places are broke down !
 //	CEGUI::System::getSingleton().getDefaultGUIContext().injectTimePulse( fe.timeSinceLastFrame );
 
-	if(ThumbnailWindow->isVisible() == true && ogreThumbnailNode != NULL)
+	if(ThumbnailWindow->isVisible() == true && ThumbnailWindow->isDisabled() == false && ogreThumbnailNode != NULL)
 		ogreThumbnailNode->roll(Degree(0.01), Node::TS_WORLD);
 
 	GameEngine::frameEnded(fe);
+
+	std::list<GroupEntity*>::iterator iter(GroupsToEquilibrate.begin());
+	while(iter != GroupsToEquilibrate.end())
+	{
+		GroupEntity *G = *iter;
+		if(G != NULL)
+		{
+			LOG << "Post Frame Computing " << G << std::endl;
+			G->ComputeAndEquilibrateChilds();
+		}
+		iter = GroupsToEquilibrate.erase(iter);
+	}
 
     return true;
 }
@@ -2143,36 +2331,50 @@ bool LevelEditor::mouseMoved(const OIS::MouseEvent &arg)
 
 	if(mode == Editing)
 	{
-		if(LastHighligted != NULL)
+		if(LastHighlighted != NULL)
 		{
 			bool HideBoundingBox = true;
 
-			if((UnderEditCase != NULL && UnderEditCase == LastHighligted)
-					|| (UnderEditBall != NULL && UnderEditBall == LastHighligted)
-					|| (ToBePlacedEntity != NULL && ToBePlacedEntity == LastHighligted)
-					|| (ToBeDeletedEntity != NULL && ToBeDeletedEntity == LastHighligted))
+			if((UnderEditCase != NULL && UnderEditCase == LastHighlighted)
+					|| (UnderEditBall != NULL && UnderEditBall == LastHighlighted)
+					|| (ToBePlacedEntity != NULL && ToBePlacedEntity == LastHighlighted)
+					|| (ToBeDeletedEntity != NULL && ToBeDeletedEntity == LastHighlighted))
 				HideBoundingBox = false;
 
 			if(UnderEditEntites.empty() == false)
 			{
-//				LOG << "Multi selection mode" << std::endl;
-				std::list<Entity*>::iterator iter(UnderEditEntites.begin());
+				LOG << "Multi selection mode" << std::endl;
+				std::list<BaseEntity*>::iterator iter(UnderEditEntites.begin());
 				while(iter != UnderEditEntites.end())
 				{
-					Entity *Entity = *(iter++);
-					if(Entity != NULL && Entity == LastHighligted)
+					BaseEntity *Entity = *(iter++);
+					if(Entity != NULL)
 					{
-						HideBoundingBox = false;
-						break;
+						LOG << "Multiselection check Entity " << Entity->getName() << " @" << Entity << std::endl;
+						if(Entity == LastHighlighted)
+						{
+							HideBoundingBox = false;
+							break;
+						}
+						else if(Entity->getType() == BaseEntity::Types::Group)
+						{
+							LOG << "Multiselection check Entity has Group" << std::endl;
+							GroupEntity *Grp = (GroupEntity*)Entity;
+							if(Grp->HasChild(LastHighlighted))
+							{
+								HideBoundingBox = false;
+								break;
+							}
+						}
 					}
 				}
 			}
 			if(HideBoundingBox)
 			{
 //				LOG << "Entity under mouse not selected" << std::endl;
-				LastHighligted->DisplaySelectedBox(false);
+				LastHighlighted->DisplaySelectedBox(false);
 			}
-			LastHighligted = NULL;
+			LastHighlighted = NULL;
 		}
 		RaySceneQuery *mRayScanQuery = mSceneMgr->createRayQuery(Ogre::Ray());
 
@@ -2193,8 +2395,11 @@ bool LevelEditor::mouseMoved(const OIS::MouseEvent &arg)
 				SceneNode *PickedUpNode = itr->movable->getParentSceneNode();
 				if(PickedUpNode != ForcesArrows)
 				{
-					LastHighligted = Ogre::any_cast<Entity*>(((Ogre::Entity*)PickedUpNode->getAttachedObject(0))->getUserObjectBindings().getUserAny());
-					LastHighligted->DisplaySelectedBox(true);
+					LastHighlighted = Ogre::any_cast<Entity*>(((Ogre::Entity*)PickedUpNode->getAttachedObject(0))->getUserObjectBindings().getUserAny());
+					LastHighlighted->DisplaySelectedBox(true);
+					LastHighlightedGroup = LastHighlighted->getGroup();
+					if(LastHighlighted->getType() == BaseEntity::Types::Case && ((CaseEntity*)LastHighlighted)->getRefMove() != NULL)
+						LastHighlightedGroup = LastHighlightedGroup->getGroup();
 				}
 			}
 			itr++;
@@ -2440,6 +2645,8 @@ void LevelEditor::EditCase(CaseEntity *Entity)
 				ButtonsSetVisible(EditMovesButtons, true);
 				ApplyToMoveStepPushB->setEnabled(false);
 				DelMoveStepPushB->setEnabled(false);
+				if(LastHighlightedGroup != NULL)
+					AddMoveStepPushB->setEnabled(false);
 			}
 			else
 				ButtonsSetVisible(EditMovesButtons, false);
@@ -2496,10 +2703,10 @@ void LevelEditor::EditBall(BallEntity *Entity)
 
 void LevelEditor::MultiSelectionSetEmpty(void)
 {
-	std::list<Entity*>::iterator iter(UnderEditEntites.begin());
+	std::list<BaseEntity*>::iterator iter(UnderEditEntites.begin());
 	while(iter != UnderEditEntites.end())
 	{
-		Entity *Entity = *iter;
+		BaseEntity *Entity = *iter;
 		if(Entity == NULL)
 			continue;
 		Entity->DisplaySelectedBox(false);
@@ -2511,13 +2718,18 @@ void LevelEditor::MultiSelectionSetEmpty(void)
 	GroupElementsB->setMutedState(false);
 }
 
-bool LevelEditor::ManageMultiSelectionSet(Entity *entity)
+bool LevelEditor::ManageMultiSelectionSet(BaseEntity *entity)
 {
+	if(entity == NULL)
+	{
+		MultiSelectionSetEmpty();
+		return false;
+	}
 	bool add_it = true;
-	std::list<Entity*>::iterator iter(UnderEditEntites.begin());
+	std::list<BaseEntity*>::iterator iter(UnderEditEntites.begin());
 	while(iter != UnderEditEntites.end())
 	{
-		Entity *got = *iter;
+		BaseEntity *got = *iter;
 		if(got == NULL)
 		{
 			iter++;
@@ -2526,7 +2738,7 @@ bool LevelEditor::ManageMultiSelectionSet(Entity *entity)
 		if(entity == got)
 		{
 			add_it = false;
-			LOG << "Remove Entity " << entity << " from MultiSelection" << std::endl;
+			LOG << "Remove Entity " << entity->getName() << " @" << entity << " from MultiSelection" << std::endl;
 			entity->DisplaySelectedBox(false);
 			UnderEditEntites.erase(iter);
 			break;
@@ -2535,17 +2747,17 @@ bool LevelEditor::ManageMultiSelectionSet(Entity *entity)
 	}
 	if(add_it == true)
 	{
-		LOG << "Add Entity " << entity << " to MultiSelection" << std::endl;
+		LOG << "Add Entity " << entity->getName() << " @" << entity << " to MultiSelection" << std::endl;
 		entity->DisplaySelectedBox(true);
 		UnderEditEntites.push_back(entity);
 	}
 
 	GroupEntity *to_check = NULL;
 	bool group_are_identical = true;
-	std::list<Entity*>::iterator iter2(UnderEditEntites.begin());
+	std::list<BaseEntity*>::iterator iter2(UnderEditEntites.begin());
 	while(iter2 != UnderEditEntites.end())
 	{
-		Entity *CheckEnt = *(iter2++);
+		BaseEntity *CheckEnt = *(iter2++);
 		if(CheckEnt == NULL)
 			continue;
 		if(to_check == NULL)
@@ -2576,6 +2788,24 @@ bool LevelEditor::ManageMultiSelectionSet(Entity *entity)
 	return add_it;
 }
 
+void LevelEditor::FillMultiselectionSetWithGroup(GroupEntity *Grp)
+{
+	if(Grp == NULL)
+	{
+		MultiSelectionSetEmpty();
+		return;
+	}
+	std::list<BaseEntity*> to_add;
+	Grp->FillListWithChilds(to_add);
+	std::list<BaseEntity*>::iterator iter(to_add.begin());
+	while(iter != to_add.end())
+	{
+		BaseEntity *child = *(iter++);
+		if(child != NULL)
+			ManageMultiSelectionSet(child);
+	}
+}
+
 bool LevelEditor::mousePressed( const OIS::MouseEvent &arg, OIS::MouseButtonID id )
 {
     CEGUI::GUIContext& context = CEGUI::System::getSingleton().getDefaultGUIContext();
@@ -2590,26 +2820,24 @@ bool LevelEditor::mousePressed( const OIS::MouseEvent &arg, OIS::MouseButtonID i
     		break;
     	case Delete :
     	case Edit :
-    		if(LastHighligted != NULL)
+    		if(LastHighlighted != NULL)
 			{
-				//Case Entity ?
-				GroupEntity *HighlightedGroup = LastHighligted->getGroup();
 				if(MultiSelectionMode == true)
 				{
-					if(HighlightedGroup != NULL)
+					if(LastHighlightedGroup != NULL)
 					{
-						std::list<Entity*> to_add;
-						HighlightedGroup->FillListWithChilds(to_add);
-						std::list<Entity*>::iterator iter(to_add.begin());
+						std::list<BaseEntity*> to_add;
+						LastHighlightedGroup->FillListWithChilds(to_add);
+						std::list<BaseEntity*>::iterator iter(to_add.begin());
 						while(iter != to_add.end())
 						{
-							Entity *child = *(iter++);
+							BaseEntity *child = *(iter++);
 							if(child != NULL)
 								ManageMultiSelectionSet(child);
 						}
 					}
 					else
-						ManageMultiSelectionSet(LastHighligted);
+						ManageMultiSelectionSet(LastHighlighted);
 				}
 				else
 				{
@@ -2626,36 +2854,48 @@ bool LevelEditor::mousePressed( const OIS::MouseEvent &arg, OIS::MouseButtonID i
 						UnprepareDeleteElement();
 
 					//Then deal with what is to be shown and selected now.
-					if(HighlightedGroup == NULL)
+					if(LastHighlightedGroup == NULL)
 					{
 						if(LevelEditMode != Delete)
 						{
-							switch(LastHighligted->getType())
+							switch(LastHighlighted->getType())
 							{
-							case Case :
+							case Entity::Types::Case :
 									LOG << "Edit Case by Mouse Pressed" << std::endl;
-									EditCase((CaseEntity*)LastHighligted);
+									EditCase((CaseEntity*)LastHighlighted);
 									break;
-							case Ball :
+							case Entity::Types::Ball :
 									LOG << "Edit Ball by Mouse Pressed" << std::endl;
-									EditBall((BallEntity*)LastHighligted);
+									EditBall((BallEntity*)LastHighlighted);
 									break;
 							}
 						}
 						else
-							PrepareDeleteElement(LastHighligted);
+							PrepareDeleteElement(LastHighlighted);
 					}
 					else
 					{
-						std::list<Entity*> to_add;
-						HighlightedGroup->FillListWithChilds(to_add);
-						std::list<Entity*>::iterator iter(to_add.begin());
-						while(iter != to_add.end())
+						if(LevelEditMode == Edit)
 						{
-							Entity *child = *(iter++);
-							if(child != NULL)
-								ManageMultiSelectionSet(child);
+							switch(EntityEditMode)
+							{
+							case EntityEditModes::Caracts :
+							case EntityEditModes::Moves :
+								switch(LastHighlighted->getType())
+								{
+								case Entity::Types::Case :
+										LOG << "Edit Case by Mouse Pressed" << std::endl;
+										EditCase((CaseEntity*)LastHighlighted);
+										break;
+								case Entity::Types::Ball :
+										LOG << "Edit Ball by Mouse Pressed" << std::endl;
+										EditBall((BallEntity*)LastHighlighted);
+										break;
+								}
+								break;
+							}
 						}
+						FillMultiselectionSetWithGroup(LastHighlightedGroup);
 					}
 				}
 			}
@@ -2675,15 +2915,15 @@ bool LevelEditor::mouseReleased( const OIS::MouseEvent &arg, OIS::MouseButtonID 
 
 void LevelEditor::MoveEntities(float x, float y, float z)
 {
-	if(UnderEditCase != NULL)
+	if(UnderEditCase != NULL && UnderEditCase->getGroup() == NULL)
 		UnderEditCase->Move(x, y, z);
-	if(UnderEditBall != NULL)
+	if(UnderEditBall != NULL && UnderEditCase->getGroup() == NULL)
 		UnderEditBall->Move(x, y, z);
 	std::list<GroupEntity*> ToMoveGroups;
-	std::list<Entity*>::iterator iter(UnderEditEntites.begin());
+	std::list<BaseEntity*>::iterator iter(UnderEditEntites.begin());
 	while(iter != UnderEditEntites.end())
 	{
-		Entity *Entity = *(iter++);
+		BaseEntity *Entity = *(iter++);
 		GroupEntity *EntityGroup;
 		if(Entity == NULL)
 			continue;
@@ -2718,15 +2958,15 @@ void LevelEditor::MoveEntities(float x, float y, float z)
 
 void LevelEditor::RotateEntities(float x, float y, float z)
 {
-	if(UnderEditCase != NULL)
+	if(UnderEditCase != NULL && UnderEditCase->getGroup() == NULL)
 		UnderEditCase->Rotate(x, y, z);
-	if(UnderEditBall != NULL)
+	if(UnderEditBall != NULL && UnderEditCase->getGroup() == NULL)
 		UnderEditBall->Rotate(x, y, z);
 	std::list<GroupEntity*> ToRotateGroups;
-	std::list<Entity*>::iterator iter(UnderEditEntites.begin());
+	std::list<BaseEntity*>::iterator iter(UnderEditEntites.begin());
 	while(iter != UnderEditEntites.end())
 	{
-		Entity *Entity = *(iter++);
+		BaseEntity *Entity = *(iter++);
 		GroupEntity *EntityGroup;
 		if(Entity == NULL)
 			continue;
@@ -2761,15 +3001,15 @@ void LevelEditor::RotateEntities(float x, float y, float z)
 
 void LevelEditor::ScaleEntities(float x, float y, float z)
 {
-	if(UnderEditCase != NULL)
+	if(UnderEditCase != NULL && UnderEditCase->getGroup() == NULL)
 		UnderEditCase->Scale(x, y, z);
-	if(UnderEditBall != NULL)
+	if(UnderEditBall != NULL && UnderEditCase->getGroup() == NULL)
 		UnderEditBall->Scale(x, y, z);
 	std::list<GroupEntity*> ToScaleGroups;
-	std::list<Entity*>::iterator iter(UnderEditEntites.begin());
+	std::list<BaseEntity*>::iterator iter(UnderEditEntites.begin());
 	while(iter != UnderEditEntites.end())
 	{
-		Entity *Entity = *(iter++);
+		BaseEntity *Entity = *(iter++);
 		GroupEntity *EntityGroup;
 		if(Entity == NULL)
 			continue;
@@ -3162,11 +3402,17 @@ bool LevelEditor::NewLevelCreateBCallback(const CEGUI::EventArgs &e)
 	EmptyLevel();
 	String level;
 	String Filename;
-	BuildLevelFilename(level, Filename);
+	is_new_level = true;
 	level = NewLevelEditB->getText().c_str();
+	BuildLevelFilename(level, Filename);
 	SetLevel(level, Filename);
 	if(mode == Running)
 		SwitchEditMode();
+
+	SaveLevelPushB->setEnabled(true);
+	EditModePushB->setEnabled(true);
+	StatesModePushB->setEnabled(true);
+	StopPhysicPushB->setEnabled(true);
 	return true;
 }
 
@@ -3178,6 +3424,17 @@ bool LevelEditor::SaveLevelPushBCallback(const CEGUI::EventArgs &e)
 	myfile.open (LevelFilename.c_str());
 	myfile << export_str;
 	myfile.close();
+
+	if(is_new_level == true)
+	{
+		CEGUI::ListboxTextItem *item = new CEGUI::ListboxTextItem((CEGUI::utf8*)Level.c_str());
+		item->setUserData(new String(LevelFilename));
+		ChooseLevelComboB->addItem(item);
+		ChooseLevelComboB->setEnabled(true);
+	    ChooseLevelComboB->setSize(CEGUI::USize(CEGUI::UDim(0, 150), CEGUI::UDim(0, 40 * (ChooseLevelComboB->getItemCount() + 1))));
+	}
+	if(mode == Running)
+		SaveLevelPushB->setEnabled(false);
 	return true;
 }
 
@@ -3185,6 +3442,7 @@ bool LevelEditor::ChooseLevelComboBCallback(const CEGUI::EventArgs &e)
 {
 	CEGUI::ListboxTextItem *item = (CEGUI::ListboxTextItem*)ChooseLevelComboB->getSelectedItem();
 	String level(item->getText().c_str()), *filename = (String*)item->getUserData();
+	is_new_level = false;
 	SetLevel(level, *filename);
 	ChangeLevel();
 	return true;
@@ -3269,9 +3527,41 @@ void LevelEditor::ChangeLevel(void)
 	else
 		_StopPhysic();
 	EmptyLevel();
-	String nodeNamePrefix;
-	ImportLevelFromJson((Node*)mSceneMgr->getRootSceneNode(), nodeNamePrefix);
-	LoadStatesList();
+	if(Level.empty() == false)
+	{
+		String nodeNamePrefix;
+		ImportLevelFromJson((Node*)mSceneMgr->getRootSceneNode(), nodeNamePrefix);
+		LoadStatesList();
+	}
+	else
+	{
+		ButtonsSetVisible(MainMenuButtons, true);
+		ChooseLevelComboB->setEnabled(false);
+		SaveLevelPushB->setEnabled(false);
+		EditModePushB->setEnabled(false);
+		StatesModePushB->setEnabled(false);
+		StopPhysicPushB->setEnabled(false);
+	}
+}
+
+bool LevelEditor::ExportGroupIntoJson(GroupEntity *G, rapidjson::Value &JGroup, rapidjson::Document::AllocatorType& allocator, std::list<GroupEntity*> &GroupsAlreadyExported)
+{
+	bool AlreadyHave = false;
+	std::list<GroupEntity*>::iterator CheckIter(GroupsAlreadyExported.begin());
+	while(CheckIter != GroupsAlreadyExported.end())
+	{
+		GroupEntity *CheckG = *(CheckIter++);
+		if(CheckG == NULL)
+			continue;
+		if(CheckG == G)
+			AlreadyHave = true;
+	}
+	if(AlreadyHave == false)
+	{
+		G->ExportToJson(JGroup, allocator);
+		GroupsAlreadyExported.push_back(G);
+	}
+	return AlreadyHave;
 }
 
 void LevelEditor::ExportLevelIntoJson(String &export_str)
@@ -3286,15 +3576,34 @@ void LevelEditor::ExportLevelIntoJson(String &export_str)
 	rapidjson::Value groups(rapidjson::kArrayType);
 
 	std::list<GroupEntity*>::iterator Git(Groups.begin());
+	std::list<GroupEntity*> GroupsAlreadyExported;
 	while(Git != Groups.end())
 	{
 		GroupEntity *Entity = *(Git++);
 		if(Entity == NULL)
 			continue;
 		rapidjson::Value JGroup(rapidjson::kObjectType);
-		Entity->ExportToJson(JGroup, allocator);
+		GroupEntity *Sup = Entity->getGroup();
+		std::list<GroupEntity*> ToExport;
+		while(Sup != NULL)
+		{
+			ToExport.push_front(Sup);
+			Sup = Sup->getGroup();
+		}
+		std::list<GroupEntity*>::iterator ToExportIter(ToExport.begin());
+		while(ToExportIter != ToExport.end())
+		{
+			bool AlreadyHave = false;
+			GroupEntity *G = *(ToExportIter++);
+			if(G == NULL)
+				continue;
+			rapidjson::Value JSupGroup(rapidjson::kObjectType);
+			if(ExportGroupIntoJson(G, JSupGroup, allocator, GroupsAlreadyExported) == false)
+				groups.PushBack(JSupGroup, allocator);
+		}
 
-		groups.PushBack(JGroup, allocator);
+		if(ExportGroupIntoJson(Entity, JGroup, allocator, GroupsAlreadyExported) == false)
+			groups.PushBack(JGroup, allocator);
 	}
 
 	document.AddMember(GROUPS_JSON_FIELD, groups, allocator);
