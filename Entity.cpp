@@ -470,60 +470,68 @@ void CaseEntity::CaseMove(unsigned64 microseconds, dFloat timestep)
 
 	if(ToReachPos != NULL)
 	{
-		dFloat MovePos[3];
-		dFloat RotatePos[3];
+		dFloat DiffPos[3], MovePos[3];
+		dFloat DiffAngle[3], RotatePos[3];
 		if(!isnanf(MovementToDo->actual->TranslateSpeed))
 		{
-			MovePos[0] = ToReachPos->x - getAbsolutePosition().x;
-			MovePos[1] = ToReachPos->y - getAbsolutePosition().y;
-			MovePos[2] = ToReachPos->z - getAbsolutePosition().z;
+			DiffPos[0] = ToReachPos->x - getAbsolutePosition().x;
+			DiffPos[1] = ToReachPos->y - getAbsolutePosition().y;
+			DiffPos[2] = ToReachPos->z - getAbsolutePosition().z;
+			dFloat Norm = Normalize(DiffPos[0], DiffPos[1], DiffPos[2]);
 			LOG << "TranslatePos = {" << MovePos[0] << ", " << MovePos[1] << ", " << MovePos[2] << "}"
 					<< " From " << getAbsolutePosition() << " To " << *ToReachPos
 					<< std::endl;
-			if (MovePos[0] > 0.01)
+			if (DiffPos[0] > 0.01)
 			{
 				MovePos[0] = MovementToDo->actual->TranslateSpeed;
 				MustTranslate = true;
 			}
-			else if (MovePos[0] < -0.01)
+			else if (DiffPos[0] < -0.01)
 			{
 				MovePos[0] = -1 * MovementToDo->actual->TranslateSpeed;
 				MustTranslate = true;
 			}
 			else
 				MovePos[0] = 0;
-			if (MovePos[1] > 0.01)
+			if (DiffPos[1] > 0.01)
 			{
 				MovePos[1] = MovementToDo->actual->TranslateSpeed;
 				MustTranslate = true;
 			}
-			else if (MovePos[1] < -0.01)
+			else if (DiffPos[1] < -0.01)
 			{
 				MovePos[1] = -1 * MovementToDo->actual->TranslateSpeed;
 				MustTranslate = true;
 			}
 			else
 				MovePos[1] = 0;
-			if (MovePos[2] > 0.01)
+			if (DiffPos[2] > 0.01)
 			{
 				MovePos[2] = MovementToDo->actual->TranslateSpeed;
 				MustTranslate = true;
 			}
-			else if (MovePos[2] < -0.01)
+			else if (DiffPos[2] < -0.01)
 			{
 				MovePos[2] = -1 * MovementToDo->actual->TranslateSpeed;
 				MustTranslate = true;
 			}
 			else
 				MovePos[2] = 0;
+			if(MustTranslate && Norm != 0)
+			{
+				MovePos[0] *= fabs(DiffPos[0] / Norm);
+				MovePos[1] *= fabs(DiffPos[1] / Norm);
+				MovePos[2] *= fabs(DiffPos[2] / Norm);
+			}
 		}
 		if(!isnanf(MovementToDo->actual->RotateSpeed))
 		{
-			RotatePos[0] = ToReachRot->getRoll(false).valueRadians() - getAbsoluteOrientation().getRoll(false).valueRadians();
-			RotatePos[1] = ToReachRot->getPitch(false).valueRadians() - getAbsoluteOrientation().getPitch(false).valueRadians();
-			RotatePos[2] = ToReachRot->getYaw(false).valueRadians() - getAbsoluteOrientation().getYaw(false).valueRadians();
-			LOG << "RotatePos = {" << RotatePos[0] << ", " << RotatePos[1] << ", " << RotatePos[2] << "}"
-					<< " From " << getRelativeOrientation() << " To " << *ToReachRot
+			DiffAngle[0] = ToReachRot->getRoll(false).valueRadians() - getAbsoluteOrientation().getRoll(false).valueRadians();
+			DiffAngle[1] = ToReachRot->getPitch(false).valueRadians() - getAbsoluteOrientation().getPitch(false).valueRadians();
+			DiffAngle[2] = ToReachRot->getYaw(false).valueRadians() - getAbsoluteOrientation().getYaw(false).valueRadians();
+			dFloat Norm = Normalize(DiffAngle[0], DiffAngle[1], DiffAngle[2]);
+			LOG << "DiffAngle = {" << DiffAngle[0] << ", " << DiffAngle[1] << ", " << DiffAngle[2] << "}"
+					<< " From " << getAbsoluteOrientation() << " To " << *ToReachRot
 					<< std::endl;
 			LOG << "Rotate from {" << getAbsoluteOrientation().getRoll(false).valueDegrees()
 					<< ", " << getAbsoluteOrientation().getPitch(false).valueDegrees()
@@ -539,42 +547,48 @@ void CaseEntity::CaseMove(unsigned64 microseconds, dFloat timestep)
 					<< ", " << ToReachRot->getPitch().valueDegrees()
 					<< ", " << ToReachRot->getYaw().valueDegrees()
 					<< "}" << std::endl;
-			if (RotatePos[0] > 0.01)
+			if (DiffAngle[0] > 0.01)
 			{
 				RotatePos[0] = MovementToDo->actual->RotateSpeed;
 				MustRotate = true;
 			}
-			else if (RotatePos[0] < -0.01)
+			else if (DiffAngle[0] < -0.01)
 			{
 				RotatePos[0] = -1 * MovementToDo->actual->RotateSpeed;
 				MustRotate = true;
 			}
 			else
 				RotatePos[0] = 0;
-			if (RotatePos[1] > 0.01)
+			if (DiffAngle[1] > 0.01)
 			{
 				RotatePos[1] = MovementToDo->actual->RotateSpeed;
 				MustRotate = true;
 			}
-			else if (RotatePos[1] < -0.01)
+			else if (DiffAngle[1] < -0.01)
 			{
 				RotatePos[1] = -1 * MovementToDo->actual->RotateSpeed;
 				MustRotate = true;
 			}
 			else
 				RotatePos[1] = 0;
-			if (RotatePos[2] > 0.01)
+			if (DiffAngle[2] > 0.01)
 			{
 				RotatePos[2] = MovementToDo->actual->RotateSpeed;
 				MustRotate = true;
 			}
-			else if (RotatePos[2] < -0.01)
+			else if (DiffAngle[2] < -0.01)
 			{
 				RotatePos[2] = -1 * MovementToDo->actual->RotateSpeed;
 				MustRotate = true;
 			}
 			else
 				RotatePos[2] = 0;
+			if(MustRotate && Norm != 0)
+			{
+				RotatePos[0] *= fabs(DiffAngle[0] / Norm);
+				RotatePos[1] *= fabs(DiffAngle[1] / Norm);
+				RotatePos[2] *= fabs(DiffAngle[2] / Norm);
+			}
 		}
 		if(MustRotate == false && MustTranslate == false)// So we have reached the position
 		{
