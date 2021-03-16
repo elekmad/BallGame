@@ -35,12 +35,16 @@ namespace BallGame {
 
 void GameEngine::CustomListenerPostUpdateCallback(dFloat timestep)
 {
-	std::list<CaseEntity*>::iterator iter1(CasesToBeMoved.begin());
-	while(iter1 != CasesToBeMoved.end())
+	if(m_suspendPhysicsUpdate == false)
 	{
-		CaseEntity *Case = *(iter1++);
-		if(Case != NULL)
-			Case->CaseMove(m_microsecunds, timestep);
+		std::list<CaseEntity*>::iterator iter1(CasesToBeMoved.begin());
+		while(iter1 != CasesToBeMoved.end())
+		{
+			CaseEntity *Case = *(iter1++);
+			if(Case != NULL)
+				if(Case->CaseMove(m_microsecunds, timestep) == false)
+					Case->ComputeMove();
+		}
 	}
 }
 

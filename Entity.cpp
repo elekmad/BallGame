@@ -408,7 +408,7 @@ inline void CaseEntity::setRefMove(GroupEntity *Grp)
 
 void CaseEntity::ComputeMove(void)
 {
-	if(MovementToDo->is_computed == true)
+	if(MovementToDo == NULL || MovementToDo->is_computed == true)
 		return;
 
 	Quaternion ActuOri = getAbsoluteOrientation();
@@ -424,6 +424,7 @@ void CaseEntity::ComputeMove(void)
 			setRelativeOrientation(step->RelativeOrientation);
 			step->AbsolutePosition = getAbsolutePosition();
 			step->AbsoluteOrientation = getAbsoluteOrientation();
+			LOG << "Compute Step, RelOri = " << step->RelativeOrientation << ", AbsOri = " << step->AbsoluteOrientation << std::endl;
 		}
 	}
 
@@ -433,12 +434,14 @@ void CaseEntity::ComputeMove(void)
 	MovementToDo->is_computed = true;
 }
 
-void CaseEntity::CaseMove(unsigned64 microseconds, dFloat timestep)
+bool CaseEntity::CaseMove(unsigned64 microseconds, dFloat timestep)
 {
 	if(MovementToDo == NULL)
-		return;
+		return false;
 
-	ComputeMove();
+	if(MovementToDo->is_computed == false)
+		return false;
+
 	bool MoveToNextPoint = false;
 	bool MustTranslate = false;
 	bool MustRotate = false;
@@ -465,7 +468,7 @@ void CaseEntity::CaseMove(unsigned64 microseconds, dFloat timestep)
 		ToReachRot = &MovementToDo->actual->AbsoluteOrientation;
 	}
 	else
-		return;
+		return false;
 
 
 	if(ToReachPos != NULL)
@@ -526,9 +529,9 @@ void CaseEntity::CaseMove(unsigned64 microseconds, dFloat timestep)
 		}
 		if(!isnanf(MovementToDo->actual->RotateSpeed))
 		{
-			DiffAngle[0] = ToReachRot->getRoll(false).valueRadians() - getAbsoluteOrientation().getRoll(false).valueRadians();
-			DiffAngle[1] = ToReachRot->getPitch(false).valueRadians() - getAbsoluteOrientation().getPitch(false).valueRadians();
-			DiffAngle[2] = ToReachRot->getYaw(false).valueRadians() - getAbsoluteOrientation().getYaw(false).valueRadians();
+			DiffAngle[0] = ToReachRot->getPitch().valueRadians() - getAbsoluteOrientation().getPitch().valueRadians();
+			DiffAngle[1] = ToReachRot->getYaw().valueRadians() - getAbsoluteOrientation().getYaw().valueRadians();
+			DiffAngle[2] = ToReachRot->getRoll().valueRadians() - getAbsoluteOrientation().getRoll().valueRadians();
 			dFloat Norm = Normalize(DiffAngle[0], DiffAngle[1], DiffAngle[2]);
 			LOG << "DiffAngle = {" << DiffAngle[0] << ", " << DiffAngle[1] << ", " << DiffAngle[2] << "}"
 					<< " From " << getAbsoluteOrientation() << " To " << *ToReachRot
@@ -585,9 +588,11 @@ void CaseEntity::CaseMove(unsigned64 microseconds, dFloat timestep)
 				RotatePos[2] = 0;
 			if(MustRotate && Norm != 0)
 			{
+				LOG << "Rotate = {" << RotatePos[0] << ", " << RotatePos[1] << ", " << RotatePos[2] << "}" << std::endl;
 				RotatePos[0] *= fabs(DiffAngle[0] / Norm);
 				RotatePos[1] *= fabs(DiffAngle[1] / Norm);
 				RotatePos[2] *= fabs(DiffAngle[2] / Norm);
+				LOG << "Rotate = {" << RotatePos[0] << ", " << RotatePos[1] << ", " << RotatePos[2] << "}" << std::endl;
 			}
 		}
 		if(MustRotate == false && MustTranslate == false)// So we have reached the position
@@ -656,6 +661,7 @@ void CaseEntity::CaseMove(unsigned64 microseconds, dFloat timestep)
 			NewtonBodySetMatrix(Body, &matrix[0][0]);
 		}
 	}
+	return true;
 }
 
 void CaseEntity::AddBallColliding(BallEntity *ball)

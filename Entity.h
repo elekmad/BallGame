@@ -197,7 +197,7 @@ class CaseEntity : public Entity
     void AddBallColliding(BallEntity *ball);
 	void ApplyForceOnCollidingBalls(void);
 	Ogre::SceneNode *CreateForceArrows(Ogre::SceneManager *Scene);
-	void CaseMove(unsigned64 microseconds, dFloat timestep);
+	bool CaseMove(unsigned64 microseconds, dFloat timestep);
 	bool CaseToMove(void) { return MovementToDo != NULL; }
 	bool MoveTriggered(void) { return MovementToDo != NULL && MovementToDo->is_launched_by_collide; }
 	void AddMovePoint(const Vector3 &GoalPos, float speed, unsigned64 waittime, const Quaternion &GoalAngle = Ogre::Quaternion::IDENTITY, float RotateSpeed = NAN);
