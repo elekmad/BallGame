@@ -213,6 +213,7 @@ LevelEditor::LevelEditor() :
 	MoveRSpeedTitleB = NULL;
 	MoveTSpeedEditB = NULL;
 	MoveTSpeedTitleB = NULL;
+	CorrelateSpeedsToggleB = NULL;
 	MoveWaitTimeEditB = NULL;
 	MoveWaitTimeTitleB = NULL;
 	IsMoveTriggeredToggleB = NULL;
@@ -2085,6 +2086,19 @@ void LevelEditor::SetupGUI(void)
     MainLayout->addChild(IsMoveTriggeredToggleB);
     ButtonSetAddButton(EditMovesButtons, IsMoveTriggeredToggleB);
 
+    CorrelateSpeedsToggleB = CreateNewGUIComponent<CEGUI::ToggleButton>("OgreTray/Checkbox");
+    CorrelateSpeedsToggleB->setText("Link");
+    CorrelateSpeedsToggleB->setSelected(false);
+    CorrelateSpeedsToggleB->setSize(CEGUI::USize(CEGUI::UDim(0, 100), CEGUI::UDim(0, 30)));
+    CorrelateSpeedsToggleB->setVerticalAlignment(CEGUI::VA_TOP);
+    CorrelateSpeedsToggleB->setHorizontalAlignment(CEGUI::HA_RIGHT);
+
+	CorrelateSpeedsToggleB->subscribeEvent(CEGUI::ToggleButton::EventSelectStateChanged,
+			CEGUI::Event::Subscriber(&LevelEditor::CorrelateSpeedsToggleBCallback, this));
+
+    MainLayout->addChild(CorrelateSpeedsToggleB);
+    ButtonSetAddButton(EditMovesButtons, CorrelateSpeedsToggleB);
+
     SetWindowsPosNearToOther(ChooseMoveComboB, ScaleElementB, 0, 1);
     SetWindowsPosNearToOther(DelMoveStepPushB, ChooseMoveComboB, 0, 1);
     SetWindowsPosNearToOther(AddMoveStepPushB, DelMoveStepPushB, -1, 0);
@@ -2095,6 +2109,7 @@ void LevelEditor::SetupGUI(void)
     SetWindowsPosNearToOther(MoveWaitTimeEditB, MoveRSpeedEditB, 0, 1);
     SetWindowsPosNearToOther(MoveWaitTimeTitleB, MoveWaitTimeEditB, -1, 0);
     SetWindowsPosNearToOther(ApplyToMoveStepPushB, MoveWaitTimeEditB, 0, 1);
+    SetWindowsPosNearToOther(CorrelateSpeedsToggleB, ApplyToMoveStepPushB, -1, 0);
     SetWindowsPosNearToOther(IsMoveTriggeredToggleB, ApplyToMoveStepPushB, 0, 1);
 
     /// Edit Ball GUI
@@ -2180,9 +2195,16 @@ bool LevelEditor::ChooseMoveComboBCallback(const CEGUI::EventArgs &e)
 	CEGUI::ListboxTextItem *item = (CEGUI::ListboxTextItem*)ChooseMoveComboB->getSelectedItem();
 	if(item == NULL)
 		return true;
-	UnderEditCase->DisplaySelectedMove(item->getUserData(), MoveTSpeedEditB, MoveRSpeedEditB, MoveWaitTimeEditB);
+	UnderEditCase->DisplaySelectedMove(item->getUserData(), MoveTSpeedEditB, MoveRSpeedEditB, MoveWaitTimeEditB, CorrelateSpeedsToggleB);
 	ApplyToMoveStepPushB->setEnabled(true);
 	DelMoveStepPushB->setEnabled(true);
+	return true;
+}
+
+bool LevelEditor::CorrelateSpeedsToggleBCallback(const CEGUI::EventArgs &e)
+{
+	MoveRSpeedEditB->setEnabled(CorrelateSpeedsToggleB->isSelected() == false);
+	MoveRSpeedTitleB->setEnabled(CorrelateSpeedsToggleB->isSelected() == false);
 	return true;
 }
 
@@ -2210,7 +2232,7 @@ bool LevelEditor::ApplyToMoveStepPushBCallback(const CEGUI::EventArgs &e)
 	float TranslationSpeed = CEGUI::PropertyHelper<float>::fromString(MoveTSpeedEditB->getText());
 	float RotateSpeed = CEGUI::PropertyHelper<float>::fromString(MoveRSpeedEditB->getText());
 	unsigned64 waittime = CEGUI::PropertyHelper<uint64>::fromString(MoveWaitTimeEditB->getText());
-	UnderEditCase->UpdateSelectedMove(item->getUserData(), GoalPos, TranslationSpeed, GoalAngle, RotateSpeed, waittime);
+	UnderEditCase->UpdateSelectedMove(item->getUserData(), GoalPos, TranslationSpeed, GoalAngle, RotateSpeed, waittime, CorrelateSpeedsToggleB->isSelected());
 	return true;
 }
 
@@ -2231,14 +2253,14 @@ void LevelEditor::AddMoveStep(void)
 	if(UnderEditCase->CaseToMove() == false)// For the moment no Moves !
 	{
 		UnderEditCase->ResetToInitial();
-		UnderEditCase->AddMovePoint(UnderEditCase->getRelativePosition(), TranslationSpeed, waittime, UnderEditCase->getRelativeOrientation(), RotateSpeed);
+		UnderEditCase->AddMovePoint(UnderEditCase->getRelativePosition(), TranslationSpeed, waittime, UnderEditCase->getRelativeOrientation(), RotateSpeed, true);
 		UnderEditCase->setRelativePosition(GoalPos);
 		UnderEditCase->setRelativeOrientation(GoalAngle);
 	}
 	if(IsMoveTriggeredToggleB->isSelected() == true)
 		UnderEditCase->AddTriggeredMovePoint(GoalPos, TranslationSpeed, waittime, GoalAngle, RotateSpeed);
 	else
-		UnderEditCase->AddMovePoint(GoalPos, TranslationSpeed, waittime, GoalAngle, RotateSpeed);
+		UnderEditCase->AddMovePoint(GoalPos, TranslationSpeed, waittime, GoalAngle, RotateSpeed, CorrelateSpeedsToggleB->isSelected());
 	UnderEditCase->FillComboboxWithMoves(ChooseMoveComboB);
 	ApplyToMoveStepPushB->setEnabled(false);
 	DelMoveStepPushB->setEnabled(false);
@@ -2642,6 +2664,7 @@ void LevelEditor::EditCase(CaseEntity *Entity)
 				MoveRSpeedEditB->setText(std::to_string(DEFAULT_ENTITY_MOVE_ROTATION_SPEED));
 				MoveWaitTimeEditB->setText(std::to_string(DEFAULT_ENTITY_MOVE_WAIT_TIME));
 				IsMoveTriggeredToggleB->setSelected(UnderEditCase->MoveTriggered());
+				CorrelateSpeedsToggleB->setSelected(false);
 				ButtonsSetVisible(EditMovesButtons, true);
 				ApplyToMoveStepPushB->setEnabled(false);
 				DelMoveStepPushB->setEnabled(false);
@@ -2915,9 +2938,9 @@ bool LevelEditor::mouseReleased( const OIS::MouseEvent &arg, OIS::MouseButtonID 
 
 void LevelEditor::MoveEntities(float x, float y, float z)
 {
-	if(UnderEditCase != NULL && UnderEditCase->getGroup() == NULL)
+	if(UnderEditCase != NULL && LastHighlightedGroup == NULL)
 		UnderEditCase->Move(x, y, z);
-	if(UnderEditBall != NULL && UnderEditCase->getGroup() == NULL)
+	if(UnderEditBall != NULL && LastHighlightedGroup == NULL)
 		UnderEditBall->Move(x, y, z);
 	std::list<GroupEntity*> ToMoveGroups;
 	std::list<BaseEntity*>::iterator iter(UnderEditEntites.begin());
@@ -2958,9 +2981,9 @@ void LevelEditor::MoveEntities(float x, float y, float z)
 
 void LevelEditor::RotateEntities(float x, float y, float z)
 {
-	if(UnderEditCase != NULL && UnderEditCase->getGroup() == NULL)
+	if(UnderEditCase != NULL && LastHighlightedGroup == NULL)
 		UnderEditCase->Rotate(x, y, z);
-	if(UnderEditBall != NULL && UnderEditCase->getGroup() == NULL)
+	if(UnderEditBall != NULL && LastHighlightedGroup == NULL)
 		UnderEditBall->Rotate(x, y, z);
 	std::list<GroupEntity*> ToRotateGroups;
 	std::list<BaseEntity*>::iterator iter(UnderEditEntites.begin());
@@ -3001,9 +3024,9 @@ void LevelEditor::RotateEntities(float x, float y, float z)
 
 void LevelEditor::ScaleEntities(float x, float y, float z)
 {
-	if(UnderEditCase != NULL && UnderEditCase->getGroup() == NULL)
+	if(UnderEditCase != NULL && LastHighlightedGroup == NULL)
 		UnderEditCase->Scale(x, y, z);
-	if(UnderEditBall != NULL && UnderEditCase->getGroup() == NULL)
+	if(UnderEditBall != NULL && LastHighlightedGroup == NULL)
 		UnderEditBall->Scale(x, y, z);
 	std::list<GroupEntity*> ToScaleGroups;
 	std::list<BaseEntity*>::iterator iter(UnderEditEntites.begin());

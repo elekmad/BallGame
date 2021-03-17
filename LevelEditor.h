@@ -292,6 +292,8 @@ class LevelEditor : public GameEngine
     CEGUI::Editbox *MoveTSpeedEditB;
     CEGUI::Titlebar *MoveRSpeedTitleB;
     CEGUI::Editbox *MoveRSpeedEditB;
+    CEGUI::ToggleButton *CorrelateSpeedsToggleB;
+    bool CorrelateSpeedsToggleBCallback(const CEGUI::EventArgs &e);
     CEGUI::Titlebar *MoveWaitTimeTitleB;
     CEGUI::Editbox *MoveWaitTimeEditB;
     CEGUI::PushButton *ApplyToMoveStepPushB;

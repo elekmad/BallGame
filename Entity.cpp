@@ -301,7 +301,7 @@ void CaseEntity::SetForceToApply(float force, dVector *direction)
 	force_direction = direction;
 }
 
-void CaseEntity::AddMovePoint(const Vector3 &GoalPos, float speed, unsigned64 waittime, const Quaternion &GoalAngle, float RotateSpeed)
+void CaseEntity::AddMovePoint(const Vector3 &GoalPos, float speed, unsigned64 waittime, const Quaternion &GoalAngle, float RotateSpeed, bool correlated_speed)
 {
 	if(MovementToDo == NULL)
 		MovementToDo = new struct Movement;
@@ -312,6 +312,7 @@ void CaseEntity::AddMovePoint(const Vector3 &GoalPos, float speed, unsigned64 wa
 	step->waittime = waittime;
 	step->RelativeOrientation = GoalAngle;
 	step->RotateSpeed = RotateSpeed;
+	step->correlated_speed = correlated_speed;
 	MovementToDo->Moves.push_back(step);
 	LOG << "Case " << getName() << " Add Move Point" << std::endl;
 }
@@ -351,18 +352,21 @@ void CaseEntity::FillComboboxWithMoves(CEGUI::Combobox *box)
 	box->setSize(CEGUI::USize(CEGUI::UDim(0, 150), CEGUI::UDim(0, 40 * (box->getItemCount() + 1))));
 }
 
-void CaseEntity::DisplaySelectedMove(void *vstep, CEGUI::Editbox *TSpeed, CEGUI::Editbox *RSpeed, CEGUI::Editbox *WaitTime)
+void CaseEntity::DisplaySelectedMove(void *vstep, CEGUI::Editbox *TSpeed, CEGUI::Editbox *RSpeed, CEGUI::Editbox *WaitTime, CEGUI::ToggleButton *CorrelateSpeeds)
 {
 	struct MovementStep *step = (struct MovementStep*)vstep;
 	setRelativePosition(step->RelativePosition);
 	setRelativeOrientation(step->RelativeOrientation);
 
 	TSpeed->setText(std::to_string(step->TranslateSpeed));
-	RSpeed->setText(std::to_string(step->RotateSpeed));
 	WaitTime->setText(std::to_string(step->waittime));
+	CorrelateSpeeds->setSelected(step->correlated_speed);
+	if(step->correlated_speed == true)
+		RSpeed->setEnabled(false);
+	RSpeed->setText(std::to_string(step->RotateSpeed));
 }
 
-void CaseEntity::UpdateSelectedMove(void *vstep, const Vector3 &GoalPos, float TSpeed, const Quaternion &GoalAngle, float RSpeed, unsigned64 WaitTime)
+void CaseEntity::UpdateSelectedMove(void *vstep, const Vector3 &GoalPos, float TSpeed, const Quaternion &GoalAngle, float RSpeed, unsigned64 WaitTime, bool CorrelateSpeeds)
 {
 	struct MovementStep *step = (struct MovementStep*)vstep;
 	step->RelativePosition = GoalPos;
@@ -370,6 +374,7 @@ void CaseEntity::UpdateSelectedMove(void *vstep, const Vector3 &GoalPos, float T
 	step->RelativeOrientation = GoalAngle;
 	step->RotateSpeed = RSpeed;
 	step->waittime = WaitTime;
+	step->correlated_speed = CorrelateSpeeds;
 	MovementToDo->is_computed = false;
 }
 
@@ -414,18 +419,78 @@ void CaseEntity::ComputeMove(void)
 	Quaternion ActuOri = getAbsoluteOrientation();
 	Vector3 ActuPos = getAbsolutePosition();
 
-	std::list<struct MovementStep*>::iterator iter(MovementToDo->Moves.begin());
-	while(iter != MovementToDo->Moves.end())
+
+	//Firts pass to computes Absolutes coords for each Moves.
+	//As Correlate Speeds depends of the previous, the first needs the last !
+	std::list<struct MovementStep*>::iterator iterRelToAbs(MovementToDo->Moves.begin());
+	while(iterRelToAbs != MovementToDo->Moves.end())
 	{
-		struct MovementStep *step = *(iter++);
+		struct MovementStep *step = *(iterRelToAbs++);
 		if(step != NULL)
 		{
 			setRelativePosition(step->RelativePosition);
 			setRelativeOrientation(step->RelativeOrientation);
 			step->AbsolutePosition = getAbsolutePosition();
 			step->AbsoluteOrientation = getAbsoluteOrientation();
+
 			LOG << "Compute Step, RelOri = " << step->RelativeOrientation << ", AbsOri = " << step->AbsoluteOrientation << std::endl;
+			LOG << "Compute Step, RelPos = " << step->RelativePosition << ", AbsPos = " << step->AbsolutePosition << std::endl;
 		}
+	}
+
+	//Second pass to computes Correlated Speeds.
+	std::list<struct MovementStep*>::iterator iter(MovementToDo->Moves.begin());
+	while(iter != MovementToDo->Moves.end())
+	{
+		struct MovementStep *step = *iter;
+		if(step != NULL && step->correlated_speed == true && MovementToDo->Moves.size() > 1)
+		{
+			if(step->TranslateSpeed == 0 || isnanf(step->TranslateSpeed))
+			{
+				step->correlated_speed = false;
+				iter++;
+				continue;
+			}
+			Vector3 prevpos;
+			Quaternion prevori;
+			double NormDistanceT, NormDistanceR;
+			std::list<struct MovementStep*>::reverse_iterator previter(MovementToDo->Moves.end());
+			if(iter != MovementToDo->Moves.begin())
+			{
+				while(*previter != step)
+					previter++;
+				previter++;
+			}
+
+			struct MovementStep *prevstep = *previter;
+			prevpos = prevstep->AbsolutePosition;
+			prevori = prevstep->AbsoluteOrientation;
+
+			LOG << "Pos " << step->AbsolutePosition << ", Ori " << step->AbsoluteOrientation << std::endl;
+			LOG << "PrevPos " << prevpos << ", PrevOri " << prevori << std::endl;
+			NormDistanceT = Normalize(step->AbsolutePosition.x - prevpos.x,
+					step->AbsolutePosition.y - prevpos.y,
+					step->AbsolutePosition.z - prevpos.z);
+			NormDistanceR = Normalize(step->AbsoluteOrientation.getPitch().valueRadians() - prevori.getPitch().valueRadians(),
+					step->AbsoluteOrientation.getYaw().valueRadians() - prevori.getYaw().valueRadians(),
+					step->AbsoluteOrientation.getRoll().valueRadians() - prevori.getRoll().valueRadians());
+
+			if(isinf(NormDistanceT) || isnan(NormDistanceT))
+				NormDistanceT = 0;
+			if(isinf(NormDistanceR) || isnan(NormDistanceR))
+				NormDistanceR = 0;
+			if(NormDistanceT == 0 || NormDistanceR == 0)
+			{
+				step->correlated_speed = false;
+				iter++;
+				continue;
+			}
+
+			step->RotateSpeed = step->TranslateSpeed * NormDistanceR / NormDistanceT;
+			LOG << "NormDistanceR = " << NormDistanceR << ", NormDistanceT = " << NormDistanceT << ", TranslateSpeed = " << step->TranslateSpeed << ", RotateSpeed = " << step->RotateSpeed << std::endl;
+		}
+
+		iter++;
 	}
 
 	setAbsolutePosition(ActuPos);
@@ -522,9 +587,11 @@ bool CaseEntity::CaseMove(unsigned64 microseconds, dFloat timestep)
 				MovePos[2] = 0;
 			if(MustTranslate && Norm != 0)
 			{
+				LOG << "Must Translate = {" << MovePos[0] << ", " << MovePos[1] << ", " << MovePos[2] << "}" << std::endl;
 				MovePos[0] *= fabs(DiffPos[0] / Norm);
 				MovePos[1] *= fabs(DiffPos[1] / Norm);
 				MovePos[2] *= fabs(DiffPos[2] / Norm);
+				LOG << "Translate Proportionned = {" << MovePos[0] << ", " << MovePos[1] << ", " << MovePos[2] << "}" << std::endl;
 			}
 		}
 		if(!isnanf(MovementToDo->actual->RotateSpeed))
@@ -588,11 +655,11 @@ bool CaseEntity::CaseMove(unsigned64 microseconds, dFloat timestep)
 				RotatePos[2] = 0;
 			if(MustRotate && Norm != 0)
 			{
-				LOG << "Rotate = {" << RotatePos[0] << ", " << RotatePos[1] << ", " << RotatePos[2] << "}" << std::endl;
+				LOG << "Must Rotate = {" << RotatePos[0] << ", " << RotatePos[1] << ", " << RotatePos[2] << "}" << std::endl;
 				RotatePos[0] *= fabs(DiffAngle[0] / Norm);
 				RotatePos[1] *= fabs(DiffAngle[1] / Norm);
 				RotatePos[2] *= fabs(DiffAngle[2] / Norm);
-				LOG << "Rotate = {" << RotatePos[0] << ", " << RotatePos[1] << ", " << RotatePos[2] << "}" << std::endl;
+				LOG << "Rotate Proportionned = {" << RotatePos[0] << ", " << RotatePos[1] << ", " << RotatePos[2] << "}" << std::endl;
 			}
 		}
 		if(MustRotate == false && MustTranslate == false)// So we have reached the position
@@ -639,6 +706,8 @@ bool CaseEntity::CaseMove(unsigned64 microseconds, dFloat timestep)
 					iter++;
 				}
 			}
+			else
+				LOG << "Time is " << microseconds << " : Waiting until " << MovementToDo->foreignedtime + MovementToDo->actual->waittime << " before Changing Current Move" << std::endl;
 		}
 		//Apply Current Move.
 		if(MustTranslate)
@@ -1263,6 +1332,7 @@ void BallEntity::ExportToJson(rapidjson::Value &v, rapidjson::Document::Allocato
 #define MOVESTEPROTATIONZ_JSON_FIELD "MoveGoalRotZ"
 #define MOVESTEPROTATIONW_JSON_FIELD "MoveGoalRotW"
 #define MOVESTEPROTATIONSPEED_JSON_FIELD "MoveRotationSpeed"
+#define MOVESTEPROTATIONSPEEDCORRELATED_JSON_FIELD "MoveRotationSpeedCorrelated"
 #define MOVESTEPWAITTIME_JSON_FIELD "MovePauseDuration"
 
 void CaseEntity::ExportToJson(rapidjson::Value &v, rapidjson::Document::AllocatorType& allocator)
@@ -1319,6 +1389,7 @@ void CaseEntity::ExportToJson(rapidjson::Value &v, rapidjson::Document::Allocato
 				Step.AddMember(MOVESTEPROTATIONZ_JSON_FIELD, step->RelativeOrientation.z, allocator);
 				Step.AddMember(MOVESTEPROTATIONW_JSON_FIELD, step->RelativeOrientation.w, allocator);
 				Step.AddMember(MOVESTEPROTATIONSPEED_JSON_FIELD, step->RotateSpeed, allocator);
+				Step.AddMember(MOVESTEPROTATIONSPEEDCORRELATED_JSON_FIELD, step->correlated_speed, allocator);
 			}
 			else
 				Step.AddMember(MOVESTEPROTATIONPRESENT_JSON_FIELD, false, allocator);
@@ -1396,6 +1467,7 @@ void CaseEntity::ImportFromJson(rapidjson::Value &v, GameEngine *Game, Node *par
 				Step->RelativeOrientation.z = Stepjson[MOVESTEPROTATIONZ_JSON_FIELD].GetFloat();
 				Step->RelativeOrientation.w = Stepjson[MOVESTEPROTATIONW_JSON_FIELD].GetFloat();
 				Step->RotateSpeed = Stepjson[MOVESTEPROTATIONSPEED_JSON_FIELD].GetFloat();
+				Step->correlated_speed = Stepjson[MOVESTEPROTATIONSPEEDCORRELATED_JSON_FIELD].GetBool();
 			}
 			else
 				Step->RotateSpeed = NAN;

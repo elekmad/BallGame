@@ -200,17 +200,17 @@ class CaseEntity : public Entity
 	bool CaseMove(unsigned64 microseconds, dFloat timestep);
 	bool CaseToMove(void) { return MovementToDo != NULL; }
 	bool MoveTriggered(void) { return MovementToDo != NULL && MovementToDo->is_launched_by_collide; }
-	void AddMovePoint(const Vector3 &GoalPos, float speed, unsigned64 waittime, const Quaternion &GoalAngle = Ogre::Quaternion::IDENTITY, float RotateSpeed = NAN);
-	void AddTriggeredMovePoint(const Vector3 &GoalPos, float speed, unsigned64 waittime, const Quaternion &GoalAngle = Ogre::Quaternion::IDENTITY, float RotateSpeed = NAN)
+	void AddMovePoint(const Vector3 &GoalPos, float speed, unsigned64 waittime, const Quaternion &GoalAngle = Ogre::Quaternion::IDENTITY, float RotateSpeed = NAN, bool correlated_speed = false);
+	void AddTriggeredMovePoint(const Vector3 &GoalPos, float speed, unsigned64 waittime, const Quaternion &GoalAngle = Ogre::Quaternion::IDENTITY, float RotateSpeed = NAN, bool correlated_speed = false)
 	{
-		AddMovePoint(GoalPos, speed, waittime, GoalAngle, RotateSpeed);
+		AddMovePoint(GoalPos, speed, waittime, GoalAngle, RotateSpeed, correlated_speed);
 		SetMoveTriggered(true);
 	}
 	void SetMoveTriggered(bool trigger);
 
 	void FillComboboxWithMoves(CEGUI::Combobox *box);
-	void DisplaySelectedMove(void *step, CEGUI::Editbox *, CEGUI::Editbox *, CEGUI::Editbox *);
-	void UpdateSelectedMove(void *step, const Vector3 &GoalPos, float TSpeed, const Quaternion &GoalAngle, float RSpeed, unsigned64 WaitTime);
+	void DisplaySelectedMove(void *step, CEGUI::Editbox *, CEGUI::Editbox *, CEGUI::Editbox *, CEGUI::ToggleButton *);
+	void UpdateSelectedMove(void *step, const Vector3 &GoalPos, float TSpeed, const Quaternion &GoalAngle, float RSpeed, unsigned64 WaitTime, bool CorrelateSpeeds);
 	void DeletedMove(void *step);
 	inline void setRefMove(GroupEntity *Grp);
 	GroupEntity *getRefMove(void) { return RefMove; }
@@ -232,12 +232,14 @@ class CaseEntity : public Entity
 		Quaternion AbsoluteOrientation;
 		float TranslateSpeed;
 		float RotateSpeed;
+		bool correlated_speed;
 		unsigned64 waittime;
 		MovementStep()
 		{
 			TranslateSpeed = NAN;
 			RotateSpeed = NAN;
 			waittime = 0;
+			correlated_speed = false;
 		}
 	};
 	struct Movement
