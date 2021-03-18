@@ -3550,6 +3550,7 @@ void LevelEditor::ChangeLevel(void)
 	else
 		_StopPhysic();
 	EmptyLevel();
+	SaveLevelPushB->setEnabled(false);
 	if(Level.empty() == false)
 	{
 		String nodeNamePrefix;
@@ -3560,7 +3561,6 @@ void LevelEditor::ChangeLevel(void)
 	{
 		ButtonsSetVisible(MainMenuButtons, true);
 		ChooseLevelComboB->setEnabled(false);
-		SaveLevelPushB->setEnabled(false);
 		EditModePushB->setEnabled(false);
 		StatesModePushB->setEnabled(false);
 		StopPhysicPushB->setEnabled(false);
