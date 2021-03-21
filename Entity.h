@@ -215,6 +215,12 @@ class CaseEntity : public Entity
 	inline void setRefMove(GroupEntity *Grp);
 	GroupEntity *getRefMove(void) { return RefMove; }
 	void ComputeMove(void);
+	void *getActualMoveStep(void)
+	{
+		if(MovementToDo == NULL) return NULL;
+		return (void*)MovementToDo->actual;
+	}
+	void setActualMoveStep(void*);
 
 	protected :
 

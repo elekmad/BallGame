@@ -3503,7 +3503,10 @@ void LevelEditor::EmptyStatesList(void)
 		CEGUI::ListboxTextItem *item = (CEGUI::ListboxTextItem*)ChooseStateToLoadB->getListboxItemFromIndex(0);
 		String *str = (String*)item->getUserData();
 		if(str != NULL)
+		{
+			unlink(str->c_str());
 			delete str;
+		}
 		ChooseStateToLoadB->removeItem(item);
 	}
 }

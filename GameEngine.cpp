@@ -60,24 +60,56 @@ void GameEngine::BodySerialization (NewtonBody* const body, void* const bodyUser
 	Entity *Ent = (Entity*)NewtonBodyGetUserData(body);
 
 	const char* const bodyIndentification = Ent->getName().c_str();
-	LOG << "Serialize Entity (" << Ent << "/" << body << ") name :" << bodyIndentification << std::endl;
-	int size = (strlen (bodyIndentification) + 3) & -4;
+
+	std::vector<uint8_t> ident;
+	ident.push_back((uint8_t)Ent->getType());
+	if(Ent->getType() == BaseEntity::Types::Case)
+	{
+		CaseEntity *C = (CaseEntity*)Ent;
+		void *MovePtr = C->getActualMoveStep();
+		uint8_t *MovePtr8 = (uint8_t*)&MovePtr;
+		for(int cmpt = 0; cmpt < sizeof(void*); cmpt++)
+		{
+			ident.push_back(MovePtr8[cmpt]);
+		}
+	}
+	for(int cmpt = 0; cmpt < Ent->getName().length(); cmpt++)
+		ident.push_back(Ent->getName().at(cmpt));
+	ident.push_back((uint8_t)'\0');//Add '\0' for end of the entity's name
+	LOG << "Serialize Entity (" << Ent << "/" << body << ") name :" << Ent->getName() << std::endl;
+	int size = (ident.size() + 3) & -4;
 	serializeCallback (serializeHandle, &size, sizeof (size));
-	serializeCallback (serializeHandle, bodyIndentification, size);
+	serializeCallback (serializeHandle, (void*)ident.data(), size);
 }
 
 void GameEngine::BodyDeserialization (NewtonBody* const body, void* const bodyUserData, NewtonDeserializeCallback deserializecallback, void* const serializeHandle)
 {
 	int size;
 	char bodyIndentification[256];
+	char *ident;
 	GameEngine *Game = (GameEngine*)bodyUserData;
 
 	deserializecallback (serializeHandle, &size, sizeof (size));
 	deserializecallback (serializeHandle, bodyIndentification, size);
 	bodyIndentification[size] = 0;
+	BaseEntity::Types type = (BaseEntity::Types)bodyIndentification[0];
+	if(type != BaseEntity::Types::Case)
+		ident = &bodyIndentification[1];
+	else
+		ident = &bodyIndentification[1+sizeof(void*)];
 
-	Entity *Entity = Game->GetEntity(bodyIndentification);
-	LOG << "Deserialize Entity (" << Entity << "/" << body << ") name :" << bodyIndentification << std::endl;
+	Entity *Entity = Game->GetEntity(ident);
+	LOG << "Deserialize Entity (" << Entity << "/" << body << ") name :" << ident << std::endl;
+
+	if(type == BaseEntity::Types::Case)
+	{
+		void *MovePtr;
+		uint8_t *ptr = (uint8_t*)(&MovePtr);
+		for(int cmpt = 0; cmpt < sizeof(void*); cmpt++)
+			ptr[cmpt] = (uint8_t)bodyIndentification[1+cmpt];
+		((CaseEntity*)Entity)->setActualMoveStep(MovePtr);
+	}
+
 
 	NewtonBodySetUserData (body, Entity);
 	Entity->setNewtonBody(body);

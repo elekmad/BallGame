@@ -733,6 +733,23 @@ bool CaseEntity::CaseMove(unsigned64 microseconds, dFloat timestep)
 	return true;
 }
 
+void CaseEntity::setActualMoveStep(void *ptr)
+{
+	if(MovementToDo == NULL)
+		return;
+	struct MovementStep *steptoput = (struct MovementStep*)ptr;
+	std::list<struct MovementStep*>::iterator iter(MovementToDo->Moves.begin());
+	while(iter != MovementToDo->Moves.end())
+	{
+		struct MovementStep *step = *(iter++);
+		if(step == steptoput)
+		{
+			MovementToDo->actual = step;
+			return;
+		}
+	}
+}
+
 void CaseEntity::AddBallColliding(BallEntity *ball)
 {
 	if(ball == NULL)
