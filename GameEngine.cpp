@@ -719,38 +719,21 @@ void GameEngine::RemoveCase(CaseEntity *Entity, std::list<CaseEntity*>::iterator
 void GameEngine::EmptyLevel(void)
 {
 	_StopPhysic();
-	std::list<CaseEntity*>::iterator Cit(Cases.begin());
-	while(Cit != Cases.end())
-	{
-		CaseEntity *Case = *Cit;
-		if(Case != NULL)
-			DeleteCase(Case, &Cit);
-		else
-			Cit++;
-	}
-	assert(Cases.empty());
-	std::list<BallEntity*>::iterator Bit(Balls.begin());
-	while(Bit != Balls.end())
-	{
-		BallEntity *Ball = *Bit;
-		if(Ball != NULL)
-			DeleteBall(Ball, &Bit);
-		else
-			Bit++;
-	}
-	assert(Balls.empty());
-	std::list<GroupEntity*>::iterator Git(Groups.begin());
-	while(Git != Groups.end())
-	{
-		GroupEntity *Group = *Git;
-		if(Group != NULL)
-			DeleteGroup(Group, &Git);
-		else
-			Git++;
-	}
-	assert(Groups.empty());
+
 	CasesUnderCollide.clear();
 	CasesToBeMoved.clear();
+
+	while(Cases.empty() == false)
+		DeleteCase(*(Cases.begin()));
+	assert(Cases.empty());
+
+	while(Balls.empty() == false)
+		DeleteBall(*(Balls.begin()));
+	assert(Balls.empty());
+
+	while(Groups.empty() == false)
+		DeleteGroup(*(Groups.begin()));
+	assert(Groups.empty());
 
 	//Force an update of Physic to force garbage collecting !
 	_updatePhysic(1.0f / MAX_PHYSICS_FPS);
