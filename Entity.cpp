@@ -20,6 +20,9 @@
 //Put LevelEditor.h in last because of Xlib defines (True False Bool None) which must be undef
 #include "Entity.h"
 
+#define CASE_MOVE_TRANSLATION_PRECISION 0.05
+#define CASE_MOVE_ROTATION_PRECISION 0.01
+
 inline float Normalize(float v1, float v2, float v3)
 {
 	return sqrtf(v1 * v1 + v2 * v2 + v3 * v3);
@@ -478,7 +481,8 @@ void CaseEntity::ComputeMove(void)
 	Vector3 ActuPos = getAbsolutePosition();
 
 
-	//Firts pass to computes Absolutes coords for each Moves.
+
+	//First pass to computes Absolutes coords for each Moves.
 	//As Correlate Speeds depends of the previous, the first needs the last !
 	std::list<struct MovementStep*>::iterator iterRelToAbs(MovementToDo->Moves.begin());
 	while(iterRelToAbs != MovementToDo->Moves.end())
@@ -607,36 +611,36 @@ bool CaseEntity::CaseMove(unsigned64 microseconds, dFloat timestep)
 			LOG << "TranslatePos = {" << MovePos[0] << ", " << MovePos[1] << ", " << MovePos[2] << "}"
 					<< " From " << getAbsolutePosition() << " To " << *ToReachPos
 					<< std::endl;
-			if (DiffPos[0] > 0.01)
+			if (DiffPos[0] > CASE_MOVE_TRANSLATION_PRECISION)
 			{
 				MovePos[0] = MovementToDo->actual->TranslateSpeed;
 				MustTranslate = true;
 			}
-			else if (DiffPos[0] < -0.01)
+			else if (DiffPos[0] < -CASE_MOVE_TRANSLATION_PRECISION)
 			{
 				MovePos[0] = -1 * MovementToDo->actual->TranslateSpeed;
 				MustTranslate = true;
 			}
 			else
 				MovePos[0] = 0;
-			if (DiffPos[1] > 0.01)
+			if (DiffPos[1] > CASE_MOVE_TRANSLATION_PRECISION)
 			{
 				MovePos[1] = MovementToDo->actual->TranslateSpeed;
 				MustTranslate = true;
 			}
-			else if (DiffPos[1] < -0.01)
+			else if (DiffPos[1] < -CASE_MOVE_TRANSLATION_PRECISION)
 			{
 				MovePos[1] = -1 * MovementToDo->actual->TranslateSpeed;
 				MustTranslate = true;
 			}
 			else
 				MovePos[1] = 0;
-			if (DiffPos[2] > 0.01)
+			if (DiffPos[2] > CASE_MOVE_TRANSLATION_PRECISION)
 			{
 				MovePos[2] = MovementToDo->actual->TranslateSpeed;
 				MustTranslate = true;
 			}
-			else if (DiffPos[2] < -0.01)
+			else if (DiffPos[2] < -CASE_MOVE_TRANSLATION_PRECISION)
 			{
 				MovePos[2] = -1 * MovementToDo->actual->TranslateSpeed;
 				MustTranslate = true;
@@ -657,6 +661,20 @@ bool CaseEntity::CaseMove(unsigned64 microseconds, dFloat timestep)
 			DiffAngle[0] = ToReachRot->getPitch().valueRadians() - getAbsoluteOrientation().getPitch().valueRadians();
 			DiffAngle[1] = ToReachRot->getYaw().valueRadians() - getAbsoluteOrientation().getYaw().valueRadians();
 			DiffAngle[2] = ToReachRot->getRoll().valueRadians() - getAbsoluteOrientation().getRoll().valueRadians();
+			while(DiffAngle[0] >= M_PI)
+				DiffAngle[0] -= 2*M_PI;
+			while(DiffAngle[0] <= -M_PI)
+				DiffAngle[0] += 2*M_PI;
+
+			while(DiffAngle[1] >= M_PI)
+				DiffAngle[1] -= 2*M_PI;
+			while(DiffAngle[1] <= -M_PI)
+				DiffAngle[1] += 2*M_PI;
+
+			while(DiffAngle[2] >= M_PI)
+				DiffAngle[2] -= 2*M_PI;
+			while(DiffAngle[2] <= -M_PI)
+				DiffAngle[2] += 2*M_PI;
 			dFloat Norm = Normalize(DiffAngle[0], DiffAngle[1], DiffAngle[2]);
 			LOG << "DiffAngle = {" << DiffAngle[0] << ", " << DiffAngle[1] << ", " << DiffAngle[2] << "}"
 					<< " From " << getAbsoluteOrientation() << " To " << *ToReachRot
@@ -675,36 +693,36 @@ bool CaseEntity::CaseMove(unsigned64 microseconds, dFloat timestep)
 					<< ", " << ToReachRot->getPitch().valueDegrees()
 					<< ", " << ToReachRot->getYaw().valueDegrees()
 					<< "}" << std::endl;
-			if (DiffAngle[0] > 0.01)
+			if (DiffAngle[0] > CASE_MOVE_ROTATION_PRECISION)
 			{
 				RotatePos[0] = MovementToDo->actual->RotateSpeed;
 				MustRotate = true;
 			}
-			else if (DiffAngle[0] < -0.01)
+			else if (DiffAngle[0] < -CASE_MOVE_ROTATION_PRECISION)
 			{
 				RotatePos[0] = -1 * MovementToDo->actual->RotateSpeed;
 				MustRotate = true;
 			}
 			else
 				RotatePos[0] = 0;
-			if (DiffAngle[1] > 0.01)
+			if (DiffAngle[1] > CASE_MOVE_ROTATION_PRECISION)
 			{
 				RotatePos[1] = MovementToDo->actual->RotateSpeed;
 				MustRotate = true;
 			}
-			else if (DiffAngle[1] < -0.01)
+			else if (DiffAngle[1] < -CASE_MOVE_ROTATION_PRECISION)
 			{
 				RotatePos[1] = -1 * MovementToDo->actual->RotateSpeed;
 				MustRotate = true;
 			}
 			else
 				RotatePos[1] = 0;
-			if (DiffAngle[2] > 0.01)
+			if (DiffAngle[2] > CASE_MOVE_ROTATION_PRECISION)
 			{
 				RotatePos[2] = MovementToDo->actual->RotateSpeed;
 				MustRotate = true;
 			}
-			else if (DiffAngle[2] < -0.01)
+			else if (DiffAngle[2] < -CASE_MOVE_ROTATION_PRECISION)
 			{
 				RotatePos[2] = -1 * MovementToDo->actual->RotateSpeed;
 				MustRotate = true;
