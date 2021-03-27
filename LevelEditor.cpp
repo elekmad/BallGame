@@ -245,6 +245,7 @@ LevelEditor::LevelEditor() :
 	MouseOverButton = false;
 	force_directed = false;
 	is_new_level = false;
+	CtrlDown = false;
 }
 
 void LevelEditor::chooseSceneManager(void)
@@ -3082,6 +3083,7 @@ bool LevelEditor::keyPressed(const OIS::KeyEvent &arg)
     {
     case OIS::KeyCode::KC_LCONTROL :
     case OIS::KeyCode::KC_RCONTROL :
+    	CtrlDown = true;
     	if(MouseOverButton == false)
     	{
 			if(LevelEditMode == Edit || LevelEditMode == Delete)
@@ -3381,6 +3383,146 @@ bool LevelEditor::keyPressed(const OIS::KeyEvent &arg)
 			}
 		}
 		break;
+	case OIS::KeyCode::KC_D:
+		if(mode == Editing)
+		{
+			if(CtrlDown == true)
+			{
+				rapidjson::Document document;
+				document.SetObject();
+
+				rapidjson::Document::AllocatorType& allocator = document.GetAllocator();
+
+				if(UnderEditEntites.size() >= 2)
+				{
+					String NamePrefix("Copy#");
+					NamePrefix += std::to_string(nb_entities);
+					NamePrefix +=":";
+
+					//First, we grab all BaseEntities (Cases, Balls and Groups) under selected !
+					//But take care, take only entities alone (not in a group) because groups duplicates recursively !
+					std::list<BaseEntity*> SelectedToDup, ToDup;
+					auto iter(UnderEditEntites.begin());
+					while(iter != UnderEditEntites.end())
+					{
+						BaseEntity *Ent = *(iter++);
+						if(Ent == NULL)
+							continue;
+						LOG << "Ent " << Ent->getName() << " selected" << std::endl;
+						GroupEntity *GEnt = Ent->getGroup();
+						if(GEnt != NULL)
+						{
+							LOG << "Ent Group " << GEnt->getName() << std::endl;
+							while(GEnt->getGroup() != NULL)
+							{
+								LOG << "Group sup : " << GEnt->getGroup()->getName() << std::endl;
+								GEnt = GEnt->getGroup();
+							}
+							SelectedToDup.push_back((BaseEntity*)GEnt);
+						}
+						else
+							SelectedToDup.push_back(Ent);
+					}
+
+					//Second, we only take each of them once, avoid multi duplicating someone !
+					auto iterS(SelectedToDup.begin());
+					while(iterS != SelectedToDup.end())
+					{
+						bool to_add = true;
+						BaseEntity *Ent = *(iterS++);
+
+						auto iterD(ToDup.begin());
+						while(iterD != ToDup.end())
+						{
+							BaseEntity *EntD = *(iterD++);
+							if(EntD == Ent)
+							{
+								to_add = false;
+								break;
+							}
+						}
+
+						if(to_add)
+							ToDup.push_back(Ent);
+					}
+
+					//Empty multiselection now
+					MultiSelectionSetEmpty();
+					//Then Duplicate all of them
+					std::list<GroupEntity*> DuplicatedToBeEquilibrated;
+					auto iterDup(ToDup.begin());
+					while(iterDup != ToDup.end())
+					{
+						BaseEntity *E = *(iterDup++);
+						if(E == NULL)
+							continue;
+						switch(E->getType())
+						{
+							case BaseEntity::Types::Ball :
+							{
+								BallEntity *DupBall = new BallEntity(*(BallEntity*)E, NamePrefix);
+								AddBall(DupBall);
+								ManageMultiSelectionSet((BaseEntity*)DupBall);
+								break;
+							}
+							case BaseEntity::Types::Case :
+							{
+								CaseEntity *DupCase = new CaseEntity(*(CaseEntity*)E, NamePrefix);
+								AddCase(DupCase);
+								ManageMultiSelectionSet((BaseEntity*)DupCase);
+								break;
+							}
+							case BaseEntity::Types::Group :
+							{
+								GroupEntity *DupGroup = new GroupEntity(*(GroupEntity*)E, NamePrefix);
+								AddGroup(DupGroup, true);
+								DuplicatedToBeEquilibrated.push_back(DupGroup);
+								FillMultiselectionSetWithGroup(DupGroup);
+								break;
+							}
+						}
+					}
+
+
+					//Last step of duplication, must Compute and Equilibrate new created groups !
+					auto iterEqui(DuplicatedToBeEquilibrated.begin());
+					while(iterEqui != DuplicatedToBeEquilibrated.end())
+					{
+						GroupEntity *G = *(iterEqui++);
+						if(G == NULL)
+							continue;
+						G->ComputeAndEquilibrateChilds();
+					}
+				}
+				else if (LastHighlighted != NULL)
+				{
+					String NamePrefix("Copy#");
+					NamePrefix += std::to_string(nb_entities);
+					NamePrefix +=":";
+					switch(LastHighlighted->getType())
+					{
+						case BaseEntity::Types::Ball :
+						{
+							BallEntity *DupBall = new BallEntity(*(BallEntity*)LastHighlighted, NamePrefix);
+							AddBall(DupBall);
+							break;
+						}
+						case BaseEntity::Types::Case :
+						{
+							CaseEntity *DupCase = new CaseEntity(*(CaseEntity*)LastHighlighted, NamePrefix);
+							if(DupCase->CaseToMove() == true)
+								AddCaseToBeMoved(DupCase);
+							AddCase(DupCase);
+							MouseOverButton = false;
+							EditElementSetupButtons();
+							LastHighlighted = (Entity*)DupCase;
+							break;
+						}
+					}
+				}
+			}
+		}
+		break;
 	case OIS::KeyCode::KC_M:
 		if(mode == Editing)
 			SetMoveElementAction();
@@ -3417,6 +3559,7 @@ bool LevelEditor::keyReleased( const OIS::KeyEvent &arg )
     case OIS::KeyCode::KC_RCONTROL :
 		LOG << "Unactivate Multi selection mode" << std::endl;
 		MultiSelectionMode = false;
+		CtrlDown = false;
     	break;
     }
 	//BaseApplication::keyReleased(arg);

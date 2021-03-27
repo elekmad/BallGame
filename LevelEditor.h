@@ -111,6 +111,8 @@ class LevelEditor : public GameEngine
     BallEntity *UnderEditBall;
     dFloat UnderEditBallMass;
 
+    bool CtrlDown;
+
     //Edit Case
     bool MouseOverButton;
     void EditCase(CaseEntity *Entity);

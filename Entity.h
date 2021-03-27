@@ -61,6 +61,7 @@ class BaseEntity
 	};
 
 	BaseEntity();
+	BaseEntity(const BaseEntity &, const String &);
 	virtual ~BaseEntity(){}
 	virtual void Finalize(void);
 	virtual void setOgreNode(SceneNode *node);
@@ -124,9 +125,10 @@ class Entity : public BaseEntity
 
 	Entity(const dMatrix& matrix);
 	Entity();
-	void Finalize(void);
-    void ExportToJson(rapidjson::Value &v, rapidjson::Document::AllocatorType& allocator);
-    void ImportFromJson(rapidjson::Value &v, GameEngine *Game, Node *parent, String &nodeNamePrefix);
+	Entity(const Entity &, const String &);
+	virtual void Finalize(void);
+    virtual void ExportToJson(rapidjson::Value &v, rapidjson::Document::AllocatorType& allocator);
+    virtual void ImportFromJson(rapidjson::Value &v, GameEngine *Game, Node *parent, String &nodeNamePrefix);
     static void TransformCallback(const NewtonBody* body, const dFloat* matrix, int threadIndex);
     void setNewtonBody(NewtonBody *body);
     const NewtonBody *getNewtonBody(void) const { return Body; }
@@ -152,6 +154,7 @@ class BallEntity : public Entity
 
 	BallEntity(const dMatrix& matrix);
 	BallEntity();
+	BallEntity(const BallEntity &, const String &);
 	~BallEntity();
 	void CreateFromJson(rapidjson::Value &v, GameEngine *Game, NewtonWorld *m_world, Node *parent, String &nodeNamePrefix);
 	void AddForceVector(dVector *force);
@@ -183,6 +186,7 @@ class CaseEntity : public Entity
 	enum CaseType type;
 	CaseEntity(const dMatrix& matrix, enum CaseType _type = typeBox);
 	CaseEntity(enum CaseType _type = typeBox);
+	CaseEntity(const CaseEntity &, const String &);
 	~CaseEntity();
 	void CreateFromJson(rapidjson::Value &v, GameEngine *Game, NewtonWorld *m_world, Node *parent, String &nodeNamePrefix);
 //	void AddBallColliding(NewtonBody *ball);
@@ -288,6 +292,7 @@ class GroupEntity : public BaseEntity
 
 	GroupEntity(String &name, Ogre::SceneManager* mSceneMgr);
 	GroupEntity(){ type = Group; computed = false; equilibrated = false; isRefMove = false; };
+	GroupEntity(const GroupEntity &, const String &);
     void CreateNewtonBody(NewtonWorld *m_world);
 	void Finalize(void);
 	void AddChild(BaseEntity* child);
@@ -301,7 +306,7 @@ class GroupEntity : public BaseEntity
 	void ComputeChilds(void);
 	void ComputeAndEquilibrateChilds(void);
 	void EquilibrateAABBAroundOrigin(void);
-	void FillListWithChilds(std::list<BaseEntity*> &list);
+	void FillListWithChilds(std::list<BaseEntity*> &list, bool recursive = false);
     void Scale(float x, float y, float z);
     void DisplayChilds(void);
     virtual void DisplaySelectedBox(bool display);

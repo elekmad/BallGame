@@ -35,20 +35,46 @@ BaseEntity::BaseEntity()
 	type = Case;
 }
 
+BaseEntity::BaseEntity(const BaseEntity &other, const String &NamePrefix)
+{
+	LOG << "Copying " << other.getName() << std::endl;
+	Engine = other.Engine;
+	GroupPtr = NULL;
+	String name(NamePrefix);
+	name += "-";
+	name += other.getName();
+	type = other.type;
+	InitialPos = other.InitialPos;
+	InitialOrientation = other.InitialOrientation;
+	InitialScale = other.InitialScale;
+	Ogre::SceneNode *Node = (Ogre::SceneNode*)other.Engine->getSceneManager()->getRootSceneNode()->createChild(name, InitialPos, InitialOrientation);
+	OgreEntity = NULL;
+	setOgreNode(Node);
+}
+
 Entity::Entity(const dMatrix& matrix) :
 	m_curPosition (matrix.m_posit),
 	m_nextPosition (matrix.m_posit),
 	m_curRotation (dQuaternion (matrix)),
 	m_nextRotation (dQuaternion (matrix))
 {
-	OgreEntity = NULL;
-	GroupPtr = NULL;
 	Body = NULL;
 }
 
 Entity::Entity()
 {
 	Body = NULL;
+}
+
+Entity::Entity(const Entity &other, const String &NamePrefix) : BaseEntity(other, NamePrefix)
+{
+	LOG << "Copying " << other.getName() << std::endl;
+	Body = NULL;
+	Ogre::SceneManager *mSceneMgr = other.Engine->getSceneManager();
+	Ogre::MeshPtr Mesh = ((Ogre::Entity*)other.OgreEntity->getAttachedObject(0))->getMesh();
+	Ogre::Entity* ogreEntity = mSceneMgr->createEntity(Mesh);
+	OgreEntity->attachObject(ogreEntity);
+	((Ogre::Entity*)OgreEntity->getAttachedObject(0))->getUserObjectBindings().setUserAny(Ogre::Any(this));
 }
 
 void BaseEntity::DisplaySelectedBox(bool display)
@@ -200,6 +226,12 @@ BallEntity::BallEntity()
 	type = Ball;
 }
 
+BallEntity::BallEntity(const BallEntity &other, const String &NamePrefix) : Entity(other, NamePrefix)
+{
+	InitialMass = other.InitialMass;
+	type = Ball;
+}
+
 BallEntity::~BallEntity()
 {
 	CleanupForces();
@@ -283,6 +315,32 @@ CaseEntity::CaseEntity(enum CaseType _type)
 	force_direction = NULL;
 	MovementToDo = NULL;
 	RefMove = NULL;
+}
+
+CaseEntity::CaseEntity(const CaseEntity &other, const String &NamePrefix) : Entity(other, NamePrefix)
+{
+	type = other.type;
+	this->BaseEntity::type = Case;
+	force_to_apply = other.force_to_apply;
+	if(other.force_direction != NULL)
+		force_direction = new dVector(*(other.force_direction));
+	else
+		force_direction = NULL;
+	MovementToDo = NULL;
+	if(other.MovementToDo != NULL)
+	{
+		SetMoveTriggered(other.MovementToDo->is_launched_by_collide);
+		auto iter(other.MovementToDo->Moves.begin());
+		while(iter != other.MovementToDo->Moves.end())
+		{
+			struct MovementStep *step = *(iter++);
+			if(step == NULL)
+				continue;
+			AddMovePoint(step->RelativePosition, step->TranslateSpeed, step->waittime, step->RelativeOrientation, step->RotateSpeed, step->correlated_speed);
+		}
+	}
+	RefMove = NULL;
+	CreateNewtonBody(Engine->GetNewton());
 }
 
 CaseEntity::~CaseEntity()
@@ -825,11 +883,11 @@ void CaseEntity::CreateNewtonBody(NewtonWorld *m_world)
 	Ogre::Entity *ogreEntity = (Ogre::Entity*)OgreEntity->getAttachedObject(0);
 	dMatrix *bodymatrix = PrepareNewtonBody(NewtonBodyLocation, NewtonBodySize);
 
-	if(MovementToDo != NULL)//Case will move, so Group is the relative move's ref
+	if(MovementToDo != NULL && RefMove != NULL)//Case will move, so Group is the relative move's ref
 	{
-		GroupPtr->setInitialPosition(InitialPos);
+		RefMove->setInitialPosition(InitialPos);
 		setAbsolutePosition(InitialPos);
-		GroupPtr->setInitialOrientation(InitialOrientation);
+		RefMove->setInitialOrientation(InitialOrientation);
 		setAbsoluteOrientation(InitialOrientation);
 		MovementToDo->is_computed = false;
 	}
@@ -854,6 +912,48 @@ GroupEntity::GroupEntity(String &name, Ogre::SceneManager* mSceneMgr)
 	computed = false;
 	equilibrated = false;
 	isRefMove = false;
+}
+
+GroupEntity::GroupEntity(const GroupEntity &other, const String &NamePrefix) : BaseEntity(other, NamePrefix)
+{
+	type = Group;
+	computed = false;
+	equilibrated = false;
+
+	isRefMove = other.isRefMove;
+	if(isRefMove)
+	{
+		CaseEntity *childC = (CaseEntity*)*(other.childs.begin()), *DupC;
+		DupC = new CaseEntity(*childC, NamePrefix);
+		DupC->setRefMove(this);
+		//Now RefMove is filled, we can call CreateNewtonBody
+		DupC->CreateNewtonBody(Engine->GetNewton());
+		AddChild((BaseEntity*)DupC);
+	}
+	else
+	{
+		auto iter(other.childs.begin());
+		while(iter != other.childs.end())
+		{
+			BaseEntity *Ent = *(iter++), *DupEnt = NULL;
+			if(Ent == NULL)
+				continue;
+			switch(Ent->getType())
+			{
+				case BaseEntity::Types::Ball :
+					DupEnt = new BallEntity(*(BallEntity*)Ent, NamePrefix);
+					break;
+				case BaseEntity::Types::Case :
+					DupEnt = new CaseEntity(*(CaseEntity*)Ent, NamePrefix);
+					break;
+				case BaseEntity::Types::Group :
+					DupEnt = new GroupEntity(*(GroupEntity*)Ent, NamePrefix);
+					break;
+			}
+			if(DupEnt != NULL)
+				AddChild(DupEnt);
+		}
+	}
 }
 
 void GroupEntity::CreateNewtonBody(NewtonWorld *m_world)
@@ -931,7 +1031,7 @@ bool GroupEntity::HasChild(BaseEntity* child)
 	return false;
 }
 
-void GroupEntity::FillListWithChilds(std::list<BaseEntity*> &list)
+void GroupEntity::FillListWithChilds(std::list<BaseEntity*> &list, bool recursive)
 {
 	std::list<BaseEntity*>::iterator iter(childs.begin());
 	while(iter != childs.end())
@@ -939,7 +1039,10 @@ void GroupEntity::FillListWithChilds(std::list<BaseEntity*> &list)
 		BaseEntity *Entity = *(iter++);
 		if(Entity == NULL)
 			continue;
+		LOG << "Add " << Entity->getName() << " to list" << std::endl;
 		list.push_back(Entity);
+		if(Entity->getType() == BaseEntity::Types::Group && recursive == true)
+			((GroupEntity*)Entity)->FillListWithChilds(list, true);
 	}
 }
 
