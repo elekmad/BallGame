@@ -86,7 +86,7 @@ class GameEngine : public BaseApplication
 
     inline GroupEntity *findGroup(const char * const name, bool is_for_import = false);
     virtual GroupEntity *findGroup(String &name, bool is_for_import = false);
-    void AddGroup(GroupEntity *Entity);
+    void AddGroup(GroupEntity *Entity, bool recursive = false);
 
 	protected :
 

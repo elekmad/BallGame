@@ -1265,6 +1265,9 @@ bool LevelEditor::GroupElementsBCallback(const CEGUI::EventArgs &e)
 		Grp->ComputeAndEquilibrateChilds();
 		AddGroup(Grp);
 	}
+	MultiSelectionSetEmpty();
+	FillMultiselectionSetWithGroup(Grp);
+	LastHighlightedGroup = Grp;
 	return true;
 }
 

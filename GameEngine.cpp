@@ -488,19 +488,63 @@ void GameEngine::CheckforCollides(void)
 	}
 }
 
-void GameEngine::AddGroup(GroupEntity *group)
+void GameEngine::AddGroup(GroupEntity *group, bool recursive)
 {
 	if(group == NULL)
 		return;
+
+	auto iter(Groups.begin());
+	while(iter != Groups.end())
+	{
+		GroupEntity *G = *(iter++);
+		if(G == group)
+			return;
+	}
+
 	Groups.push_back(group);
 	group->setEngine(this);
 	nb_entities++;
+
+	if(recursive == true)
+	{
+		std::list<BaseEntity*> Childs;
+		group->FillListWithChilds(Childs, false);
+
+		auto iterG(Childs.begin());
+		while(iterG != Childs.end())
+		{
+			BaseEntity *E = *(iterG++);
+			if(E == NULL)
+				continue;
+			switch(E->getType())
+			{
+			case BaseEntity::Types::Ball :
+				AddBall((BallEntity*)E);
+				break;
+			case BaseEntity::Types::Case :
+				AddCase((CaseEntity*)E);
+				break;
+			case BaseEntity::Types::Group :
+				AddGroup((GroupEntity*)E, true);
+				break;
+			}
+		}
+	}
 }
 
 void GameEngine::AddBall(BallEntity *ball)
 {
 	if(ball == NULL)
 		return;
+
+	auto iter(Balls.begin());
+	while(iter != Balls.end())
+	{
+		BallEntity *B = *(iter++);
+		if(B == ball)
+			return;
+	}
+
 	Balls.push_back(ball);
 	ball->setEngine(this);
 	nb_entities++;
@@ -510,9 +554,21 @@ void GameEngine::AddCase(CaseEntity *Wcase)
 {
 	if(Wcase == NULL)
 		return;
+
+	auto iter(Cases.begin());
+	while(iter != Cases.end())
+	{
+		CaseEntity *C = *(iter++);
+		if(C == Wcase)
+			return;
+	}
+
 	Cases.push_back(Wcase);
 	Wcase->setEngine(this);
 	nb_entities++;
+
+	if(Wcase->CaseToMove() == true)
+		AddCaseToBeMoved(Wcase);
 }
 
 bool GameEngine::frameEnded(const Ogre::FrameEvent& fe)
@@ -788,9 +844,6 @@ void GameEngine::ImportLevelFromJson(Node *parent, String &nodeNamePrefix, bool 
 		{
 			newCase->CreateFromJson(casejson, this, m_world, parent, nodeNamePrefix);
 			AddCase(newCase);
-
-			if(newCase->CaseToMove() == true)
-				AddCaseToBeMoved(newCase);
 		}
 	}
 	//Parsing Balls
