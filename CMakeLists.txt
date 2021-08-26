@@ -22,6 +22,8 @@ file(GLOB CPP_SOURCE
         ./toolBox/*.h
         ./toolBox/*.cpp
 )
+include_directories("./OgreOverlay")
+
 source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/" FILES ${CPP_SOURCE})
 add_executable(Editor ${CPP_SOURCE})
 
@@ -42,11 +44,12 @@ pkg_check_modules(OIS REQUIRED IMPORTED_TARGET OIS)
 target_link_libraries(Editor ${OIS_LIBRARIES})
 include_directories(${OIS_INCLUDE_DIRS})
 
-#find_package(OGRE 1.9 REQUIRED)
-#if(OGRE_FOUND)
-    include_directories("/usr/local/include/OGRE" "/usr/local/include/OGRE/Bites" "/usr/local/include/OGRE/RTShaderSystem" "/usr/local/include/OGRE/Overlay")
-    target_link_libraries(Editor -L/usr/local/lib -lOgreOverlay -lOgreRTShaderSystem -lOgreMain -L/usr/local/lib/OGRE -lzzip -lfreetyped -lboost_system)
-#endif()
+#pkg_check_modules(OGRE REQUIRED IMPORTED_TARGET OGRE)
+
+set(OGRE_BASE_REP "/usr/local")
+
+include_directories("${OGRE_BASE_REP}/include/OGRE" "${OGRE_BASE_REP}/include/OGRE/Bites" "${OGRE_BASE_REP}/include/OGRE/RTShaderSystem" "${OGRE_BASE_REP}/include/OGRE/Overlay")
+target_link_libraries(Editor -L${OGRE_BASE_REP}/lib -lOgreOverlay -lOgreRTShaderSystem -lOgreMain -L${OGRE_BASE_REP}/lib/OGRE -lzzip -lfreetype -lboost_system)
 
 
 

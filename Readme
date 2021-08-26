@@ -4,6 +4,10 @@ Nécessite :
 * CEGUI v0.8.7 (disponible dans les dépots ubuntu ou ici https://github.com/cegui/cegui.git)
 * NewtonDynamic v3.14c (disponible ici https://github.com/MADEAPPS/newton-dynamics.git)
 * RapidJson
+* OIS
+* zzip
+* freetyped
+* boost_system
 
 
 Menu principal disponible via escape
